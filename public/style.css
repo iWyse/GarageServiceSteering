@@ -229,19 +229,32 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   position: relative;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-left: 4px solid var(--status-planned);
+  border-left: 4px solid var(--border);
   border-radius: var(--radius);
   padding: 8px 10px;
   cursor: pointer;
   transition: border-color 0.15s, transform 0.1s;
 }
 .appt-card:hover { transform: translateX(2px); border-left-color: var(--accent); }
+.appt-card[data-status="planned"] { border-left-color: var(--status-planned); }
 .appt-card[data-status="in_progress"] { border-left-color: var(--status-progress); }
 .appt-card[data-status="done"] { border-left-color: var(--status-done); opacity: 0.75; }
 .appt-card[data-status="cancelled"] { border-left-color: var(--status-cancelled); opacity: 0.55; text-decoration: line-through; }
 
 .appt-time { font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
 .appt-client { font-size: 13px; font-weight: 600; margin: 2px 0; }
+.appt-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-decoration: none;
+  margin-bottom: 2px;
+}
+.appt-phone::before { content: "☎"; font-size: 11px; }
+.appt-phone:hover { color: var(--accent); text-decoration: underline; }
 .appt-service { font-size: 12px; color: var(--text-muted); }
 .appt-plate {
   display: inline-block;
@@ -325,8 +338,50 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   font-size: 18px;
   margin: 0 0 16px;
 }
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.dialog-header h2 { margin: 0; }
+.call-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--status-done);
+  color: #fff;
+  font-size: 16px;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: filter 0.15s, transform 0.1s;
+}
+.call-btn:hover { filter: brightness(1.1); transform: scale(1.06); }
 .dialog form { display: flex; flex-direction: column; gap: 12px; }
 .dialog label { font-size: 12px; color: var(--text-muted); display: flex; flex-direction: column; gap: 5px; }
+
+.appt-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.appt-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+.appt-summary-row span { color: var(--text-muted); }
+.appt-summary-row strong { font-weight: 500; text-align: right; }
+#editApptDetailsBtn { align-self: flex-start; margin-top: 4px; }
 .req { color: var(--status-cancelled); }
 .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 

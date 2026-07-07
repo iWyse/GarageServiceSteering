@@ -95,7 +95,10 @@
 <!-- ===== Appointment edit dialog ===== -->
 <div id="apptDialog" class="dialog-overlay hidden">
   <div class="dialog">
-    <h2 id="apptDialogTitle">Новая запись</h2>
+    <div class="dialog-header">
+      <h2 id="apptDialogTitle">Новая запись</h2>
+      <a id="apptCallLink" href="#" class="call-btn hidden" title="Позвонить клиенту">☎</a>
+    </div>
     <form id="apptForm">
       <label>Клиент
         <select name="client_id" id="apptClientSelect"></select>
@@ -108,21 +111,33 @@
         <label>Автомобиль<input name="walkin_car" type="text" placeholder="Toyota Camry, AB-123-C"></label>
       </div>
 
-      <div class="row-2">
-        <label>Дата <span class="req">*</span><input required name="date" type="date"></label>
-        <label>Время <span class="req">*</span><input required name="time" type="time"></label>
+      <div id="apptSummary" class="appt-summary hidden">
+        <div class="appt-summary-row"><span>Дата и время</span><strong id="summaryDateTime"></strong></div>
+        <div class="appt-summary-row" id="summaryServiceRow"><span>Услуга</span><strong id="summaryService"></strong></div>
+        <div class="appt-summary-row" id="summaryStatusRow"><span>Статус</span><strong id="summaryStatus"></strong></div>
+        <div class="appt-summary-row" id="summaryVinRow"><span>VIN</span><strong id="summaryVin"></strong></div>
+        <div class="appt-summary-row" id="summaryNotesRow"><span>Заметки</span><strong id="summaryNotes"></strong></div>
+        <button type="button" id="editApptDetailsBtn" class="btn-ghost">Редактировать</button>
       </div>
-      <label>VIN<input name="vin" type="text" placeholder="17 символов, напр. JHMFA16586S000000" class="mono-input" maxlength="17" style="text-transform:uppercase"></label>
-      <label>Услуга<input name="service" type="text" placeholder="Замена масла, диагностика…"></label>
-      <label>Статус
-        <select name="status">
-          <option value="planned">Запланировано</option>
-          <option value="in_progress">В работе</option>
-          <option value="done">Готово</option>
-          <option value="cancelled">Отменено</option>
-        </select>
-      </label>
-      <label>Заметки<textarea name="notes" rows="2" placeholder="Что нужно сделать…"></textarea></label>
+
+      <div id="apptDetailsFields">
+        <div class="row-2">
+          <label>Дата <span class="req">*</span><input required name="date" type="date"></label>
+          <label>Время <span class="req">*</span><input required name="time" type="time"></label>
+        </div>
+        <label>VIN<input name="vin" type="text" placeholder="17 символов, напр. JHMFA16586S000000" class="mono-input" maxlength="17" style="text-transform:uppercase"></label>
+        <label>Услуга<input name="service" type="text" placeholder="Замена масла, диагностика…"></label>
+        <label>Статус
+          <select name="status">
+            <option value="">— не выбран —</option>
+            <option value="planned">Запланировано</option>
+            <option value="in_progress">В работе</option>
+            <option value="done">Готово</option>
+            <option value="cancelled">Отменено</option>
+          </select>
+        </label>
+        <label>Заметки<textarea name="notes" rows="2" placeholder="Что нужно сделать…"></textarea></label>
+      </div>
       <div class="dialog-actions">
         <button type="button" id="deleteApptBtn" class="btn-danger hidden">Удалить</button>
         <div class="spacer"></div>

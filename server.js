@@ -117,7 +117,7 @@ function normalizeAppointmentInput(data) {
     date: data.date,
     time: data.time,
     service: data.service || '',
-    status: data.status || 'planned',
+    status: data.status || '',
     notes: data.notes || '',
   };
 }

@@ -265,14 +265,20 @@ function renderWeek(weekStart) {
       const carLine = a.client_id
         ? [a.car_make, a.car_model].filter(Boolean).join(' ')
         : (a.walkin_car || '');
-      const vin = a.vin || (a.client_id ? a.client_vin : '') || '';
+      const vin = a.vin || '';
+      const statusOrService = a.service || (a.status ? STATUS_LABEL[a.status] : '');
+      const phone = a.client_phone || '';
+      const telHref = phone.replace(/[^\d+]/g, '');
       card.innerHTML = `
         <div class="appt-time">${a.time}</div>
         <div class="appt-client">${escapeHtml(a.client_name)}</div>
-        <div class="appt-service">${escapeHtml(a.service || STATUS_LABEL[a.status])}</div>
+        ${phone ? `<a class="appt-phone" href="tel:${escapeHtml(telHref)}">${escapeHtml(phone)}</a>` : ''}
+        ${statusOrService ? `<div class="appt-service">${escapeHtml(statusOrService)}</div>` : ''}
         ${carLine ? `<span class="appt-plate">${escapeHtml(carLine)}</span>` : ''}
         ${vin ? `<div class="appt-vin">VIN ${escapeHtml(vin)}</div>` : ''}
       `;
+      const phoneLink = card.querySelector('.appt-phone');
+      if (phoneLink) phoneLink.addEventListener('click', (e) => e.stopPropagation());
       card.addEventListener('click', () => openApptDialog(a, iso));
       card.addEventListener('dragstart', (e) => {
         e.dataTransfer.setData('text/plain', String(a.id));
@@ -326,6 +332,16 @@ function openApptDialog(appt, defaultDate) {
   editingApptId = appt ? appt.id : null;
   document.getElementById('apptDialogTitle').textContent = appt ? 'Запись' : 'Новая запись';
   deleteApptBtn.classList.toggle('hidden', !appt);
+
+  const callLink = document.getElementById('apptCallLink');
+  const phone = appt ? (appt.client_phone || '') : '';
+  if (phone) {
+    callLink.href = 'tel:' + phone.replace(/[^\d+]/g, '');
+    callLink.classList.remove('hidden');
+  } else {
+    callLink.classList.add('hidden');
+  }
+
   apptForm.reset();
   fillClientSelect();
   if (appt) {
@@ -338,8 +354,64 @@ function openApptDialog(appt, defaultDate) {
     apptForm.elements.time.value = '09:00';
   }
   toggleWalkinFields();
+
+  // Для уже существующей записи прячем поля даты/времени/VIN/услуги/статуса/заметок
+  // за кнопкой "Редактировать", чтобы окно не пугало кучей полей при простом просмотре.
+  const detailsFields = document.getElementById('apptDetailsFields');
+  const summary = document.getElementById('apptSummary');
+  if (appt) {
+    fillApptSummary(appt);
+    summary.classList.remove('hidden');
+    detailsFields.classList.add('hidden');
+  } else {
+    summary.classList.add('hidden');
+    detailsFields.classList.remove('hidden');
+  }
+
   openDialog(apptDialog);
 }
+
+function fillApptSummary(appt) {
+  const dateObj = new Date(appt.date + 'T00:00:00');
+  document.getElementById('summaryDateTime').textContent = `${fmtDayLabel(dateObj)} в ${appt.time}`;
+
+  const serviceRow = document.getElementById('summaryServiceRow');
+  if (appt.service) {
+    document.getElementById('summaryService').textContent = appt.service;
+    serviceRow.classList.remove('hidden');
+  } else {
+    serviceRow.classList.add('hidden');
+  }
+
+  const statusRow = document.getElementById('summaryStatusRow');
+  if (appt.status) {
+    document.getElementById('summaryStatus').textContent = STATUS_LABEL[appt.status] || appt.status;
+    statusRow.classList.remove('hidden');
+  } else {
+    statusRow.classList.add('hidden');
+  }
+
+  const vinRow = document.getElementById('summaryVinRow');
+  if (appt.vin) {
+    document.getElementById('summaryVin').textContent = appt.vin;
+    vinRow.classList.remove('hidden');
+  } else {
+    vinRow.classList.add('hidden');
+  }
+
+  const notesRow = document.getElementById('summaryNotesRow');
+  if (appt.notes) {
+    document.getElementById('summaryNotes').textContent = appt.notes;
+    notesRow.classList.remove('hidden');
+  } else {
+    notesRow.classList.add('hidden');
+  }
+}
+
+document.getElementById('editApptDetailsBtn').addEventListener('click', () => {
+  document.getElementById('apptSummary').classList.add('hidden');
+  document.getElementById('apptDetailsFields').classList.remove('hidden');
+});
 
 apptForm.addEventListener('submit', async (e) => {
   e.preventDefault();
