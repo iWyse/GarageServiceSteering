@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Гараж №1 — учёт клиентов и записей</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">01</span>
+    <div class="brand-text">
+      <h1>Гараж №1</h1>
+      <p>учёт клиентов и записей</p>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="schedule" role="tab" aria-selected="true">Расписание</button>
+    <button class="tab" data-tab="clients" role="tab" aria-selected="false">Клиенты</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ===== SCHEDULE VIEW ===== -->
+  <section id="view-schedule" class="view active">
+    <div class="week-toolbar">
+      <button id="prevWeek" class="btn-ghost" aria-label="Предыдущая неделя">←</button>
+      <div class="week-label">
+        <span id="weekRange">—</span>
+        <button id="todayBtn" class="btn-link">сегодня</button>
+      </div>
+      <button id="nextWeek" class="btn-ghost" aria-label="Следующая неделя">→</button>
+    </div>
+
+    <div id="weekGrid" class="week-grid"><!-- days injected by JS --></div>
+  </section>
+
+  <!-- ===== CLIENTS VIEW ===== -->
+  <section id="view-clients" class="view">
+    <div class="clients-toolbar">
+      <input id="clientSearch" type="text" placeholder="Поиск: имя, телефон, номер авто…" class="search-input">
+      <button id="newClientBtn" class="btn-primary">+ Новый клиент</button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="clients-table">
+        <thead>
+          <tr>
+            <th>Клиент</th>
+            <th>Телефон</th>
+            <th>Автомобиль</th>
+            <th>Гос. номер</th>
+            <th>Заметки</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="clientsBody"><!-- rows injected by JS --></tbody>
+      </table>
+    </div>
+    <p id="clientsEmpty" class="empty-state hidden">Пока нет ни одного клиента. Добавьте первого — кнопка выше.</p>
+  </section>
+
+</main>
+
+<!-- ===== Client edit dialog ===== -->
+<div id="clientDialog" class="dialog-overlay hidden">
+  <div class="dialog">
+    <h2 id="clientDialogTitle">Новый клиент</h2>
+    <form id="clientForm">
+      <label>Имя <span class="req">*</span><input required name="name" type="text" placeholder="Иван Петров"></label>
+      <label>Телефон<input name="phone" type="tel" placeholder="+31 6 1234 5678"></label>
+      <div class="row-2">
+        <label>Марка<input name="car_make" type="text" placeholder="Toyota"></label>
+        <label>Модель<input name="car_model" type="text" placeholder="Camry"></label>
+      </div>
+      <label>Гос. номер<input name="plate" type="text" placeholder="AB-123-C" class="mono-input"></label>
+      <label>Заметки<textarea name="notes" rows="2" placeholder="Особенности, история обращений…"></textarea></label>
+      <div class="dialog-actions">
+        <button type="button" id="deleteClientBtn" class="btn-danger hidden">Удалить</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
+        <button type="submit" class="btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Appointment edit dialog ===== -->
+<div id="apptDialog" class="dialog-overlay hidden">
+  <div class="dialog">
+    <h2 id="apptDialogTitle">Новая запись</h2>
+    <form id="apptForm">
+      <label>Клиент <span class="req">*</span>
+        <select required name="client_id" id="apptClientSelect"></select>
+      </label>
+      <div class="row-2">
+        <label>Дата <span class="req">*</span><input required name="date" type="date"></label>
+        <label>Время <span class="req">*</span><input required name="time" type="time"></label>
+      </div>
+      <label>Услуга<input name="service" type="text" placeholder="Замена масла, диагностика…"></label>
+      <label>Статус
+        <select name="status">
+          <option value="planned">Запланировано</option>
+          <option value="in_progress">В работе</option>
+          <option value="done">Готово</option>
+          <option value="cancelled">Отменено</option>
+        </select>
+      </label>
+      <label>Заметки<textarea name="notes" rows="2" placeholder="Что нужно сделать…"></textarea></label>
+      <div class="dialog-actions">
+        <button type="button" id="deleteApptBtn" class="btn-danger hidden">Удалить</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
+        <button type="submit" class="btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

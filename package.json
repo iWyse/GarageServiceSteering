@@ -1,0 +1,14 @@
+{
+  "name": "autoservice",
+  "version": "1.0.0",
+  "description": "Учёт клиентов и записей на неделю для автосервиса",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "license": "MIT"
+}
