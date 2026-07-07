@@ -68,6 +68,31 @@ async function api(path, options) {
   return data;
 }
 
+// ---------- Маска телефона ----------
+// Форматирует "как есть" при вводе: сохраняет ведущий "+", группирует цифры
+// по 2 — простой и предсказуемый паттерн, который неплохо ложится на большинство
+// международных номеров (не привязываемся к длине конкретного кода страны).
+function formatPhoneMask(raw) {
+  const hasPlus = raw.trim().startsWith('+');
+  let digits = raw.replace(/\D/g, '');
+  if (digits.length > 15) digits = digits.slice(0, 15);
+  const groups = digits.match(/.{1,2}/g) || [];
+  const joined = groups.join(' ');
+  return hasPlus ? '+' + joined : joined;
+}
+
+function attachPhoneMask(input) {
+  if (!input) return;
+  input.addEventListener('input', () => {
+    const formatted = formatPhoneMask(input.value);
+    input.value = formatted;
+    input.setSelectionRange(formatted.length, formatted.length);
+  });
+}
+
+attachPhoneMask(document.getElementById('clientPhoneInput'));
+attachPhoneMask(document.getElementById('walkinPhoneInput'));
+
 // ---------- Tabs ----------
 document.querySelectorAll('.tab').forEach((btn) => {
   btn.addEventListener('click', () => {

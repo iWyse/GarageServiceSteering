@@ -103,10 +103,11 @@ button, input, select, textarea { font-family: inherit; }
 .tab:hover { color: var(--text); }
 .tab.active { background: var(--accent); color: #1b1a17; font-weight: 600; }
 
-main { max-width: 1180px; margin: 0 auto; padding: 28px; }
+main { max-width: none; margin: 0; padding: 24px 28px; }
 
 .view { display: none; }
 .view.active { display: block; }
+#view-clients.active { max-width: 1180px; margin: 0 auto; }
 
 /* ---------- Buttons & inputs ---------- */
 .btn-primary, .btn-ghost, .btn-danger, .btn-link {
@@ -187,7 +188,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  min-height: 220px;
+  min-height: calc(100vh - 260px);
   display: flex;
   flex-direction: column;
 }

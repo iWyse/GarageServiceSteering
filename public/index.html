@@ -74,7 +74,7 @@
     <h2 id="clientDialogTitle">Новый клиент</h2>
     <form id="clientForm">
       <label>Имя <span class="req">*</span><input required name="name" type="text" placeholder="Иван Петров"></label>
-      <label>Телефон<input name="phone" type="tel" placeholder="+31 6 1234 5678"></label>
+      <label>Телефон<input name="phone" id="clientPhoneInput" type="tel" placeholder="+31 6 1234 5678" class="mono-input"></label>
       <div class="row-2">
         <label>Марка<input name="car_make" type="text" placeholder="Toyota"></label>
         <label>Модель<input name="car_model" type="text" placeholder="Camry"></label>
@@ -107,7 +107,7 @@
       <div id="walkinFields" class="walkin-fields hidden">
         <p class="walkin-hint">Разовый визит — данные сохранятся только в этой записи, в базу клиентов не попадут.</p>
         <label>Имя <span class="req">*</span><input name="walkin_name" type="text" placeholder="Как обращаться"></label>
-        <label>Телефон<input name="walkin_phone" type="tel" placeholder="+31 6 1234 5678"></label>
+        <label>Телефон<input name="walkin_phone" id="walkinPhoneInput" type="tel" placeholder="+31 6 1234 5678" class="mono-input"></label>
         <label>Автомобиль<input name="walkin_car" type="text" placeholder="Toyota Camry, AB-123-C"></label>
       </div>
 
