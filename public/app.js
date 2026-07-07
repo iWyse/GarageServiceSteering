@@ -1,5 +1,9 @@
-const DOW = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-const DOW_ORDER = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const DAYS_IN_WEEK = 6; // рабочая неделя: Пн–Сб, воскресенье не показываем
+const DOW_ORDER = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+const MONTHS_GEN = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+];
 const STATUS_LABEL = {
   planned: 'Запланировано',
   in_progress: 'В работе',
@@ -33,11 +37,16 @@ function fmtDayLabel(d) {
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}`;
 }
 function fmtWeekRange(start) {
-  const end = addDays(start, 6);
+  const end = addDays(start, DAYS_IN_WEEK - 1); // суббота
   const sameMonth = start.getMonth() === end.getMonth();
-  const startStr = `${pad(start.getDate())}${sameMonth ? '' : '.' + pad(start.getMonth() + 1)}`;
-  const endStr = `${pad(end.getDate())}.${pad(end.getMonth() + 1)}.${end.getFullYear()}`;
-  return `${startStr} — ${endStr}`;
+  const sameYear = start.getFullYear() === end.getFullYear();
+  if (sameMonth) {
+    return `${start.getDate()} — ${end.getDate()} ${MONTHS_GEN[end.getMonth()]} ${end.getFullYear()}`;
+  }
+  if (sameYear) {
+    return `${start.getDate()} ${MONTHS_GEN[start.getMonth()]} — ${end.getDate()} ${MONTHS_GEN[end.getMonth()]} ${end.getFullYear()}`;
+  }
+  return `${start.getDate()} ${MONTHS_GEN[start.getMonth()]} ${start.getFullYear()} — ${end.getDate()} ${MONTHS_GEN[end.getMonth()]} ${end.getFullYear()}`;
 }
 
 function showToast(msg, isError) {
@@ -169,10 +178,20 @@ deleteClientBtn.addEventListener('click', async () => {
 
 function fillClientSelect() {
   const sel = document.getElementById('apptClientSelect');
-  sel.innerHTML = state.clients
+  const options = state.clients
     .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}${c.plate ? ' — ' + escapeHtml(c.plate) : ''}</option>`)
     .join('');
+  sel.innerHTML = `<option value="">— Разовый визит (без базы) —</option>${options}`;
 }
+
+function toggleWalkinFields() {
+  const sel = document.getElementById('apptClientSelect');
+  const walkinBlock = document.getElementById('walkinFields');
+  const isWalkin = sel.value === '';
+  walkinBlock.classList.toggle('hidden', !isWalkin);
+  apptForm.elements.walkin_name.required = isWalkin;
+}
+document.getElementById('apptClientSelect').addEventListener('change', toggleWalkinFields);
 
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -188,7 +207,7 @@ let editingApptId = null;
 
 async function loadWeek() {
   const start = toISODate(state.weekStart);
-  const end = toISODate(addDays(state.weekStart, 6));
+  const end = toISODate(addDays(state.weekStart, DAYS_IN_WEEK - 1));
   document.getElementById('weekRange').textContent = fmtWeekRange(state.weekStart);
   state.appointments = await api(`/api/appointments?start=${start}&end=${end}`);
   renderWeek();
@@ -199,7 +218,7 @@ function renderWeek() {
   grid.innerHTML = '';
   const todayISO = toISODate(new Date());
 
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < DAYS_IN_WEEK; i++) {
     const day = addDays(state.weekStart, i);
     const iso = toISODate(day);
     const col = document.createElement('div');
@@ -216,13 +235,14 @@ function renderWeek() {
     const dayAppts = state.appointments.filter((a) => a.date === iso).sort((a, b) => a.time.localeCompare(b.time));
     dayAppts.forEach((a) => {
       const card = document.createElement('div');
-      card.className = 'appt-card';
+      card.className = 'appt-card' + (a.is_walkin ? ' walkin' : '');
       card.dataset.status = a.status;
+      const plateOrCar = a.plate || a.walkin_car || '';
       card.innerHTML = `
         <div class="appt-time">${a.time}</div>
-        <div class="appt-client">${escapeHtml(a.client_name)}</div>
+        <div class="appt-client">${escapeHtml(a.client_name)}${a.is_walkin ? '<span class="appt-walkin-tag">разовый</span>' : ''}</div>
         <div class="appt-service">${escapeHtml(a.service || STATUS_LABEL[a.status])}</div>
-        ${a.plate ? `<span class="appt-plate">${escapeHtml(a.plate)}</span>` : ''}
+        ${plateOrCar ? `<span class="appt-plate">${escapeHtml(plateOrCar)}</span>` : ''}
       `;
       card.addEventListener('click', () => openApptDialog(a, iso));
       body.appendChild(card);
@@ -249,14 +269,12 @@ function openApptDialog(appt, defaultDate) {
     for (const [k, v] of Object.entries(appt)) {
       if (apptForm.elements[k]) apptForm.elements[k].value = v || '';
     }
+    apptForm.elements.client_id.value = appt.client_id || '';
   } else {
     apptForm.elements.date.value = defaultDate;
     apptForm.elements.time.value = '09:00';
   }
-  if (state.clients.length === 0) {
-    showToast('Сначала добавьте клиента', true);
-    return;
-  }
+  toggleWalkinFields();
   openDialog(apptDialog);
 }
 

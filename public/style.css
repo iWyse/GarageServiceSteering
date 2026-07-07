@@ -176,7 +176,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 
 .week-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 10px;
 }
 @media (max-width: 900px) {
@@ -322,6 +322,27 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .dialog label { font-size: 12px; color: var(--text-muted); display: flex; flex-direction: column; gap: 5px; }
 .req { color: var(--status-cancelled); }
 .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.walkin-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.walkin-hint { margin: 0; font-size: 12px; color: var(--text-muted); }
+
+.appt-card.walkin { border-left-style: dashed; }
+.appt-walkin-tag {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
 .dialog-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
 .spacer { flex: 1; }
 

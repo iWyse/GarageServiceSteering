@@ -95,9 +95,17 @@
   <div class="dialog">
     <h2 id="apptDialogTitle">Новая запись</h2>
     <form id="apptForm">
-      <label>Клиент <span class="req">*</span>
-        <select required name="client_id" id="apptClientSelect"></select>
+      <label>Клиент
+        <select name="client_id" id="apptClientSelect"></select>
       </label>
+
+      <div id="walkinFields" class="walkin-fields hidden">
+        <p class="walkin-hint">Разовый визит — данные сохранятся только в этой записи, в базу клиентов не попадут.</p>
+        <label>Имя <span class="req">*</span><input name="walkin_name" type="text" placeholder="Как обращаться"></label>
+        <label>Телефон<input name="walkin_phone" type="tel" placeholder="+31 6 1234 5678"></label>
+        <label>Автомобиль<input name="walkin_car" type="text" placeholder="Toyota Camry, AB-123-C"></label>
+      </div>
+
       <div class="row-2">
         <label>Дата <span class="req">*</span><input required name="date" type="date"></label>
         <label>Время <span class="req">*</span><input required name="time" type="time"></label>

@@ -89,42 +89,73 @@ function deleteClient(id) {
 function listAppointments(start, end) {
   return db
     .prepare(
-      `SELECT a.*, c.name as client_name, c.phone as client_phone, c.car_make, c.car_model, c.plate
+      `SELECT a.*,
+              COALESCE(c.name, a.walkin_name) as client_name,
+              COALESCE(c.phone, a.walkin_phone) as client_phone,
+              c.car_make, c.car_model, c.plate,
+              a.walkin_car,
+              (a.client_id IS NULL) as is_walkin
        FROM appointments a
-       JOIN clients c ON c.id = a.client_id
+       LEFT JOIN clients c ON c.id = a.client_id
        WHERE a.date BETWEEN ? AND ?
        ORDER BY a.date, a.time`
     )
     .all(start, end);
 }
 
-function createAppointment(data) {
+function normalizeAppointmentInput(data) {
+  // client_id может прийти пустой строкой из <select> — считаем это "разовый визит"
+  const clientId = data.client_id ? Number(data.client_id) : null;
+  return {
+    client_id: clientId,
+    walkin_name: clientId ? '' : (data.walkin_name || '').trim(),
+    walkin_phone: clientId ? '' : (data.walkin_phone || ''),
+    walkin_car: clientId ? '' : (data.walkin_car || ''),
+    date: data.date,
+    time: data.time,
+    service: data.service || '',
+    status: data.status || 'planned',
+    notes: data.notes || '',
+  };
+}
+
+function createAppointment(rawData) {
+  const data = normalizeAppointmentInput(rawData);
   const info = db
     .prepare(
-      `INSERT INTO appointments (client_id, date, time, service, status, notes)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO appointments (client_id, walkin_name, walkin_phone, walkin_car, date, time, service, status, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       data.client_id,
+      data.walkin_name,
+      data.walkin_phone,
+      data.walkin_car,
       data.date,
       data.time,
-      data.service || '',
-      data.status || 'planned',
-      data.notes || ''
+      data.service,
+      data.status,
+      data.notes
     );
   return db.prepare('SELECT * FROM appointments WHERE id = ?').get(info.lastInsertRowid);
 }
 
-function updateAppointment(id, data) {
+function updateAppointment(id, rawData) {
+  const data = normalizeAppointmentInput(rawData);
   db.prepare(
-    `UPDATE appointments SET client_id=?, date=?, time=?, service=?, status=?, notes=? WHERE id=?`
+    `UPDATE appointments
+     SET client_id=?, walkin_name=?, walkin_phone=?, walkin_car=?, date=?, time=?, service=?, status=?, notes=?
+     WHERE id=?`
   ).run(
     data.client_id,
+    data.walkin_name,
+    data.walkin_phone,
+    data.walkin_car,
     data.date,
     data.time,
-    data.service || '',
-    data.status || 'planned',
-    data.notes || '',
+    data.service,
+    data.status,
+    data.notes,
     id
   );
   return db.prepare('SELECT * FROM appointments WHERE id = ?').get(id);
@@ -188,8 +219,11 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/api/appointments' && req.method === 'POST') {
       const body = await readBody(req);
-      if (!body.client_id || !body.date || !body.time) {
-        return sendJSON(res, 400, { error: 'client_id, date и time обязательны' });
+      if (!body.date || !body.time) {
+        return sendJSON(res, 400, { error: 'Дата и время обязательны' });
+      }
+      if (!body.client_id && !(body.walkin_name || '').trim()) {
+        return sendJSON(res, 400, { error: 'Укажите клиента из базы или имя разового клиента' });
       }
       return sendJSON(res, 201, createAppointment(body));
     }
