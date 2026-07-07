@@ -254,6 +254,13 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   padding: 1px 5px;
   color: var(--text-muted);
 }
+.appt-vin {
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
 
 /* ---------- Clients ---------- */
 .clients-toolbar {
@@ -264,7 +271,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 }
 .search-input { max-width: 340px; }
 
-.table-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.table-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; }
 .clients-table { width: 100%; border-collapse: collapse; background: var(--surface); }
 .clients-table th {
   text-align: left;

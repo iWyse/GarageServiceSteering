@@ -119,6 +119,7 @@ function renderClients() {
       <td>${escapeHtml(c.phone || '—')}</td>
       <td>${escapeHtml([c.car_make, c.car_model].filter(Boolean).join(' ') || '—')}</td>
       <td class="cell-plate">${escapeHtml(c.plate || '—')}</td>
+      <td class="cell-plate">${escapeHtml(c.vin || '—')}</td>
       <td class="cell-notes">${escapeHtml(c.notes || '')}</td>
       <td class="edit-hint">изменить →</td>
     `;
@@ -179,7 +180,10 @@ deleteClientBtn.addEventListener('click', async () => {
 function fillClientSelect() {
   const sel = document.getElementById('apptClientSelect');
   const options = state.clients
-    .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}${c.plate ? ' — ' + escapeHtml(c.plate) : ''}</option>`)
+    .map((c) => {
+      const car = [c.car_make, c.car_model].filter(Boolean).join(' ');
+      return `<option value="${c.id}">${escapeHtml(c.name)}${car ? ' — ' + escapeHtml(car) : ''}</option>`;
+    })
     .join('');
   sel.innerHTML = `<option value="">— Разовый визит (без базы) —</option>${options}`;
 }
@@ -257,12 +261,17 @@ function renderWeek(weekStart) {
       card.className = 'appt-card';
       card.dataset.status = a.status;
       card.draggable = true;
-      const plateOrCar = a.plate || a.walkin_car || '';
+      // для клиента из базы показываем марку/модель авто, для разового визита — то, что вписали вручную
+      const carLine = a.client_id
+        ? [a.car_make, a.car_model].filter(Boolean).join(' ')
+        : (a.walkin_car || '');
+      const vin = a.vin || (a.client_id ? a.client_vin : '') || '';
       card.innerHTML = `
         <div class="appt-time">${a.time}</div>
         <div class="appt-client">${escapeHtml(a.client_name)}</div>
         <div class="appt-service">${escapeHtml(a.service || STATUS_LABEL[a.status])}</div>
-        ${plateOrCar ? `<span class="appt-plate">${escapeHtml(plateOrCar)}</span>` : ''}
+        ${carLine ? `<span class="appt-plate">${escapeHtml(carLine)}</span>` : ''}
+        ${vin ? `<div class="appt-vin">VIN ${escapeHtml(vin)}</div>` : ''}
       `;
       card.addEventListener('click', () => openApptDialog(a, iso));
       card.addEventListener('dragstart', (e) => {

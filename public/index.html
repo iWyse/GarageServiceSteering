@@ -55,6 +55,7 @@
             <th>Телефон</th>
             <th>Автомобиль</th>
             <th>Гос. номер</th>
+            <th>VIN</th>
             <th>Заметки</th>
             <th></th>
           </tr>
@@ -79,6 +80,7 @@
         <label>Модель<input name="car_model" type="text" placeholder="Camry"></label>
       </div>
       <label>Гос. номер<input name="plate" type="text" placeholder="AB-123-C" class="mono-input"></label>
+      <label>VIN<input name="vin" type="text" placeholder="17 символов, напр. JHMFA16586S000000" class="mono-input" maxlength="17" style="text-transform:uppercase"></label>
       <label>Заметки<textarea name="notes" rows="2" placeholder="Особенности, история обращений…"></textarea></label>
       <div class="dialog-actions">
         <button type="button" id="deleteClientBtn" class="btn-danger hidden">Удалить</button>
@@ -110,6 +112,7 @@
         <label>Дата <span class="req">*</span><input required name="date" type="date"></label>
         <label>Время <span class="req">*</span><input required name="time" type="time"></label>
       </div>
+      <label>VIN<input name="vin" type="text" placeholder="17 символов, напр. JHMFA16586S000000" class="mono-input" maxlength="17" style="text-transform:uppercase"></label>
       <label>Услуга<input name="service" type="text" placeholder="Замена масла, диагностика…"></label>
       <label>Статус
         <select name="status">

@@ -52,8 +52,8 @@ function listClients() {
 
 function createClient(data) {
   const stmt = db.prepare(
-    `INSERT INTO clients (name, phone, car_make, car_model, plate, notes)
-     VALUES (?, ?, ?, ?, ?, ?)`
+    `INSERT INTO clients (name, phone, car_make, car_model, plate, vin, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
   const info = stmt.run(
     data.name?.trim() || '',
@@ -61,6 +61,7 @@ function createClient(data) {
     data.car_make || '',
     data.car_model || '',
     data.plate || '',
+    (data.vin || '').trim().toUpperCase(),
     data.notes || ''
   );
   return db.prepare('SELECT * FROM clients WHERE id = ?').get(info.lastInsertRowid);
@@ -68,13 +69,14 @@ function createClient(data) {
 
 function updateClient(id, data) {
   db.prepare(
-    `UPDATE clients SET name=?, phone=?, car_make=?, car_model=?, plate=?, notes=? WHERE id=?`
+    `UPDATE clients SET name=?, phone=?, car_make=?, car_model=?, plate=?, vin=?, notes=? WHERE id=?`
   ).run(
     data.name?.trim() || '',
     data.phone || '',
     data.car_make || '',
     data.car_model || '',
     data.plate || '',
+    (data.vin || '').trim().toUpperCase(),
     data.notes || '',
     id
   );
@@ -92,7 +94,7 @@ function listAppointments(start, end) {
       `SELECT a.*,
               COALESCE(c.name, a.walkin_name) as client_name,
               COALESCE(c.phone, a.walkin_phone) as client_phone,
-              c.car_make, c.car_model, c.plate,
+              c.car_make, c.car_model, c.plate, c.vin as client_vin,
               a.walkin_car,
               (a.client_id IS NULL) as is_walkin
        FROM appointments a
@@ -111,6 +113,7 @@ function normalizeAppointmentInput(data) {
     walkin_name: clientId ? '' : (data.walkin_name || '').trim(),
     walkin_phone: clientId ? '' : (data.walkin_phone || ''),
     walkin_car: clientId ? '' : (data.walkin_car || ''),
+    vin: (data.vin || '').trim().toUpperCase(),
     date: data.date,
     time: data.time,
     service: data.service || '',
@@ -123,14 +126,15 @@ function createAppointment(rawData) {
   const data = normalizeAppointmentInput(rawData);
   const info = db
     .prepare(
-      `INSERT INTO appointments (client_id, walkin_name, walkin_phone, walkin_car, date, time, service, status, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO appointments (client_id, walkin_name, walkin_phone, walkin_car, vin, date, time, service, status, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       data.client_id,
       data.walkin_name,
       data.walkin_phone,
       data.walkin_car,
+      data.vin,
       data.date,
       data.time,
       data.service,
@@ -144,13 +148,14 @@ function updateAppointment(id, rawData) {
   const data = normalizeAppointmentInput(rawData);
   db.prepare(
     `UPDATE appointments
-     SET client_id=?, walkin_name=?, walkin_phone=?, walkin_car=?, date=?, time=?, service=?, status=?, notes=?
+     SET client_id=?, walkin_name=?, walkin_phone=?, walkin_car=?, vin=?, date=?, time=?, service=?, status=?, notes=?
      WHERE id=?`
   ).run(
     data.client_id,
     data.walkin_name,
     data.walkin_phone,
     data.walkin_car,
+    data.vin,
     data.date,
     data.time,
     data.service,

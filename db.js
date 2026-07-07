@@ -13,6 +13,7 @@ db.exec(`
     car_make TEXT,
     car_model TEXT,
     plate TEXT,
+    vin TEXT,
     notes TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
@@ -23,6 +24,7 @@ db.exec(`
     walkin_name TEXT,   -- имя разового клиента (когда client_id пустой)
     walkin_phone TEXT,
     walkin_car TEXT,    -- марка/модель/номер разового клиента одной строкой
+    vin TEXT,           -- VIN автомобиля на эту запись
     date TEXT NOT NULL,      -- YYYY-MM-DD
     time TEXT NOT NULL,      -- HH:MM
     service TEXT,
@@ -73,5 +75,25 @@ function migrateOldAppointmentsSchema() {
 }
 
 migrateOldAppointmentsSchema();
+
+// ---------- Миграция: добавление VIN в существующие базы ----------
+function migrateVinColumn() {
+  const columns = db.prepare(`PRAGMA table_info(appointments)`).all().map((c) => c.name);
+  if (!columns.includes('vin')) {
+    db.exec(`ALTER TABLE appointments ADD COLUMN vin TEXT`);
+    console.log('База данных обновлена: добавлено поле VIN.');
+  }
+}
+migrateVinColumn();
+
+// ---------- Миграция: VIN у клиентов ----------
+function migrateClientVinColumn() {
+  const columns = db.prepare(`PRAGMA table_info(clients)`).all().map((c) => c.name);
+  if (!columns.includes('vin')) {
+    db.exec(`ALTER TABLE clients ADD COLUMN vin TEXT`);
+    console.log('База данных обновлена: добавлено поле VIN у клиентов.');
+  }
+}
+migrateClientVinColumn();
 
 export default db;
