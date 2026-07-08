@@ -265,6 +265,16 @@ function sumItems(items) {
   return items.reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.qty) || 1), 0);
 }
 
+// Артикул/фирма/количество показываем только если заполнены — пустые поля
+// не должны засорять ни карточку истории, ни заказ-наряд.
+function itemMeta(it) {
+  const parts = [];
+  if (it.article) parts.push(`арт. ${it.article}`);
+  if (it.brand) parts.push(it.brand);
+  if (it.qty && it.qty !== 1) parts.push(`×${it.qty}`);
+  return parts.join(', ');
+}
+
 async function loadClientHistory(clientId) {
   historyClientId = clientId;
   const list = document.getElementById('clientHistoryList');
@@ -307,7 +317,7 @@ function renderRepairBlock(label, items, sum) {
   if (!items.length) return '';
   const lines = items
     .map((it) => {
-      const meta = [it.brand, it.qty && it.qty !== 1 ? `×${it.qty}` : ''].filter(Boolean).join(' ');
+      const meta = itemMeta(it);
       const lineTotal = (Number(it.price) || 0) * (Number(it.qty) || 1);
       return `<div class="repair-list-line"><span>${escapeHtml(it.name)}${meta ? ` <span class="repair-list-meta">(${escapeHtml(meta)})</span>` : ''}</span><span>${fmtMoney(lineTotal)}</span></div>`;
     })
@@ -371,7 +381,6 @@ let editingRepairId = null;
 let historyClientId = null;
 let pendingApptForRepair = null; // смета создаётся из записи расписания, а не из карточки клиента
 let advanceEnabled = false;
-let currentOrderText = '';
 
 function sumRowInputs(container) {
   return Array.from(container.querySelectorAll('.repair-row')).reduce((sum, row) => {
@@ -423,6 +432,12 @@ function createRepairRow(item, isPart) {
   removeBtn.addEventListener('click', () => { row.remove(); recomputeRepairSums(); });
 
   if (isPart) {
+    const articleInput = document.createElement('input');
+    articleInput.type = 'text';
+    articleInput.className = 'row-article mono-input';
+    articleInput.placeholder = 'Артикул';
+    articleInput.value = item?.article || '';
+
     const brandInput = document.createElement('input');
     brandInput.type = 'text';
     brandInput.className = 'row-brand';
@@ -444,7 +459,7 @@ function createRepairRow(item, isPart) {
 
     const line2 = document.createElement('div');
     line2.className = 'repair-row-line2';
-    line2.append(brandInput, qtyInput, priceInput);
+    line2.append(articleInput, brandInput, qtyInput, priceInput);
 
     row.append(line1, line2);
   } else {
@@ -465,8 +480,10 @@ function collectRepairRows(container) {
         name: row.querySelector('.row-name').value.trim(),
         price: Number(row.querySelector('.row-price').value) || 0,
       };
+      const articleInput = row.querySelector('.row-article');
       const brandInput = row.querySelector('.row-brand');
       const qtyInput = row.querySelector('.row-qty');
+      if (articleInput) out.article = articleInput.value.trim();
       if (brandInput) out.brand = brandInput.value.trim();
       if (qtyInput) out.qty = Number(qtyInput.value) || 0;
       return out;
@@ -714,10 +731,6 @@ function buildOrderData() {
   };
 }
 
-function itemMeta(it) {
-  return [it.brand, it.qty && it.qty !== 1 ? `×${it.qty}` : ''].filter(Boolean).join(' ');
-}
-
 function buildOrderHtml(order) {
   const workLines = order.works
     .map((w) => `<div class="order-line"><span>${escapeHtml(w.name)}</span><span>${fmtMoney(w.price)}</span></div>`)
@@ -747,56 +760,13 @@ function buildOrderHtml(order) {
   `;
 }
 
-function buildOrderText(order) {
-  const lines = ['ЗАКАЗ-НАРЯД'];
-  if (order.clientName) lines.push(`Клиент: ${order.clientName}`);
-  if (order.carLine) lines.push(`Марка автомобиля: ${order.carLine}`);
-  if (order.partsEta) lines.push(`Срок поставки запчастей: ${order.partsEta}`);
-  lines.push('');
-  if (order.title) lines.push(order.title);
-  if (order.date) lines.push(fmtFullDate(new Date(order.date + 'T00:00:00')));
-  if (order.works.length) {
-    lines.push('', 'Работы:');
-    order.works.forEach((w) => lines.push(`- ${w.name}: ${fmtMoney(w.price)}`));
-    lines.push(`Сумма работ: ${fmtMoney(order.worksSum)}`);
-  }
-  if (order.parts.length) {
-    lines.push('', 'Запчасти:');
-    order.parts.forEach((p) => {
-      const meta = itemMeta(p);
-      const lineTotal = (Number(p.price) || 0) * (Number(p.qty) || 1);
-      lines.push(`- ${p.name}${meta ? ` (${meta})` : ''}: ${fmtMoney(lineTotal)}`);
-    });
-    lines.push(`Сумма запчастей: ${fmtMoney(order.partsSum)}`);
-  }
-  if (order.advance > 0) lines.push('', `Аванс: − ${fmtMoney(order.advance)}`);
-  lines.push('', `Итого к оплате: ${fmtMoney(order.total)}`);
-  if (order.notes) lines.push('', `Заметки: ${order.notes}`);
-  return lines.join('\n');
-}
-
+// Кнопка открывает предпросмотр заказ-наряда для скриншота — на мобильных
+// он растягивается на весь экран (см. media-query в style.css), отправки
+// из приложения нет: снимок отправляют клиенту вручную, чем удобно.
 document.getElementById('sendToClientBtn').addEventListener('click', () => {
   const order = buildOrderData();
   document.getElementById('orderContent').innerHTML = buildOrderHtml(order);
-  currentOrderText = buildOrderText(order);
   openDialog(orderDialog);
-});
-
-document.getElementById('orderShareBtn').addEventListener('click', async () => {
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: 'Заказ-наряд', text: currentOrderText });
-      return;
-    } catch (err) {
-      if (err?.name === 'AbortError') return;
-    }
-  }
-  try {
-    await navigator.clipboard.writeText(currentOrderText);
-    showToast('Текст заказ-наряда скопирован — отправьте клиенту вручную');
-  } catch (err) {
-    showToast('Не удалось скопировать текст', true);
-  }
 });
 
 function fillClientSelect() {

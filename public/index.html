@@ -16,15 +16,13 @@
     <div class="brand login-brand">
       <span class="brand-mark" aria-hidden="true">
       <svg class="brand-icon" viewBox="0 0 32 32" width="26" height="26" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="6" y="15" width="20" height="5" rx="2.5" fill="var(--bg)"/>
-        <path d="M11 15v5M13.5 15v5M16 15v5M18.5 15v5M21 15v5" stroke="var(--accent)" stroke-width="1" stroke-linecap="round"/>
-        <circle cx="16" cy="9" r="3.2" fill="none" stroke="var(--bg)" stroke-width="1.8"/>
-        <path d="M16 5.2v1.1M16 10.7v1.1M12.5 9h1.1M19.4 9h1.1M13.5 6.5l.8.8M17.7 10.7l.8.8M18.5 6.5l-.8.8M14.3 10.7l-.8.8" stroke="var(--bg)" stroke-width="1" stroke-linecap="round"/>
-        <line x1="16" y1="12.2" x2="16" y2="15" stroke="var(--bg)" stroke-width="1.8"/>
-        <path d="M6 17.5 3 22" stroke="var(--bg)" stroke-width="1.8" stroke-linecap="round"/>
-        <circle cx="3" cy="23" r="1.6" fill="var(--bg)"/>
-        <path d="M26 17.5 29 22" stroke="var(--bg)" stroke-width="1.8" stroke-linecap="round"/>
-        <circle cx="29" cy="23" r="1.6" fill="var(--bg)"/>
+        <rect x="4" y="14" width="24" height="6" rx="3" fill="var(--bg)"/>
+        <circle cx="16" cy="10" r="4.6" fill="var(--bg)"/>
+        <circle cx="16" cy="10" r="1.7" fill="var(--accent)"/>
+        <path d="M5 17.5 2 23" stroke="var(--bg)" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="2" cy="24" r="2.1" fill="var(--bg)"/>
+        <path d="M27 17.5 30 23" stroke="var(--bg)" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="30" cy="24" r="2.1" fill="var(--bg)"/>
       </svg>
     </span>
       <div class="brand-text">
@@ -47,15 +45,13 @@
   <div class="brand">
     <span class="brand-mark" aria-hidden="true">
       <svg class="brand-icon" viewBox="0 0 32 32" width="26" height="26" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="6" y="15" width="20" height="5" rx="2.5" fill="var(--bg)"/>
-        <path d="M11 15v5M13.5 15v5M16 15v5M18.5 15v5M21 15v5" stroke="var(--accent)" stroke-width="1" stroke-linecap="round"/>
-        <circle cx="16" cy="9" r="3.2" fill="none" stroke="var(--bg)" stroke-width="1.8"/>
-        <path d="M16 5.2v1.1M16 10.7v1.1M12.5 9h1.1M19.4 9h1.1M13.5 6.5l.8.8M17.7 10.7l.8.8M18.5 6.5l-.8.8M14.3 10.7l-.8.8" stroke="var(--bg)" stroke-width="1" stroke-linecap="round"/>
-        <line x1="16" y1="12.2" x2="16" y2="15" stroke="var(--bg)" stroke-width="1.8"/>
-        <path d="M6 17.5 3 22" stroke="var(--bg)" stroke-width="1.8" stroke-linecap="round"/>
-        <circle cx="3" cy="23" r="1.6" fill="var(--bg)"/>
-        <path d="M26 17.5 29 22" stroke="var(--bg)" stroke-width="1.8" stroke-linecap="round"/>
-        <circle cx="29" cy="23" r="1.6" fill="var(--bg)"/>
+        <rect x="4" y="14" width="24" height="6" rx="3" fill="var(--bg)"/>
+        <circle cx="16" cy="10" r="4.6" fill="var(--bg)"/>
+        <circle cx="16" cy="10" r="1.7" fill="var(--accent)"/>
+        <path d="M5 17.5 2 23" stroke="var(--bg)" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="2" cy="24" r="2.1" fill="var(--bg)"/>
+        <path d="M27 17.5 30 23" stroke="var(--bg)" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="30" cy="24" r="2.1" fill="var(--bg)"/>
       </svg>
     </span>
     <div class="brand-text">
@@ -232,7 +228,7 @@
 
 <!-- ===== Repair record dialog ===== -->
 <div id="repairDialog" class="dialog-overlay hidden">
-  <div class="dialog">
+  <div class="dialog dialog-wide">
     <h2 id="repairDialogTitle">Новая запись ремонта</h2>
     <form id="repairForm">
       <label>Заголовок<input name="title" type="text" placeholder="Например: ТО-1, ремонт рулевой рейки…"></label>
@@ -270,7 +266,7 @@
       <label>Заметки<textarea name="notes" rows="2" placeholder="Комментарий к ремонту…"></textarea></label>
 
       <div class="dialog-actions">
-        <button type="button" id="sendToClientBtn" class="btn-ghost">Отправить</button>
+        <button type="button" id="sendToClientBtn" class="btn-ghost">Заказ-наряд</button>
         <button type="button" id="deleteRepairBtn" class="btn-danger hidden">Удалить</button>
         <div class="spacer"></div>
         <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
@@ -280,7 +276,7 @@
   </div>
 </div>
 
-<!-- ===== Заказ-наряд: предпросмотр и отправка клиенту ===== -->
+<!-- ===== Заказ-наряд: предпросмотр для скриншота ===== -->
 <div id="orderDialog" class="dialog-overlay hidden">
   <div class="dialog order-dialog">
     <h2>Заказ-наряд</h2>
@@ -288,7 +284,6 @@
     <div class="dialog-actions">
       <div class="spacer"></div>
       <button type="button" class="btn-ghost" data-close-dialog>Закрыть</button>
-      <button type="button" id="orderShareBtn" class="btn-primary">Отправить клиенту</button>
     </div>
   </div>
 </div>

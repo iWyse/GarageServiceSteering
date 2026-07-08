@@ -130,6 +130,7 @@ function normalizeRepairItems(items) {
   return items
     .map((it) => {
       const out = { name: String(it?.name || '').trim(), price: Number(it?.price) || 0 };
+      if (it?.article !== undefined) out.article = String(it.article || '').trim();
       if (it?.brand !== undefined) out.brand = String(it.brand || '').trim();
       if (it?.qty !== undefined) out.qty = Number(it.qty) || 0;
       return out;
