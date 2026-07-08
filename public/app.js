@@ -851,7 +851,7 @@ document.getElementById('queueAdvanceAmountInput').addEventListener('input', rec
 
 function openQueueDialog(entry) {
   editingQueueId = entry ? entry.id : null;
-  document.getElementById('queueDialogTitle').textContent = entry ? 'Клиент в очереди' : 'Новый клиент в очереди';
+  document.getElementById('queueDialogTitle').textContent = entry ? 'Заказ' : 'Новый заказ';
   deleteQueueBtn.classList.toggle('hidden', !entry);
   queueForm.reset();
 
@@ -893,7 +893,7 @@ queueForm.addEventListener('submit', async (e) => {
       showToast('Изменения сохранены');
     } else {
       await api('/api/queue', { method: 'POST', body: JSON.stringify(data) });
-      showToast('Клиент добавлен в очередь');
+      showToast('Заказ добавлен');
     }
     closeDialog(queueDialog);
     await loadQueue();
@@ -904,10 +904,10 @@ queueForm.addEventListener('submit', async (e) => {
 
 deleteQueueBtn.addEventListener('click', async () => {
   if (!editingQueueId) return;
-  if (!confirm('Удалить из очереди?')) return;
+  if (!confirm('Удалить заказ?')) return;
   try {
     await api(`/api/queue/${editingQueueId}`, { method: 'DELETE' });
-    showToast('Удалено из очереди');
+    showToast('Заказ удалён');
     closeDialog(queueDialog);
     await loadQueue();
   } catch (err) {
@@ -916,7 +916,8 @@ deleteQueueBtn.addEventListener('click', async () => {
 });
 
 // "Добавить в список клиентов": заводим настоящего клиента и переносим смету
-// (работы/запчасти) в его историю ремонта первой записью, затем убираем из очереди.
+// (работы/запчасти) в его историю ремонта первой записью. Сама запись в очереди
+// остаётся — её убирают вручную кнопкой "Удалить", когда она больше не нужна.
 document.getElementById('promoteQueueBtn').addEventListener('click', async () => {
   const name = queueForm.elements.name.value.trim();
   if (!name) {
@@ -953,10 +954,6 @@ document.getElementById('promoteQueueBtn').addEventListener('click', async () =>
           parts,
         }),
       });
-    }
-
-    if (editingQueueId) {
-      await api(`/api/queue/${editingQueueId}`, { method: 'DELETE' });
     }
 
     showToast('Клиент добавлен в базу');

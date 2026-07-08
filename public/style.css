@@ -580,33 +580,33 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 
 /* ---------- Заказ-наряд ---------- */
 .order-dialog { max-width: 460px; }
-.order-doc { display: flex; flex-direction: column; gap: 14px; }
+.order-doc { display: flex; flex-direction: column; gap: 14px; font-size: 15px; }
 .order-brand { text-align: center; }
-.order-brand-name { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; font-size: 18px; }
-.order-brand-address { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.order-brand-name { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; font-size: 21px; }
+.order-brand-address { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
 .order-meta { display: flex; flex-direction: column; gap: 6px; }
-.order-meta-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.order-meta-row { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
 .order-meta-row span { color: var(--text-muted); }
 .order-sep { border-top: 1px solid var(--border); }
-.order-title { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.03em; font-size: 16px; margin: 0; }
-.order-date { font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
+.order-title { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.03em; font-size: 18px; margin: 0; }
+.order-date { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
 .order-block { display: flex; flex-direction: column; gap: 4px; }
-.order-block-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px; }
-.order-line { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
-.order-line-meta { color: var(--text-muted); font-size: 12px; }
-.order-line-sum { color: var(--text-muted); padding-top: 4px; border-top: 1px dashed var(--border); font-size: 12px; }
-.order-line-advance { color: var(--status-cancelled); font-size: 13px; }
+.order-block-title { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px; }
+.order-line { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
+.order-line-meta { color: var(--text-muted); font-size: 14px; }
+.order-line-sum { color: var(--text-muted); padding-top: 4px; border-top: 1px dashed var(--border); font-size: 14px; }
+.order-line-advance { color: var(--status-cancelled); font-size: 15px; }
 .order-total {
   display: flex;
   justify-content: space-between;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface-2);
 }
-.order-notes { font-size: 13px; color: var(--text-muted); border-top: 1px dashed var(--border); padding-top: 8px; }
+.order-notes { font-size: 15px; color: var(--text-muted); border-top: 1px dashed var(--border); padding-top: 8px; }
 
 /* На мобильных заказ-наряд открывается во весь экран — удобно сразу сделать скриншот. */
 @media (max-width: 600px) {
@@ -629,7 +629,19 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .login-brand { justify-content: center; margin-bottom: 20px; }
 #loginForm { display: flex; flex-direction: column; gap: 14px; }
 .login-error { margin: 0; font-size: 13px; color: var(--status-cancelled); }
-#logoutBtn { margin-left: 12px; }
+#logoutBtn { margin-left: 12px; display: flex; align-items: center; gap: 6px; }
+
+@media (max-width: 600px) {
+  .topbar { position: relative; padding-right: 60px; }
+  #logoutBtn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    margin-left: 0;
+    padding: 8px;
+  }
+  #logoutBtn .logout-text { display: none; }
+}
 
 /* ---------- Toast ---------- */
 .toast {
