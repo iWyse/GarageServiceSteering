@@ -32,6 +32,17 @@ db.exec(`
     notes TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS repair_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    title TEXT,              -- заголовок записи, напр. "ТО-1" или "Ремонт рулевой рейки"
+    date TEXT NOT NULL,     -- YYYY-MM-DD
+    works TEXT NOT NULL DEFAULT '[]', -- JSON [{name, price}] — выполненные работы
+    parts TEXT NOT NULL DEFAULT '[]', -- JSON [{name, price}] — запчасти
+    notes TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // ---------- Миграция старых баз (версия до "разовых визитов") ----------
@@ -95,5 +106,15 @@ function migrateClientVinColumn() {
   }
 }
 migrateClientVinColumn();
+
+// ---------- Миграция: заголовок у записей ремонта ----------
+function migrateRepairTitleColumn() {
+  const columns = db.prepare(`PRAGMA table_info(repair_records)`).all().map((c) => c.name);
+  if (columns.length && !columns.includes('title')) {
+    db.exec(`ALTER TABLE repair_records ADD COLUMN title TEXT`);
+    console.log('База данных обновлена: добавлен заголовок записи ремонта.');
+  }
+}
+migrateRepairTitleColumn();
 
 export default db;

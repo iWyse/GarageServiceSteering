@@ -1,12 +1,44 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import db from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PORT = process.env.PORT || 3000;
+
+// ---------- Авторизация владельца ----------
+// Единственный пользователь — владелец автосервиса. Сессии храним в памяти
+// процесса: перезапуск сервера разлогинивает всех, что для локального
+// однопользовательского инструмента приемлемо и не требует внешнего хранилища.
+const OWNER_PHONE = '+7XXXXXXXXXX';
+const OWNER_PASSWORD = 'REDACTED';
+const SESSION_COOKIE = 'session';
+const sessions = new Set();
+
+function onlyDigits(v) {
+  return (v || '').replace(/\D/g, '');
+}
+
+function parseCookies(req) {
+  const header = req.headers.cookie || '';
+  const cookies = {};
+  header.split(';').forEach((pair) => {
+    const idx = pair.indexOf('=');
+    if (idx === -1) return;
+    const key = pair.slice(0, idx).trim();
+    const val = pair.slice(idx + 1).trim();
+    if (key) cookies[key] = decodeURIComponent(val);
+  });
+  return cookies;
+}
+
+function isAuthenticated(req) {
+  const token = parseCookies(req)[SESSION_COOKIE];
+  return !!token && sessions.has(token);
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -85,6 +117,56 @@ function updateClient(id, data) {
 
 function deleteClient(id) {
   db.prepare('DELETE FROM clients WHERE id = ?').run(id);
+}
+
+// ---------- Repair records (история ремонта) ----------
+function parseRepairRecord(row) {
+  if (!row) return row;
+  return { ...row, works: JSON.parse(row.works || '[]'), parts: JSON.parse(row.parts || '[]') };
+}
+
+function normalizeRepairItems(items) {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((it) => ({ name: String(it?.name || '').trim(), price: Number(it?.price) || 0 }))
+    .filter((it) => it.name || it.price);
+}
+
+function listRepairRecords(clientId) {
+  return db
+    .prepare('SELECT * FROM repair_records WHERE client_id = ? ORDER BY date DESC, id DESC')
+    .all(clientId)
+    .map(parseRepairRecord);
+}
+
+function createRepairRecord(clientId, data) {
+  const info = db
+    .prepare('INSERT INTO repair_records (client_id, title, date, works, parts, notes) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(
+      clientId,
+      (data.title || '').trim(),
+      data.date,
+      JSON.stringify(normalizeRepairItems(data.works)),
+      JSON.stringify(normalizeRepairItems(data.parts)),
+      data.notes || ''
+    );
+  return parseRepairRecord(db.prepare('SELECT * FROM repair_records WHERE id = ?').get(info.lastInsertRowid));
+}
+
+function updateRepairRecord(id, data) {
+  db.prepare('UPDATE repair_records SET title=?, date=?, works=?, parts=?, notes=? WHERE id=?').run(
+    (data.title || '').trim(),
+    data.date,
+    JSON.stringify(normalizeRepairItems(data.works)),
+    JSON.stringify(normalizeRepairItems(data.parts)),
+    data.notes || '',
+    id
+  );
+  return parseRepairRecord(db.prepare('SELECT * FROM repair_records WHERE id = ?').get(id));
+}
+
+function deleteRepairRecord(id) {
+  db.prepare('DELETE FROM repair_records WHERE id = ?').run(id);
 }
 
 // ---------- Appointments ----------
@@ -196,6 +278,34 @@ const server = http.createServer(async (req, res) => {
   const { pathname } = url;
 
   try {
+    // Auth
+    if (pathname === '/api/login' && req.method === 'POST') {
+      const body = await readBody(req);
+      const phoneOk = onlyDigits(body.phone) === onlyDigits(OWNER_PHONE);
+      const passOk = (body.password || '') === OWNER_PASSWORD;
+      if (!phoneOk || !passOk) {
+        return sendJSON(res, 401, { error: 'Неверный логин или пароль' });
+      }
+      const token = crypto.randomUUID();
+      sessions.add(token);
+      res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`);
+      return sendJSON(res, 200, { ok: true });
+    }
+    if (pathname === '/api/logout' && req.method === 'POST') {
+      const token = parseCookies(req)[SESSION_COOKIE];
+      if (token) sessions.delete(token);
+      res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0`);
+      return sendJSON(res, 200, { ok: true });
+    }
+    if (pathname === '/api/session' && req.method === 'GET') {
+      return sendJSON(res, 200, { authenticated: isAuthenticated(req) });
+    }
+
+    // Всё остальное API — только для авторизованного владельца.
+    if (pathname.startsWith('/api/') && !isAuthenticated(req)) {
+      return sendJSON(res, 401, { error: 'Требуется авторизация' });
+    }
+
     // Clients
     if (pathname === '/api/clients' && req.method === 'GET') {
       return sendJSON(res, 200, listClients());
@@ -212,6 +322,25 @@ const server = http.createServer(async (req, res) => {
     }
     if (m && req.method === 'DELETE') {
       deleteClient(Number(m[1]));
+      return sendJSON(res, 200, { ok: true });
+    }
+    m = pathname.match(/^\/api\/clients\/(\d+)\/repairs$/);
+    if (m && req.method === 'GET') {
+      return sendJSON(res, 200, listRepairRecords(Number(m[1])));
+    }
+    if (m && req.method === 'POST') {
+      const body = await readBody(req);
+      if (!body.date) return sendJSON(res, 400, { error: 'Дата обязательна' });
+      return sendJSON(res, 201, createRepairRecord(Number(m[1]), body));
+    }
+    m = pathname.match(/^\/api\/repairs\/(\d+)$/);
+    if (m && req.method === 'PUT') {
+      const body = await readBody(req);
+      if (!body.date) return sendJSON(res, 400, { error: 'Дата обязательна' });
+      return sendJSON(res, 200, updateRepairRecord(Number(m[1]), body));
+    }
+    if (m && req.method === 'DELETE') {
+      deleteRepairRecord(Number(m[1]));
       return sendJSON(res, 200, { ok: true });
     }
 

@@ -1,5 +1,5 @@
 const DAYS_IN_WEEK = 6; // рабочая неделя: Пн–Сб, воскресенье не показываем
-const DOW_ORDER = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+const DOW_ORDER = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
 const MONTHS_GEN = [
   'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
   'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
@@ -64,18 +64,70 @@ async function api(path, options) {
     ...options,
   });
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && path !== '/api/login') showLogin();
   if (!res.ok) throw new Error(data.error || 'Ошибка запроса');
   return data;
 }
 
+// ---------- Авторизация ----------
+// Один пользователь — владелец автосервиса. Пока сессии нет, всё API отдаёт
+// 401 (см. server.js), поэтому просто прячем приложение и показываем форму входа.
+const loginOverlay = document.getElementById('loginOverlay');
+const appRoot = document.getElementById('appRoot');
+const loginForm = document.getElementById('loginForm');
+const loginError = document.getElementById('loginError');
+
+function showLogin() {
+  appRoot.classList.add('hidden');
+  loginOverlay.classList.remove('hidden');
+}
+
+function showApp() {
+  loginOverlay.classList.add('hidden');
+  appRoot.classList.remove('hidden');
+}
+
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  loginError.classList.add('hidden');
+  const data = Object.fromEntries(new FormData(loginForm).entries());
+  try {
+    await api('/api/login', { method: 'POST', body: JSON.stringify(data) });
+    loginForm.reset();
+    showApp();
+    await bootApp();
+  } catch (err) {
+    loginError.textContent = err.message;
+    loginError.classList.remove('hidden');
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  try {
+    await api('/api/logout', { method: 'POST' });
+  } catch (err) {
+    // сессии всё равно больше нет смысла — показываем форму входа в любом случае
+  }
+  showLogin();
+});
+
 // ---------- Маска телефона ----------
-// Форматирует "как есть" при вводе: сохраняет ведущий "+", группирует цифры
-// по 2 — простой и предсказуемый паттерн, который неплохо ложится на большинство
-// международных номеров (не привязываемся к длине конкретного кода страны).
+// Клиенты — российские номера, поэтому номер, начинающийся на 7/8/9, приводим
+// к виду +7 928 280 88 50 (8 и голый мобильный код 9XX считаем тем же +7).
+// Всё остальное группируем по 2 цифры — простой паттерн для прочих номеров,
+// не привязанный к длине конкретного кода страны.
 function formatPhoneMask(raw) {
-  const hasPlus = raw.trim().startsWith('+');
   let digits = raw.replace(/\D/g, '');
+
+  if (/^[789]/.test(digits)) {
+    digits = (digits[0] === '9' ? '7' + digits : '7' + digits.slice(1)).slice(0, 11);
+    const parts = [digits.slice(0, 1), digits.slice(1, 4), digits.slice(4, 7), digits.slice(7, 9), digits.slice(9, 11)]
+      .filter(Boolean);
+    return '+' + parts.join(' ');
+  }
+
   if (digits.length > 15) digits = digits.slice(0, 15);
+  const hasPlus = raw.trim().startsWith('+');
   const groups = digits.match(/.{1,2}/g) || [];
   const joined = groups.join(' ');
   return hasPlus ? '+' + joined : joined;
@@ -92,6 +144,7 @@ function attachPhoneMask(input) {
 
 attachPhoneMask(document.getElementById('clientPhoneInput'));
 attachPhoneMask(document.getElementById('walkinPhoneInput'));
+attachPhoneMask(document.getElementById('loginPhoneInput'));
 
 // ---------- Tabs ----------
 document.querySelectorAll('.tab').forEach((btn) => {
@@ -112,6 +165,7 @@ document.querySelectorAll('[data-close-dialog]').forEach((btn) => {
   btn.addEventListener('click', () => closeDialog(btn.closest('.dialog-overlay')));
 });
 document.querySelectorAll('.dialog-overlay').forEach((ov) => {
+  if (ov.id === 'loginOverlay') return; // форму входа нельзя закрыть кликом мимо
   ov.addEventListener('click', (e) => { if (e.target === ov) closeDialog(ov); });
 });
 
@@ -139,15 +193,18 @@ function renderClients() {
 
   filtered.forEach((c) => {
     const tr = document.createElement('tr');
+    const telHref = (c.phone || '').replace(/[^\d+]/g, '');
     tr.innerHTML = `
       <td class="cell-name">${escapeHtml(c.name)}</td>
-      <td>${escapeHtml(c.phone || '—')}</td>
+      <td>${c.phone ? `<a class="cell-phone" href="tel:${escapeHtml(telHref)}">${escapeHtml(c.phone)}</a>` : '—'}</td>
       <td>${escapeHtml([c.car_make, c.car_model].filter(Boolean).join(' ') || '—')}</td>
       <td class="cell-plate">${escapeHtml(c.plate || '—')}</td>
       <td class="cell-plate">${escapeHtml(c.vin || '—')}</td>
       <td class="cell-notes">${escapeHtml(c.notes || '')}</td>
       <td class="edit-hint">изменить →</td>
     `;
+    const phoneLink = tr.querySelector('.cell-phone');
+    if (phoneLink) phoneLink.addEventListener('click', (e) => e.stopPropagation());
     tr.addEventListener('click', () => openClientDialog(c));
     body.appendChild(tr);
   });
@@ -157,14 +214,106 @@ function openClientDialog(client) {
   editingClientId = client ? client.id : null;
   document.getElementById('clientDialogTitle').textContent = client ? 'Клиент' : 'Новый клиент';
   deleteClientBtn.classList.toggle('hidden', !client);
+
+  const callLink = document.getElementById('clientCallLink');
+  const phone = client ? (client.phone || '') : '';
+  if (phone) {
+    callLink.href = 'tel:' + phone.replace(/[^\d+]/g, '');
+    callLink.classList.remove('hidden');
+  } else {
+    callLink.classList.add('hidden');
+  }
+
   clientForm.reset();
   if (client) {
     for (const [k, v] of Object.entries(client)) {
       if (clientForm.elements[k]) clientForm.elements[k].value = v || '';
     }
   }
+
+  // Вкладка с историей ремонта имеет смысл только для клиента, который уже есть в базе —
+  // у нового клиента (ещё не сохранён) истории по определению нет.
+  setClientTab('info');
+  document.getElementById('clientDialogTabs').classList.toggle('hidden', !client);
+  historyClientId = client ? client.id : null;
+  if (client) loadClientHistory(client.id);
+
   openDialog(clientDialog);
 }
+
+function setClientTab(tab) {
+  document.querySelectorAll('#clientDialogTabs .ctab').forEach((b) => {
+    b.classList.toggle('active', b.dataset.ctab === tab);
+  });
+  clientForm.classList.toggle('hidden', tab !== 'info');
+  document.getElementById('clientHistoryPanel').classList.toggle('hidden', tab !== 'history');
+}
+
+document.querySelectorAll('#clientDialogTabs .ctab').forEach((btn) => {
+  btn.addEventListener('click', () => setClientTab(btn.dataset.ctab));
+});
+
+function fmtFullDate(d) {
+  return `${d.getDate()} ${MONTHS_GEN[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function fmtMoney(n) {
+  return `${(Number(n) || 0).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ₽`;
+}
+
+function sumItems(items) {
+  return items.reduce((sum, it) => sum + (Number(it.price) || 0), 0);
+}
+
+async function loadClientHistory(clientId) {
+  historyClientId = clientId;
+  const list = document.getElementById('clientHistoryList');
+  const empty = document.getElementById('clientHistoryEmpty');
+  list.innerHTML = '';
+  let records;
+  try {
+    records = await api(`/api/clients/${clientId}/repairs`);
+  } catch (err) {
+    showToast('Не удалось загрузить историю: ' + err.message, true);
+    return;
+  }
+  empty.classList.toggle('hidden', records.length !== 0);
+  records.forEach((r) => {
+    const worksSum = sumItems(r.works);
+    const partsSum = sumItems(r.parts);
+    const dateObj = new Date(r.date + 'T00:00:00');
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+      <div class="history-item-head">
+        <span class="${r.title ? 'history-title' : 'history-date'}">${r.title ? escapeHtml(r.title) : fmtFullDate(dateObj)}</span>
+        <strong class="history-total">${fmtMoney(worksSum + partsSum)}</strong>
+      </div>
+      ${r.title ? `<span class="history-date">${fmtFullDate(dateObj)}</span>` : ''}
+      ${renderRepairBlock('Работы', r.works, worksSum)}
+      ${renderRepairBlock('Запчасти', r.parts, partsSum)}
+      ${r.notes ? `<div class="history-notes">${escapeHtml(r.notes)}</div>` : ''}
+    `;
+    item.addEventListener('click', () => openRepairDialog(r));
+    list.appendChild(item);
+  });
+}
+
+function renderRepairBlock(label, items, sum) {
+  if (!items.length) return '';
+  const lines = items
+    .map((it) => `<div class="repair-list-line"><span>${escapeHtml(it.name)}</span><span>${fmtMoney(it.price)}</span></div>`)
+    .join('');
+  return `
+    <div class="repair-list-block">
+      <span class="repair-list-label">${label}</span>
+      ${lines}
+      <div class="repair-list-sum"><span>Сумма: ${label.toLowerCase()}</span><span>${fmtMoney(sum)}</span></div>
+    </div>
+  `;
+}
+
+document.getElementById('newRepairBtn').addEventListener('click', () => openRepairDialog(null));
 
 document.getElementById('newClientBtn').addEventListener('click', () => openClientDialog(null));
 document.getElementById('clientSearch').addEventListener('input', renderClients);
@@ -202,6 +351,255 @@ deleteClientBtn.addEventListener('click', async () => {
   }
 });
 
+// ================= REPAIR HISTORY =================
+const repairDialog = document.getElementById('repairDialog');
+const repairForm = document.getElementById('repairForm');
+const deleteRepairBtn = document.getElementById('deleteRepairBtn');
+const worksRowsEl = document.getElementById('worksRows');
+const partsRowsEl = document.getElementById('partsRows');
+const estimatePickerDialog = document.getElementById('estimatePickerDialog');
+let editingRepairId = null;
+let historyClientId = null;
+let pendingApptForRepair = null; // смета создаётся из записи расписания, а не из карточки клиента
+
+function sumRowInputs(container) {
+  return Array.from(container.querySelectorAll('.row-price')).reduce((sum, inp) => sum + (Number(inp.value) || 0), 0);
+}
+
+function recomputeRepairSums() {
+  const worksSum = sumRowInputs(worksRowsEl);
+  const partsSum = sumRowInputs(partsRowsEl);
+  document.getElementById('worksSum').textContent = fmtMoney(worksSum);
+  document.getElementById('partsSum').textContent = fmtMoney(partsSum);
+  document.getElementById('repairTotal').textContent = fmtMoney(worksSum + partsSum);
+}
+
+function createRepairRow(item) {
+  const row = document.createElement('div');
+  row.className = 'repair-row';
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.className = 'row-name';
+  nameInput.placeholder = 'Название';
+  nameInput.value = item?.name || '';
+
+  const priceInput = document.createElement('input');
+  priceInput.type = 'number';
+  priceInput.className = 'row-price mono-input';
+  priceInput.placeholder = 'Цена';
+  priceInput.min = '0';
+  priceInput.step = '0.01';
+  priceInput.value = item?.price ?? '';
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'row-remove';
+  removeBtn.setAttribute('aria-label', 'Удалить строку');
+  removeBtn.textContent = '×';
+
+  row.append(nameInput, priceInput, removeBtn);
+  priceInput.addEventListener('input', recomputeRepairSums);
+  removeBtn.addEventListener('click', () => { row.remove(); recomputeRepairSums(); });
+
+  return row;
+}
+
+function addRepairRow(container, item) {
+  container.appendChild(createRepairRow(item));
+}
+
+function collectRepairRows(container) {
+  return Array.from(container.querySelectorAll('.repair-row'))
+    .map((row) => ({
+      name: row.querySelector('.row-name').value.trim(),
+      price: Number(row.querySelector('.row-price').value) || 0,
+    }))
+    .filter((it) => it.name || it.price);
+}
+
+document.getElementById('addWorkRowBtn').addEventListener('click', () => addRepairRow(worksRowsEl, null));
+document.getElementById('addPartRowBtn').addEventListener('click', () => addRepairRow(partsRowsEl, null));
+
+function openRepairDialog(record) {
+  editingRepairId = record ? record.id : null;
+  pendingApptForRepair = null; // по умолчанию — обычный поток из карточки клиента
+  document.getElementById('repairDialogTitle').textContent = record ? 'Запись ремонта' : 'Новая запись ремонта';
+  deleteRepairBtn.classList.toggle('hidden', !record);
+  repairForm.reset();
+
+  worksRowsEl.innerHTML = '';
+  partsRowsEl.innerHTML = '';
+  const works = record?.works?.length ? record.works : [null];
+  const parts = record?.parts?.length ? record.parts : [null];
+  works.forEach((w) => addRepairRow(worksRowsEl, w));
+  parts.forEach((p) => addRepairRow(partsRowsEl, p));
+
+  repairForm.elements.title.value = record ? (record.title || '') : '';
+  repairForm.elements.date.value = record ? record.date : toISODate(new Date());
+  repairForm.elements.notes.value = record ? (record.notes || '') : '';
+
+  recomputeRepairSums();
+  openDialog(repairDialog);
+}
+
+// Смета, открытая из карточки записи в расписании: клиент по этой записи может
+// как быть в базе, так и быть разовым визитом — во втором случае клиента
+// придётся создать автоматически при сохранении сметы (см. resolveClientForAppt).
+// clientId передаём, если клиент уже найден по имени (см. openEstimatePicker) —
+// тогда при сохранении просто привяжем запись к нему, а не создадим нового.
+// record — если владелец выбрал существующий ремонт из пикера, чтобы дополнить его.
+function openEstimateDialogFromAppt(appt, clientId, record) {
+  openRepairDialog(record || null);
+  pendingApptForRepair = { appt, clientId: clientId || null };
+  if (!record) {
+    document.getElementById('repairDialogTitle').textContent = 'Смета';
+    repairForm.elements.title.value = appt.service || '';
+  }
+}
+
+// Клик на кнопку "Смета": ищем клиента по имени записи — если он уже в базе
+// и у него есть история ремонта, предлагаем дополнить один из существующих
+// ремонтов вместо того, чтобы вслепую создавать новую запись.
+async function openEstimatePicker(appt) {
+  const name = (appt.client_name || '').trim().toLowerCase();
+  const match = name ? state.clients.find((c) => c.name.trim().toLowerCase() === name) : null;
+
+  if (!match) {
+    openEstimateDialogFromAppt(appt, null);
+    return;
+  }
+
+  let repairs = [];
+  try {
+    repairs = await api(`/api/clients/${match.id}/repairs`);
+  } catch (err) {
+    repairs = [];
+  }
+
+  if (!repairs.length) {
+    openEstimateDialogFromAppt(appt, match.id);
+    return;
+  }
+
+  document.getElementById('estimatePickerHint').textContent =
+    `Клиент «${match.name}» уже есть в базе. Выберите ремонт, чтобы дополнить его, или создайте новый.`;
+  const list = document.getElementById('estimatePickerList');
+  list.innerHTML = '';
+  repairs.forEach((r) => {
+    const total = sumItems(r.works) + sumItems(r.parts);
+    const dateObj = new Date(r.date + 'T00:00:00');
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+      <div class="history-item-head">
+        <span class="${r.title ? 'history-title' : 'history-date'}">${r.title ? escapeHtml(r.title) : fmtFullDate(dateObj)}</span>
+        <strong class="history-total">${fmtMoney(total)}</strong>
+      </div>
+      ${r.title ? `<span class="history-date">${fmtFullDate(dateObj)}</span>` : ''}
+    `;
+    item.addEventListener('click', () => {
+      closeDialog(estimatePickerDialog);
+      openEstimateDialogFromAppt(appt, match.id, r);
+    });
+    list.appendChild(item);
+  });
+
+  document.getElementById('estimatePickerNewBtn').onclick = () => {
+    closeDialog(estimatePickerDialog);
+    openEstimateDialogFromAppt(appt, match.id);
+  };
+
+  openDialog(estimatePickerDialog);
+}
+
+async function resolveClientForAppt(pending) {
+  const { appt, clientId } = pending;
+  if (clientId) {
+    if (appt.client_id !== clientId) {
+      await api(`/api/appointments/${appt.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...appt, client_id: clientId }),
+      });
+      await loadClients();
+    }
+    return clientId;
+  }
+
+  const newClient = await api('/api/clients', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: appt.walkin_name || 'Клиент без имени',
+      phone: appt.walkin_phone || '',
+      car_make: appt.walkin_car || '', // в разовом визите марка/модель одной строкой, не разбираем на части
+      vin: appt.vin || '',
+      notes: 'Добавлено автоматически из записи в расписании.',
+    }),
+  });
+
+  // Привязываем запись расписания к новому клиенту, чтобы она перестала быть "разовой".
+  await api(`/api/appointments/${appt.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ ...appt, client_id: newClient.id }),
+  });
+  await loadClients();
+  return newClient.id;
+}
+
+repairForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = {
+    title: repairForm.elements.title.value,
+    date: repairForm.elements.date.value,
+    notes: repairForm.elements.notes.value,
+    works: collectRepairRows(worksRowsEl),
+    parts: collectRepairRows(partsRowsEl),
+  };
+  try {
+    if (editingRepairId) {
+      await api(`/api/repairs/${editingRepairId}`, { method: 'PUT', body: JSON.stringify(data) });
+      showToast('Запись ремонта обновлена');
+      closeDialog(repairDialog);
+      if (pendingApptForRepair) {
+        await resolveClientForAppt(pendingApptForRepair);
+        pendingApptForRepair = null;
+        closeDialog(apptDialog);
+        await loadWeek();
+      } else {
+        await loadClientHistory(historyClientId);
+      }
+    } else if (pendingApptForRepair) {
+      const clientId = await resolveClientForAppt(pendingApptForRepair);
+      await api(`/api/clients/${clientId}/repairs`, { method: 'POST', body: JSON.stringify(data) });
+      pendingApptForRepair = null;
+      showToast('Смета добавлена в историю ремонта');
+      closeDialog(repairDialog);
+      closeDialog(apptDialog);
+      await loadWeek();
+    } else {
+      await api(`/api/clients/${historyClientId}/repairs`, { method: 'POST', body: JSON.stringify(data) });
+      showToast('Запись ремонта добавлена');
+      closeDialog(repairDialog);
+      await loadClientHistory(historyClientId);
+    }
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+deleteRepairBtn.addEventListener('click', async () => {
+  if (!editingRepairId) return;
+  if (!confirm('Удалить запись ремонта?')) return;
+  try {
+    await api(`/api/repairs/${editingRepairId}`, { method: 'DELETE' });
+    showToast('Запись ремонта удалена');
+    closeDialog(repairDialog);
+    await loadClientHistory(historyClientId);
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
 function fillClientSelect() {
   const sel = document.getElementById('apptClientSelect');
   const options = state.clients
@@ -232,7 +630,9 @@ function escapeHtml(str) {
 const apptDialog = document.getElementById('apptDialog');
 const apptForm = document.getElementById('apptForm');
 const deleteApptBtn = document.getElementById('deleteApptBtn');
+const apptEstimateBtn = document.getElementById('apptEstimateBtn');
 let editingApptId = null;
+let currentApptRecord = null;
 
 let weekRequestSeq = 0;
 
@@ -355,8 +755,10 @@ async function moveAppointment(appt, newDate) {
 
 function openApptDialog(appt, defaultDate) {
   editingApptId = appt ? appt.id : null;
+  currentApptRecord = appt;
   document.getElementById('apptDialogTitle').textContent = appt ? 'Запись' : 'Новая запись';
   deleteApptBtn.classList.toggle('hidden', !appt);
+  apptEstimateBtn.classList.toggle('hidden', !appt);
 
   const callLink = document.getElementById('apptCallLink');
   const phone = appt ? (appt.client_phone || '') : '';
@@ -456,6 +858,11 @@ apptForm.addEventListener('submit', async (e) => {
   }
 });
 
+apptEstimateBtn.addEventListener('click', () => {
+  if (!currentApptRecord) return;
+  openEstimatePicker(currentApptRecord);
+});
+
 deleteApptBtn.addEventListener('click', async () => {
   if (!editingApptId) return;
   if (!confirm('Удалить запись?')) return;
@@ -474,11 +881,25 @@ document.getElementById('nextWeek').addEventListener('click', () => { state.week
 document.getElementById('todayBtn').addEventListener('click', () => { state.weekStart = startOfWeek(new Date()); loadWeek(); });
 
 // ---------- Init ----------
-(async function init() {
+async function bootApp() {
   try {
     await loadClients();
     await loadWeek();
   } catch (err) {
     showToast('Не удалось загрузить данные: ' + err.message, true);
+  }
+}
+
+(async function initAuth() {
+  try {
+    const { authenticated } = await api('/api/session');
+    if (authenticated) {
+      showApp();
+      await bootApp();
+    } else {
+      showLogin();
+    }
+  } catch (err) {
+    showLogin();
   }
 })();

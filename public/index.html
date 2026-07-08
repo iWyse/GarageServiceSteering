@@ -10,6 +10,27 @@
 </head>
 <body>
 
+<!-- ===== Login screen ===== -->
+<div id="loginOverlay" class="dialog-overlay hidden">
+  <div class="dialog login-dialog">
+    <div class="brand login-brand">
+      <span class="brand-mark">01</span>
+      <div class="brand-text">
+        <h1>Гараж №1</h1>
+        <p>учёт клиентов и записей</p>
+      </div>
+    </div>
+    <form id="loginForm">
+      <label>Телефон<input required name="phone" id="loginPhoneInput" type="tel" placeholder="+7 918 987 90 60" class="mono-input" autocomplete="username"></label>
+      <label>Пароль<input required name="password" type="password" placeholder="Пароль" class="mono-input" autocomplete="current-password"></label>
+      <p id="loginError" class="login-error hidden"></p>
+      <button type="submit" class="btn-primary btn-block">Войти</button>
+    </form>
+  </div>
+</div>
+
+<div id="appRoot" class="hidden">
+
 <header class="topbar">
   <div class="brand">
     <span class="brand-mark">01</span>
@@ -22,6 +43,7 @@
     <button class="tab active" data-tab="schedule" role="tab" aria-selected="true">Расписание</button>
     <button class="tab" data-tab="clients" role="tab" aria-selected="false">Клиенты</button>
   </nav>
+  <button id="logoutBtn" class="btn-ghost" title="Выйти">Выйти</button>
 </header>
 
 <main>
@@ -68,13 +90,22 @@
 
 </main>
 
+</div>
+
 <!-- ===== Client edit dialog ===== -->
 <div id="clientDialog" class="dialog-overlay hidden">
   <div class="dialog">
-    <h2 id="clientDialogTitle">Новый клиент</h2>
+    <div class="dialog-header">
+      <h2 id="clientDialogTitle">Новый клиент</h2>
+      <a id="clientCallLink" href="#" class="call-btn hidden" title="Позвонить клиенту">☎</a>
+    </div>
+    <div id="clientDialogTabs" class="dialog-tabs hidden" role="tablist">
+      <button type="button" class="ctab active" data-ctab="info">Данные</button>
+      <button type="button" class="ctab" data-ctab="history">История ремонта</button>
+    </div>
     <form id="clientForm">
       <label>Имя <span class="req">*</span><input required name="name" type="text" placeholder="Иван Петров"></label>
-      <label>Телефон<input name="phone" id="clientPhoneInput" type="tel" placeholder="+31 6 1234 5678" class="mono-input"></label>
+      <label>Телефон<input name="phone" id="clientPhoneInput" type="tel" placeholder="+7 928 280 88 50" class="mono-input"></label>
       <div class="row-2">
         <label>Марка<input name="car_make" type="text" placeholder="Toyota"></label>
         <label>Модель<input name="car_model" type="text" placeholder="Camry"></label>
@@ -89,6 +120,18 @@
         <button type="submit" class="btn-primary">Сохранить</button>
       </div>
     </form>
+    <div id="clientHistoryPanel" class="hidden">
+      <div class="dialog-actions repair-toolbar">
+        <div class="spacer"></div>
+        <button type="button" id="newRepairBtn" class="btn-primary">+ Запись ремонта</button>
+      </div>
+      <div id="clientHistoryList" class="history-list"></div>
+      <p id="clientHistoryEmpty" class="empty-state hidden">Пока нет записей о ремонте. Добавьте первую — кнопка выше.</p>
+      <div class="dialog-actions">
+        <div class="spacer"></div>
+        <button type="button" class="btn-ghost" data-close-dialog>Закрыть</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -107,7 +150,7 @@
       <div id="walkinFields" class="walkin-fields hidden">
         <p class="walkin-hint">Разовый визит — данные сохранятся только в этой записи, в базу клиентов не попадут.</p>
         <label>Имя <span class="req">*</span><input name="walkin_name" type="text" placeholder="Как обращаться"></label>
-        <label>Телефон<input name="walkin_phone" id="walkinPhoneInput" type="tel" placeholder="+31 6 1234 5678" class="mono-input"></label>
+        <label>Телефон<input name="walkin_phone" id="walkinPhoneInput" type="tel" placeholder="+7 928 280 88 50" class="mono-input"></label>
         <label>Автомобиль<input name="walkin_car" type="text" placeholder="Toyota Camry, AB-123-C"></label>
       </div>
 
@@ -139,7 +182,62 @@
         <label>Заметки<textarea name="notes" rows="2" placeholder="Что нужно сделать…"></textarea></label>
       </div>
       <div class="dialog-actions">
+        <button type="button" id="apptEstimateBtn" class="btn-ghost hidden">Смета</button>
         <button type="button" id="deleteApptBtn" class="btn-danger hidden">Удалить</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
+      </div>
+      <button type="submit" class="btn-primary btn-block">Сохранить</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Estimate: choose existing repair or create new ===== -->
+<div id="estimatePickerDialog" class="dialog-overlay hidden">
+  <div class="dialog">
+    <h2>Смета</h2>
+    <p id="estimatePickerHint" class="walkin-hint"></p>
+    <div id="estimatePickerList" class="history-list"></div>
+    <div class="dialog-actions">
+      <div class="spacer"></div>
+      <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
+      <button type="button" id="estimatePickerNewBtn" class="btn-primary">+ Новая смета</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Repair record dialog ===== -->
+<div id="repairDialog" class="dialog-overlay hidden">
+  <div class="dialog">
+    <h2 id="repairDialogTitle">Новая запись ремонта</h2>
+    <form id="repairForm">
+      <label>Заголовок<input name="title" type="text" placeholder="Например: ТО-1, ремонт рулевой рейки…"></label>
+      <label>Дата <span class="req">*</span><input required name="date" type="date"></label>
+
+      <div class="repair-section">
+        <div class="repair-section-head">
+          <span>Выполненные работы</span>
+          <button type="button" class="btn-link" id="addWorkRowBtn">+ добавить</button>
+        </div>
+        <div id="worksRows" class="repair-rows"></div>
+        <div class="repair-sum-row"><span>Сумма работ</span><strong id="worksSum">0 ₽</strong></div>
+      </div>
+
+      <div class="repair-section">
+        <div class="repair-section-head">
+          <span>Запчасти</span>
+          <button type="button" class="btn-link" id="addPartRowBtn">+ добавить</button>
+        </div>
+        <div id="partsRows" class="repair-rows"></div>
+        <div class="repair-sum-row"><span>Сумма запчастей</span><strong id="partsSum">0 ₽</strong></div>
+      </div>
+
+      <div class="repair-total-row"><span>Итоговая сумма</span><strong id="repairTotal">0 ₽</strong></div>
+
+      <label>Заметки<textarea name="notes" rows="2" placeholder="Комментарий к ремонту…"></textarea></label>
+
+      <div class="dialog-actions">
+        <button type="button" id="deleteRepairBtn" class="btn-danger hidden">Удалить</button>
         <div class="spacer"></div>
         <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
         <button type="submit" class="btn-primary">Сохранить</button>
