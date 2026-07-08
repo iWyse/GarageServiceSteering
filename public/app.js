@@ -145,6 +145,7 @@ function attachPhoneMask(input) {
 attachPhoneMask(document.getElementById('clientPhoneInput'));
 attachPhoneMask(document.getElementById('walkinPhoneInput'));
 attachPhoneMask(document.getElementById('loginPhoneInput'));
+attachPhoneMask(document.getElementById('queuePhoneInput'));
 
 // ---------- Tabs ----------
 document.querySelectorAll('.tab').forEach((btn) => {
@@ -402,9 +403,10 @@ function recomputeRepairSums() {
   document.getElementById('repairTotal').textContent = fmtMoney(Math.max(0, worksSum + partsSum - advance));
 }
 
-// isPart добавляет поля "Фирма" и "Кол-во" — они нужны только для запчастей,
-// выполненные работы остаются простой парой название/цена.
-function createRepairRow(item, isPart) {
+// isPart добавляет поля "Артикул"/"Фирма"/"Кол-во" — они нужны только для запчастей,
+// выполненные работы остаются простой парой название/цена. onChange даёт переиспользовать
+// строки в другом диалоге (очередь) со своим пересчётом сумм.
+function createRepairRow(item, isPart, onChange = recomputeRepairSums) {
   const row = document.createElement('div');
   row.className = 'repair-row' + (isPart ? ' repair-row-part' : '');
 
@@ -428,8 +430,8 @@ function createRepairRow(item, isPart) {
   removeBtn.setAttribute('aria-label', 'Удалить строку');
   removeBtn.textContent = '×';
 
-  priceInput.addEventListener('input', recomputeRepairSums);
-  removeBtn.addEventListener('click', () => { row.remove(); recomputeRepairSums(); });
+  priceInput.addEventListener('input', onChange);
+  removeBtn.addEventListener('click', () => { row.remove(); onChange(); });
 
   if (isPart) {
     const articleInput = document.createElement('input');
@@ -451,7 +453,7 @@ function createRepairRow(item, isPart) {
     qtyInput.min = '0';
     qtyInput.step = '1';
     qtyInput.value = item?.qty ?? 1;
-    qtyInput.addEventListener('input', recomputeRepairSums);
+    qtyInput.addEventListener('input', onChange);
 
     const line1 = document.createElement('div');
     line1.className = 'repair-row-line1';
@@ -469,8 +471,8 @@ function createRepairRow(item, isPart) {
   return row;
 }
 
-function addRepairRow(container, item, isPart) {
-  container.appendChild(createRepairRow(item, isPart));
+function addRepairRow(container, item, isPart, onChange = recomputeRepairSums) {
+  container.appendChild(createRepairRow(item, isPart, onChange));
 }
 
 function collectRepairRows(container) {
@@ -744,6 +746,10 @@ function buildOrderHtml(order) {
     .join('');
 
   return `
+    <div class="order-brand">
+      <div class="order-brand-name">ГУРсервис</div>
+      <div class="order-brand-address">ул. Хворостянского 20, ГСК 75А</div>
+    </div>
     <div class="order-meta">
       ${order.clientName ? `<div class="order-meta-row"><span>Клиент</span><strong>${escapeHtml(order.clientName)}</strong></div>` : ''}
       ${order.carLine ? `<div class="order-meta-row"><span>Марка автомобиля</span><strong>${escapeHtml(order.carLine)}</strong></div>` : ''}
@@ -765,6 +771,227 @@ function buildOrderHtml(order) {
 // из приложения нет: снимок отправляют клиенту вручную, чем удобно.
 document.getElementById('sendToClientBtn').addEventListener('click', () => {
   const order = buildOrderData();
+  document.getElementById('orderContent').innerHTML = buildOrderHtml(order);
+  openDialog(orderDialog);
+});
+
+// ================= QUEUE (клиенты в очереди на запчасти) =================
+// Отдельная от "Клиенты" сущность: те же поля клиента + смета (работы/запчасти),
+// пока запчасти не пришли и человек ещё не оформлен как настоящий клиент.
+const queueDialog = document.getElementById('queueDialog');
+const queueForm = document.getElementById('queueForm');
+const deleteQueueBtn = document.getElementById('deleteQueueBtn');
+const queueWorksRowsEl = document.getElementById('queueWorksRows');
+const queuePartsRowsEl = document.getElementById('queuePartsRows');
+let queueItems = [];
+let editingQueueId = null;
+let queueAdvanceEnabled = false;
+
+async function loadQueue() {
+  queueItems = await api('/api/queue');
+  renderQueue();
+}
+
+function renderQueue() {
+  const list = document.getElementById('queueList');
+  const empty = document.getElementById('queueEmpty');
+  list.innerHTML = '';
+  empty.classList.toggle('hidden', queueItems.length !== 0);
+
+  queueItems.forEach((q) => {
+    const carLine = [q.car_make, q.car_model].filter(Boolean).join(' ');
+    const status = q.status === 'arrived' ? 'arrived' : 'waiting';
+    const item = document.createElement('div');
+    item.className = 'queue-item';
+    item.innerHTML = `
+      <div class="queue-item-head">
+        <span class="queue-item-name">${escapeHtml(q.name)}</span>
+        <button type="button" class="queue-status-badge" data-status="${status}">${status === 'arrived' ? 'Все пришло' : 'В ожидании'}</button>
+      </div>
+      ${carLine ? `<div class="queue-item-car">${escapeHtml(carLine)}</div>` : ''}
+      ${q.title ? `<div class="queue-item-title">${escapeHtml(q.title)}</div>` : ''}
+    `;
+    item.querySelector('.queue-status-badge').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const nextStatus = status === 'arrived' ? 'waiting' : 'arrived';
+      try {
+        await api(`/api/queue/${q.id}`, { method: 'PUT', body: JSON.stringify({ ...q, status: nextStatus }) });
+        await loadQueue();
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    });
+    item.addEventListener('click', () => openQueueDialog(q));
+    list.appendChild(item);
+  });
+}
+
+function recomputeQueueSums() {
+  const worksSum = sumRowInputs(queueWorksRowsEl);
+  const partsSum = sumRowInputs(queuePartsRowsEl);
+  const advance = queueAdvanceEnabled ? (Number(document.getElementById('queueAdvanceAmountInput').value) || 0) : 0;
+  document.getElementById('queueWorksSum').textContent = fmtMoney(worksSum);
+  document.getElementById('queuePartsSum').textContent = fmtMoney(partsSum);
+  document.getElementById('queueAdvanceRow').classList.toggle('hidden', advance <= 0);
+  document.getElementById('queueAdvanceDisplay').textContent = '− ' + fmtMoney(advance);
+  document.getElementById('queueRepairTotal').textContent = fmtMoney(Math.max(0, worksSum + partsSum - advance));
+}
+
+document.getElementById('queueAddWorkRowBtn').addEventListener('click', () => addRepairRow(queueWorksRowsEl, null, false, recomputeQueueSums));
+document.getElementById('queueAddPartRowBtn').addEventListener('click', () => addRepairRow(queuePartsRowsEl, null, true, recomputeQueueSums));
+
+document.getElementById('queueAdvanceToggleBtn').addEventListener('click', () => {
+  queueAdvanceEnabled = !queueAdvanceEnabled;
+  document.getElementById('queueAdvanceToggleBtn').classList.toggle('active', queueAdvanceEnabled);
+  document.getElementById('queueAdvanceAmountWrap').classList.toggle('hidden', !queueAdvanceEnabled);
+  if (!queueAdvanceEnabled) document.getElementById('queueAdvanceAmountInput').value = '';
+  recomputeQueueSums();
+});
+document.getElementById('queueAdvanceAmountInput').addEventListener('input', recomputeQueueSums);
+
+function openQueueDialog(entry) {
+  editingQueueId = entry ? entry.id : null;
+  document.getElementById('queueDialogTitle').textContent = entry ? 'Клиент в очереди' : 'Новый клиент в очереди';
+  deleteQueueBtn.classList.toggle('hidden', !entry);
+  queueForm.reset();
+
+  if (entry) {
+    for (const [k, v] of Object.entries(entry)) {
+      if (queueForm.elements[k]) queueForm.elements[k].value = v || '';
+    }
+  } else {
+    queueForm.elements.date.value = toISODate(new Date());
+  }
+
+  queueWorksRowsEl.innerHTML = '';
+  queuePartsRowsEl.innerHTML = '';
+  const works = entry?.works?.length ? entry.works : [null];
+  const parts = entry?.parts?.length ? entry.parts : [null];
+  works.forEach((w) => addRepairRow(queueWorksRowsEl, w, false, recomputeQueueSums));
+  parts.forEach((p) => addRepairRow(queuePartsRowsEl, p, true, recomputeQueueSums));
+
+  queueAdvanceEnabled = !!(entry && Number(entry.advance) > 0);
+  document.getElementById('queueAdvanceToggleBtn').classList.toggle('active', queueAdvanceEnabled);
+  document.getElementById('queueAdvanceAmountWrap').classList.toggle('hidden', !queueAdvanceEnabled);
+  document.getElementById('queueAdvanceAmountInput').value = queueAdvanceEnabled ? entry.advance : '';
+
+  recomputeQueueSums();
+  openDialog(queueDialog);
+}
+
+document.getElementById('newQueueBtn').addEventListener('click', () => openQueueDialog(null));
+
+queueForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(queueForm).entries());
+  data.advance = queueAdvanceEnabled ? (Number(document.getElementById('queueAdvanceAmountInput').value) || 0) : 0;
+  data.works = collectRepairRows(queueWorksRowsEl);
+  data.parts = collectRepairRows(queuePartsRowsEl);
+  try {
+    if (editingQueueId) {
+      await api(`/api/queue/${editingQueueId}`, { method: 'PUT', body: JSON.stringify(data) });
+      showToast('Изменения сохранены');
+    } else {
+      await api('/api/queue', { method: 'POST', body: JSON.stringify(data) });
+      showToast('Клиент добавлен в очередь');
+    }
+    closeDialog(queueDialog);
+    await loadQueue();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+deleteQueueBtn.addEventListener('click', async () => {
+  if (!editingQueueId) return;
+  if (!confirm('Удалить из очереди?')) return;
+  try {
+    await api(`/api/queue/${editingQueueId}`, { method: 'DELETE' });
+    showToast('Удалено из очереди');
+    closeDialog(queueDialog);
+    await loadQueue();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+// "Добавить в список клиентов": заводим настоящего клиента и переносим смету
+// (работы/запчасти) в его историю ремонта первой записью, затем убираем из очереди.
+document.getElementById('promoteQueueBtn').addEventListener('click', async () => {
+  const name = queueForm.elements.name.value.trim();
+  if (!name) {
+    showToast('Укажите имя клиента', true);
+    return;
+  }
+  try {
+    const newClient = await api('/api/clients', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        phone: queueForm.elements.phone.value,
+        car_make: queueForm.elements.car_make.value,
+        car_model: queueForm.elements.car_model.value,
+        plate: queueForm.elements.plate.value,
+        vin: queueForm.elements.vin.value,
+        notes: queueForm.elements.notes.value,
+      }),
+    });
+
+    const works = collectRepairRows(queueWorksRowsEl);
+    const parts = collectRepairRows(queuePartsRowsEl);
+    const title = queueForm.elements.title.value;
+    if (works.length || parts.length || title.trim()) {
+      await api(`/api/clients/${newClient.id}/repairs`, {
+        method: 'POST',
+        body: JSON.stringify({
+          title,
+          date: queueForm.elements.date.value || toISODate(new Date()),
+          notes: queueForm.elements.notes.value,
+          parts_eta: queueForm.elements.parts_eta.value,
+          advance: queueAdvanceEnabled ? (Number(document.getElementById('queueAdvanceAmountInput').value) || 0) : 0,
+          works,
+          parts,
+        }),
+      });
+    }
+
+    if (editingQueueId) {
+      await api(`/api/queue/${editingQueueId}`, { method: 'DELETE' });
+    }
+
+    showToast('Клиент добавлен в базу');
+    closeDialog(queueDialog);
+    await loadClients();
+    await loadQueue();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+function buildQueueOrderData() {
+  const works = collectRepairRows(queueWorksRowsEl);
+  const parts = collectRepairRows(queuePartsRowsEl);
+  const worksSum = sumItems(works);
+  const partsSum = sumItems(parts);
+  const advance = queueAdvanceEnabled ? (Number(document.getElementById('queueAdvanceAmountInput').value) || 0) : 0;
+  return {
+    clientName: queueForm.elements.name.value,
+    carLine: [queueForm.elements.car_make.value, queueForm.elements.car_model.value].filter(Boolean).join(' '),
+    partsEta: queueForm.elements.parts_eta.value,
+    title: queueForm.elements.title.value,
+    date: queueForm.elements.date.value,
+    notes: queueForm.elements.notes.value,
+    works,
+    parts,
+    worksSum,
+    partsSum,
+    advance,
+    total: Math.max(0, worksSum + partsSum - advance),
+  };
+}
+
+document.getElementById('queueOrderBtn').addEventListener('click', () => {
+  const order = buildQueueOrderData();
   document.getElementById('orderContent').innerHTML = buildOrderHtml(order);
   openDialog(orderDialog);
 });
@@ -1054,6 +1281,7 @@ async function bootApp() {
   try {
     await loadClients();
     await loadWeek();
+    await loadQueue();
   } catch (err) {
     showToast('Не удалось загрузить данные: ' + err.message, true);
   }

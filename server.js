@@ -181,6 +181,70 @@ function deleteRepairRecord(id) {
   db.prepare('DELETE FROM repair_records WHERE id = ?').run(id);
 }
 
+// ---------- Queue (клиенты в очереди на запчасти) ----------
+function parseQueueEntry(row) {
+  if (!row) return row;
+  return { ...row, works: JSON.parse(row.works || '[]'), parts: JSON.parse(row.parts || '[]') };
+}
+
+function listQueueEntries() {
+  return db.prepare('SELECT * FROM queue_entries ORDER BY created_at DESC').all().map(parseQueueEntry);
+}
+
+function createQueueEntry(data) {
+  const info = db
+    .prepare(
+      `INSERT INTO queue_entries (name, phone, car_make, car_model, plate, vin, status, title, date, works, parts, parts_eta, advance, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(
+      (data.name || '').trim(),
+      data.phone || '',
+      data.car_make || '',
+      data.car_model || '',
+      data.plate || '',
+      (data.vin || '').trim().toUpperCase(),
+      data.status || 'waiting',
+      (data.title || '').trim(),
+      data.date || '',
+      JSON.stringify(normalizeRepairItems(data.works)),
+      JSON.stringify(normalizeRepairItems(data.parts)),
+      data.parts_eta || '',
+      Number(data.advance) || 0,
+      data.notes || ''
+    );
+  return parseQueueEntry(db.prepare('SELECT * FROM queue_entries WHERE id = ?').get(info.lastInsertRowid));
+}
+
+function updateQueueEntry(id, data) {
+  db.prepare(
+    `UPDATE queue_entries
+     SET name=?, phone=?, car_make=?, car_model=?, plate=?, vin=?, status=?, title=?, date=?, works=?, parts=?, parts_eta=?, advance=?, notes=?
+     WHERE id=?`
+  ).run(
+    (data.name || '').trim(),
+    data.phone || '',
+    data.car_make || '',
+    data.car_model || '',
+    data.plate || '',
+    (data.vin || '').trim().toUpperCase(),
+    data.status || 'waiting',
+    (data.title || '').trim(),
+    data.date || '',
+    JSON.stringify(normalizeRepairItems(data.works)),
+    JSON.stringify(normalizeRepairItems(data.parts)),
+    data.parts_eta || '',
+    Number(data.advance) || 0,
+    data.notes || '',
+    id
+  );
+  return parseQueueEntry(db.prepare('SELECT * FROM queue_entries WHERE id = ?').get(id));
+}
+
+function deleteQueueEntry(id) {
+  db.prepare('DELETE FROM queue_entries WHERE id = ?').run(id);
+}
+
 // ---------- Appointments ----------
 function listAppointments(start, end) {
   return db
@@ -353,6 +417,25 @@ const server = http.createServer(async (req, res) => {
     }
     if (m && req.method === 'DELETE') {
       deleteRepairRecord(Number(m[1]));
+      return sendJSON(res, 200, { ok: true });
+    }
+
+    // Queue
+    if (pathname === '/api/queue' && req.method === 'GET') {
+      return sendJSON(res, 200, listQueueEntries());
+    }
+    if (pathname === '/api/queue' && req.method === 'POST') {
+      const body = await readBody(req);
+      if (!body.name || !body.name.trim()) return sendJSON(res, 400, { error: 'Имя обязательно' });
+      return sendJSON(res, 201, createQueueEntry(body));
+    }
+    m = pathname.match(/^\/api\/queue\/(\d+)$/);
+    if (m && req.method === 'PUT') {
+      const body = await readBody(req);
+      return sendJSON(res, 200, updateQueueEntry(Number(m[1]), body));
+    }
+    if (m && req.method === 'DELETE') {
+      deleteQueueEntry(Number(m[1]));
       return sendJSON(res, 200, { ok: true });
     }
 

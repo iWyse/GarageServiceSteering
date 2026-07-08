@@ -320,6 +320,40 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 
 .empty-state { text-align: center; color: var(--text-muted); padding: 40px 0; }
 
+/* ---------- Queue ---------- */
+.queue-list { display: flex; flex-direction: column; gap: 10px; }
+.queue-item {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent-dim);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition: border-left-color 0.15s;
+}
+.queue-item:hover { border-left-color: var(--accent); }
+.queue-item-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.queue-item-name { font-weight: 600; font-size: 14px; }
+.queue-item-car { font-size: 13px; color: var(--text-muted); }
+.queue-item-title { font-size: 13px; color: var(--text-muted); }
+.queue-status-badge {
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  color: #fff;
+}
+.queue-status-badge[data-status="waiting"] { background: var(--status-planned); }
+.queue-status-badge[data-status="arrived"] { background: var(--status-done); }
+
 /* ---------- Dialog ---------- */
 .dialog-overlay {
   position: fixed; inset: 0;
@@ -338,6 +372,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   max-width: 460px;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .dialog-wide { max-width: 600px; }
 .dialog h2 {
@@ -489,7 +524,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   color: var(--text);
   font-size: 13px;
   width: 100%;
+  min-width: 0; /* иначе инпут не сжимается уже своей "естественной" ширины в узкой grid-колонке и рвёт диалог по горизонтали */
 }
+.repair-row-line1, .repair-row-line2 { min-width: 0; }
 .repair-row-part {
   display: flex;
   flex-direction: column;
@@ -544,6 +581,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 /* ---------- Заказ-наряд ---------- */
 .order-dialog { max-width: 460px; }
 .order-doc { display: flex; flex-direction: column; gap: 14px; }
+.order-brand { text-align: center; }
+.order-brand-name { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; font-size: 18px; }
+.order-brand-address { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 .order-meta { display: flex; flex-direction: column; gap: 6px; }
 .order-meta-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
 .order-meta-row span { color: var(--text-muted); }

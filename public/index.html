@@ -62,6 +62,7 @@
   <nav class="tabs" role="tablist">
     <button class="tab active" data-tab="schedule" role="tab" aria-selected="true">Расписание</button>
     <button class="tab" data-tab="clients" role="tab" aria-selected="false">Клиенты</button>
+    <button class="tab" data-tab="queue" role="tab" aria-selected="false">В очереди</button>
   </nav>
   <button id="logoutBtn" class="btn-ghost" title="Выйти">Выйти</button>
 </header>
@@ -108,6 +109,17 @@
     <p id="clientsEmpty" class="empty-state hidden">Пока нет ни одного клиента. Добавьте первого — кнопка выше.</p>
   </section>
 
+  <!-- ===== QUEUE VIEW ===== -->
+  <section id="view-queue" class="view">
+    <div class="clients-toolbar">
+      <div class="spacer"></div>
+      <button id="newQueueBtn" class="btn-primary">+ Новый клиент</button>
+    </div>
+
+    <div id="queueList" class="queue-list"></div>
+    <p id="queueEmpty" class="empty-state hidden">Пока никого нет в очереди. Добавьте первого — кнопка выше.</p>
+  </section>
+
 </main>
 
 </div>
@@ -152,6 +164,72 @@
         <button type="button" class="btn-ghost" data-close-dialog>Закрыть</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ===== Queue entry dialog ===== -->
+<div id="queueDialog" class="dialog-overlay hidden">
+  <div class="dialog dialog-wide">
+    <h2 id="queueDialogTitle">Новый клиент в очереди</h2>
+    <form id="queueForm">
+      <label><span>Имя <span class="req">*</span></span><input required name="name" type="text" placeholder="Иван Петров"></label>
+      <label>Телефон<input name="phone" id="queuePhoneInput" type="tel" placeholder="+7 928 280 88 50" class="mono-input"></label>
+      <div class="row-2">
+        <label>Марка<input name="car_make" type="text" placeholder="Toyota"></label>
+        <label>Модель<input name="car_model" type="text" placeholder="Camry"></label>
+      </div>
+      <label>Гос. номер<input name="plate" type="text" placeholder="AB-123-C" class="mono-input"></label>
+      <label>VIN<input name="vin" type="text" placeholder="17 символов, напр. JHMFA16586S000000" class="mono-input" maxlength="17" style="text-transform:uppercase"></label>
+      <label>Статус заказа
+        <select name="status">
+          <option value="waiting">В ожидании</option>
+          <option value="arrived">Все пришло</option>
+        </select>
+      </label>
+
+      <label>Заголовок<input name="title" type="text" placeholder="Например: ТО-1, ремонт рулевой рейки…"></label>
+      <label><span>Дата <span class="req">*</span></span><input required name="date" type="date"></label>
+
+      <div class="repair-section">
+        <div class="repair-section-head">
+          <span>Выполненные работы</span>
+          <button type="button" class="btn-link" id="queueAddWorkRowBtn">+ добавить</button>
+        </div>
+        <div id="queueWorksRows" class="repair-rows"></div>
+        <div class="repair-sum-row"><span>Сумма работ</span><strong id="queueWorksSum">0 ₽</strong></div>
+      </div>
+
+      <div class="repair-section">
+        <div class="repair-section-head">
+          <span>Запчасти</span>
+          <button type="button" class="btn-link" id="queueAddPartRowBtn">+ добавить</button>
+        </div>
+        <div id="queuePartsRows" class="repair-rows"></div>
+        <div class="repair-sum-row"><span>Сумма запчастей</span><strong id="queuePartsSum">0 ₽</strong></div>
+        <label>Срок поставки запчастей<input name="parts_eta" type="text" placeholder="например: 2-3 дня, к среде…"></label>
+      </div>
+
+      <div class="repair-advance">
+        <button type="button" id="queueAdvanceToggleBtn" class="btn-ghost">Аванс</button>
+        <div id="queueAdvanceAmountWrap" class="hidden">
+          <input type="number" id="queueAdvanceAmountInput" min="0" step="0.01" placeholder="Сумма аванса" class="mono-input">
+        </div>
+      </div>
+      <div class="repair-sum-row hidden" id="queueAdvanceRow"><span>Аванс</span><strong id="queueAdvanceDisplay">− 0 ₽</strong></div>
+
+      <div class="repair-total-row"><span>Итоговая сумма</span><strong id="queueRepairTotal">0 ₽</strong></div>
+
+      <label>Заметки<textarea name="notes" rows="2" placeholder="Особенности, комментарий…"></textarea></label>
+
+      <div class="dialog-actions">
+        <button type="button" id="queueOrderBtn" class="btn-ghost">Заказ-наряд</button>
+        <button type="button" id="deleteQueueBtn" class="btn-danger hidden">Удалить</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
+      </div>
+      <button type="button" id="promoteQueueBtn" class="btn-ghost btn-block">Добавить в список клиентов</button>
+      <button type="submit" class="btn-primary btn-block">Сохранить</button>
+    </form>
   </div>
 </div>
 

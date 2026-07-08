@@ -45,6 +45,25 @@ db.exec(`
     notes TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS queue_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    phone TEXT,
+    car_make TEXT,
+    car_model TEXT,
+    plate TEXT,
+    vin TEXT,
+    status TEXT NOT NULL DEFAULT 'waiting', -- waiting | arrived
+    title TEXT,
+    date TEXT,
+    works TEXT NOT NULL DEFAULT '[]',
+    parts TEXT NOT NULL DEFAULT '[]',
+    parts_eta TEXT,
+    advance REAL NOT NULL DEFAULT 0,
+    notes TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // ---------- Миграция старых баз (версия до "разовых визитов") ----------
