@@ -86,7 +86,7 @@ button, input, select, textarea { font-family: inherit; }
   letter-spacing: 0.03em;
 }
 
-.tabs { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: var(--radius); }
+.tabs { display: flex; gap: 12px; background: var(--surface-2); padding: 4px; border-radius: var(--radius); }
 .tab {
   font-family: var(--font-display);
   text-transform: uppercase;
@@ -464,6 +464,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   gap: 12px;
   font-size: 13px;
 }
+.repair-list-meta { color: var(--text-muted); font-size: 12px; }
 .repair-list-sum { color: var(--text-muted); font-size: 12px; padding-top: 2px; border-top: 1px dashed var(--border); }
 
 /* ---------- Repair record dialog ---------- */
@@ -479,14 +480,26 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .repair-section-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); }
 .repair-rows { display: flex; flex-direction: column; gap: 6px; }
 .repair-row { display: grid; grid-template-columns: 1fr 100px auto; gap: 6px; align-items: center; }
-.repair-row .row-name, .repair-row .row-price {
+.repair-row .row-name, .repair-row .row-price, .repair-row .row-brand, .repair-row .row-qty {
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
   font-size: 13px;
+  width: 100%;
 }
+.repair-row-part {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.repair-row-line1 { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
+.repair-row-line2 { display: grid; grid-template-columns: 1fr 70px 90px; gap: 6px; }
 .row-remove {
   width: 30px;
   height: 30px;
@@ -518,6 +531,40 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 }
 
 .btn-block { width: 100%; text-align: center; }
+.btn-ghost.active { background: var(--accent); color: #1b1a17; border-color: var(--accent); font-weight: 600; }
+
+/* ---------- Аванс ---------- */
+.repair-advance { display: flex; align-items: center; gap: 10px; }
+#advanceAmountWrap { flex: 1; }
+#advanceAmountWrap input { width: 100%; }
+#advanceRow strong { color: var(--status-cancelled); }
+
+/* ---------- Заказ-наряд ---------- */
+.order-dialog { max-width: 460px; }
+.order-doc { display: flex; flex-direction: column; gap: 14px; }
+.order-meta { display: flex; flex-direction: column; gap: 6px; }
+.order-meta-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.order-meta-row span { color: var(--text-muted); }
+.order-sep { border-top: 1px solid var(--border); }
+.order-title { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.03em; font-size: 16px; margin: 0; }
+.order-date { font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
+.order-block { display: flex; flex-direction: column; gap: 4px; }
+.order-block-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px; }
+.order-line { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.order-line-meta { color: var(--text-muted); font-size: 12px; }
+.order-line-sum { color: var(--text-muted); padding-top: 4px; border-top: 1px dashed var(--border); font-size: 12px; }
+.order-line-advance { color: var(--status-cancelled); font-size: 13px; }
+.order-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.order-notes { font-size: 13px; color: var(--text-muted); border-top: 1px dashed var(--border); padding-top: 8px; }
 
 /* ---------- Login ---------- */
 #loginOverlay { background: var(--bg); background-image: none; }

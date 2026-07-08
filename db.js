@@ -39,7 +39,9 @@ db.exec(`
     title TEXT,              -- заголовок записи, напр. "ТО-1" или "Ремонт рулевой рейки"
     date TEXT NOT NULL,     -- YYYY-MM-DD
     works TEXT NOT NULL DEFAULT '[]', -- JSON [{name, price}] — выполненные работы
-    parts TEXT NOT NULL DEFAULT '[]', -- JSON [{name, price}] — запчасти
+    parts TEXT NOT NULL DEFAULT '[]', -- JSON [{name, brand, qty, price}] — запчасти
+    parts_eta TEXT,          -- срок поставки запчастей
+    advance REAL NOT NULL DEFAULT 0, -- аванс, вычитается из итоговой суммы; 0 = не используется
     notes TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
@@ -116,5 +118,20 @@ function migrateRepairTitleColumn() {
   }
 }
 migrateRepairTitleColumn();
+
+// ---------- Миграция: срок поставки запчастей и аванс ----------
+function migrateRepairPartsEtaAndAdvance() {
+  const columns = db.prepare(`PRAGMA table_info(repair_records)`).all().map((c) => c.name);
+  if (!columns.length) return;
+  if (!columns.includes('parts_eta')) {
+    db.exec(`ALTER TABLE repair_records ADD COLUMN parts_eta TEXT`);
+    console.log('База данных обновлена: добавлен срок поставки запчастей.');
+  }
+  if (!columns.includes('advance')) {
+    db.exec(`ALTER TABLE repair_records ADD COLUMN advance REAL NOT NULL DEFAULT 0`);
+    console.log('База данных обновлена: добавлен аванс.');
+  }
+}
+migrateRepairPartsEtaAndAdvance();
 
 export default db;

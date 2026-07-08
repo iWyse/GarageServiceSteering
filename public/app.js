@@ -262,7 +262,7 @@ function fmtMoney(n) {
 }
 
 function sumItems(items) {
-  return items.reduce((sum, it) => sum + (Number(it.price) || 0), 0);
+  return items.reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.qty) || 1), 0);
 }
 
 async function loadClientHistory(clientId) {
@@ -281,17 +281,21 @@ async function loadClientHistory(clientId) {
   records.forEach((r) => {
     const worksSum = sumItems(r.works);
     const partsSum = sumItems(r.parts);
+    const advance = Number(r.advance) || 0;
+    const total = Math.max(0, worksSum + partsSum - advance);
     const dateObj = new Date(r.date + 'T00:00:00');
     const item = document.createElement('div');
     item.className = 'history-item';
     item.innerHTML = `
       <div class="history-item-head">
         <span class="${r.title ? 'history-title' : 'history-date'}">${r.title ? escapeHtml(r.title) : fmtFullDate(dateObj)}</span>
-        <strong class="history-total">${fmtMoney(worksSum + partsSum)}</strong>
+        <strong class="history-total">${fmtMoney(total)}</strong>
       </div>
       ${r.title ? `<span class="history-date">${fmtFullDate(dateObj)}</span>` : ''}
       ${renderRepairBlock('Работы', r.works, worksSum)}
       ${renderRepairBlock('Запчасти', r.parts, partsSum)}
+      ${r.parts_eta ? `<div class="repair-list-sum"><span>Срок поставки запчастей</span><span>${escapeHtml(r.parts_eta)}</span></div>` : ''}
+      ${advance > 0 ? `<div class="repair-list-sum"><span>Аванс</span><span>− ${fmtMoney(advance)}</span></div>` : ''}
       ${r.notes ? `<div class="history-notes">${escapeHtml(r.notes)}</div>` : ''}
     `;
     item.addEventListener('click', () => openRepairDialog(r));
@@ -302,7 +306,11 @@ async function loadClientHistory(clientId) {
 function renderRepairBlock(label, items, sum) {
   if (!items.length) return '';
   const lines = items
-    .map((it) => `<div class="repair-list-line"><span>${escapeHtml(it.name)}</span><span>${fmtMoney(it.price)}</span></div>`)
+    .map((it) => {
+      const meta = [it.brand, it.qty && it.qty !== 1 ? `×${it.qty}` : ''].filter(Boolean).join(' ');
+      const lineTotal = (Number(it.price) || 0) * (Number(it.qty) || 1);
+      return `<div class="repair-list-line"><span>${escapeHtml(it.name)}${meta ? ` <span class="repair-list-meta">(${escapeHtml(meta)})</span>` : ''}</span><span>${fmtMoney(lineTotal)}</span></div>`;
+    })
     .join('');
   return `
     <div class="repair-list-block">
@@ -358,25 +366,38 @@ const deleteRepairBtn = document.getElementById('deleteRepairBtn');
 const worksRowsEl = document.getElementById('worksRows');
 const partsRowsEl = document.getElementById('partsRows');
 const estimatePickerDialog = document.getElementById('estimatePickerDialog');
+const orderDialog = document.getElementById('orderDialog');
 let editingRepairId = null;
 let historyClientId = null;
 let pendingApptForRepair = null; // смета создаётся из записи расписания, а не из карточки клиента
+let advanceEnabled = false;
+let currentOrderText = '';
 
 function sumRowInputs(container) {
-  return Array.from(container.querySelectorAll('.row-price')).reduce((sum, inp) => sum + (Number(inp.value) || 0), 0);
+  return Array.from(container.querySelectorAll('.repair-row')).reduce((sum, row) => {
+    const price = Number(row.querySelector('.row-price')?.value) || 0;
+    const qtyInput = row.querySelector('.row-qty');
+    const qty = qtyInput ? (Number(qtyInput.value) || 0) : 1;
+    return sum + price * qty;
+  }, 0);
 }
 
 function recomputeRepairSums() {
   const worksSum = sumRowInputs(worksRowsEl);
   const partsSum = sumRowInputs(partsRowsEl);
+  const advance = advanceEnabled ? (Number(document.getElementById('advanceAmountInput').value) || 0) : 0;
   document.getElementById('worksSum').textContent = fmtMoney(worksSum);
   document.getElementById('partsSum').textContent = fmtMoney(partsSum);
-  document.getElementById('repairTotal').textContent = fmtMoney(worksSum + partsSum);
+  document.getElementById('advanceRow').classList.toggle('hidden', advance <= 0);
+  document.getElementById('advanceDisplay').textContent = '− ' + fmtMoney(advance);
+  document.getElementById('repairTotal').textContent = fmtMoney(Math.max(0, worksSum + partsSum - advance));
 }
 
-function createRepairRow(item) {
+// isPart добавляет поля "Фирма" и "Кол-во" — они нужны только для запчастей,
+// выполненные работы остаются простой парой название/цена.
+function createRepairRow(item, isPart) {
   const row = document.createElement('div');
-  row.className = 'repair-row';
+  row.className = 'repair-row' + (isPart ? ' repair-row-part' : '');
 
   const nameInput = document.createElement('input');
   nameInput.type = 'text';
@@ -398,28 +419,72 @@ function createRepairRow(item) {
   removeBtn.setAttribute('aria-label', 'Удалить строку');
   removeBtn.textContent = '×';
 
-  row.append(nameInput, priceInput, removeBtn);
   priceInput.addEventListener('input', recomputeRepairSums);
   removeBtn.addEventListener('click', () => { row.remove(); recomputeRepairSums(); });
+
+  if (isPart) {
+    const brandInput = document.createElement('input');
+    brandInput.type = 'text';
+    brandInput.className = 'row-brand';
+    brandInput.placeholder = 'Фирма';
+    brandInput.value = item?.brand || '';
+
+    const qtyInput = document.createElement('input');
+    qtyInput.type = 'number';
+    qtyInput.className = 'row-qty mono-input';
+    qtyInput.placeholder = 'Кол-во';
+    qtyInput.min = '0';
+    qtyInput.step = '1';
+    qtyInput.value = item?.qty ?? 1;
+    qtyInput.addEventListener('input', recomputeRepairSums);
+
+    const line1 = document.createElement('div');
+    line1.className = 'repair-row-line1';
+    line1.append(nameInput, removeBtn);
+
+    const line2 = document.createElement('div');
+    line2.className = 'repair-row-line2';
+    line2.append(brandInput, qtyInput, priceInput);
+
+    row.append(line1, line2);
+  } else {
+    row.append(nameInput, priceInput, removeBtn);
+  }
 
   return row;
 }
 
-function addRepairRow(container, item) {
-  container.appendChild(createRepairRow(item));
+function addRepairRow(container, item, isPart) {
+  container.appendChild(createRepairRow(item, isPart));
 }
 
 function collectRepairRows(container) {
   return Array.from(container.querySelectorAll('.repair-row'))
-    .map((row) => ({
-      name: row.querySelector('.row-name').value.trim(),
-      price: Number(row.querySelector('.row-price').value) || 0,
-    }))
+    .map((row) => {
+      const out = {
+        name: row.querySelector('.row-name').value.trim(),
+        price: Number(row.querySelector('.row-price').value) || 0,
+      };
+      const brandInput = row.querySelector('.row-brand');
+      const qtyInput = row.querySelector('.row-qty');
+      if (brandInput) out.brand = brandInput.value.trim();
+      if (qtyInput) out.qty = Number(qtyInput.value) || 0;
+      return out;
+    })
     .filter((it) => it.name || it.price);
 }
 
 document.getElementById('addWorkRowBtn').addEventListener('click', () => addRepairRow(worksRowsEl, null));
-document.getElementById('addPartRowBtn').addEventListener('click', () => addRepairRow(partsRowsEl, null));
+document.getElementById('addPartRowBtn').addEventListener('click', () => addRepairRow(partsRowsEl, null, true));
+
+document.getElementById('advanceToggleBtn').addEventListener('click', () => {
+  advanceEnabled = !advanceEnabled;
+  document.getElementById('advanceToggleBtn').classList.toggle('active', advanceEnabled);
+  document.getElementById('advanceAmountWrap').classList.toggle('hidden', !advanceEnabled);
+  if (!advanceEnabled) document.getElementById('advanceAmountInput').value = '';
+  recomputeRepairSums();
+});
+document.getElementById('advanceAmountInput').addEventListener('input', recomputeRepairSums);
 
 function openRepairDialog(record) {
   editingRepairId = record ? record.id : null;
@@ -433,11 +498,17 @@ function openRepairDialog(record) {
   const works = record?.works?.length ? record.works : [null];
   const parts = record?.parts?.length ? record.parts : [null];
   works.forEach((w) => addRepairRow(worksRowsEl, w));
-  parts.forEach((p) => addRepairRow(partsRowsEl, p));
+  parts.forEach((p) => addRepairRow(partsRowsEl, p, true));
 
   repairForm.elements.title.value = record ? (record.title || '') : '';
   repairForm.elements.date.value = record ? record.date : toISODate(new Date());
+  repairForm.elements.parts_eta.value = record ? (record.parts_eta || '') : '';
   repairForm.elements.notes.value = record ? (record.notes || '') : '';
+
+  advanceEnabled = !!(record && Number(record.advance) > 0);
+  document.getElementById('advanceToggleBtn').classList.toggle('active', advanceEnabled);
+  document.getElementById('advanceAmountWrap').classList.toggle('hidden', !advanceEnabled);
+  document.getElementById('advanceAmountInput').value = advanceEnabled ? record.advance : '';
 
   recomputeRepairSums();
   openDialog(repairDialog);
@@ -552,6 +623,8 @@ repairForm.addEventListener('submit', async (e) => {
     title: repairForm.elements.title.value,
     date: repairForm.elements.date.value,
     notes: repairForm.elements.notes.value,
+    parts_eta: repairForm.elements.parts_eta.value,
+    advance: advanceEnabled ? (Number(document.getElementById('advanceAmountInput').value) || 0) : 0,
     works: collectRepairRows(worksRowsEl),
     parts: collectRepairRows(partsRowsEl),
   };
@@ -597,6 +670,132 @@ deleteRepairBtn.addEventListener('click', async () => {
     await loadClientHistory(historyClientId);
   } catch (err) {
     showToast(err.message, true);
+  }
+});
+
+// ---------- Заказ-наряд (предпросмотр и отправка клиенту) ----------
+// pendingApptForRepair приоритетнее historyClientId: если смета открыта из
+// расписания, historyClientId может остаться от предыдущего открытия карточки клиента.
+function getRepairOrderContext() {
+  if (pendingApptForRepair) {
+    const appt = pendingApptForRepair.appt;
+    const carLine = appt.client_id
+      ? [appt.car_make, appt.car_model].filter(Boolean).join(' ')
+      : (appt.walkin_car || '');
+    return { clientName: appt.client_name || '', carLine };
+  }
+  if (historyClientId) {
+    const client = state.clients.find((c) => c.id === historyClientId);
+    if (client) return { clientName: client.name, carLine: [client.car_make, client.car_model].filter(Boolean).join(' ') };
+  }
+  return { clientName: '', carLine: '' };
+}
+
+function buildOrderData() {
+  const ctx = getRepairOrderContext();
+  const works = collectRepairRows(worksRowsEl);
+  const parts = collectRepairRows(partsRowsEl);
+  const worksSum = sumItems(works);
+  const partsSum = sumItems(parts);
+  const advance = advanceEnabled ? (Number(document.getElementById('advanceAmountInput').value) || 0) : 0;
+  return {
+    clientName: ctx.clientName,
+    carLine: ctx.carLine,
+    partsEta: repairForm.elements.parts_eta.value,
+    title: repairForm.elements.title.value,
+    date: repairForm.elements.date.value,
+    notes: repairForm.elements.notes.value,
+    works,
+    parts,
+    worksSum,
+    partsSum,
+    advance,
+    total: Math.max(0, worksSum + partsSum - advance),
+  };
+}
+
+function itemMeta(it) {
+  return [it.brand, it.qty && it.qty !== 1 ? `×${it.qty}` : ''].filter(Boolean).join(' ');
+}
+
+function buildOrderHtml(order) {
+  const workLines = order.works
+    .map((w) => `<div class="order-line"><span>${escapeHtml(w.name)}</span><span>${fmtMoney(w.price)}</span></div>`)
+    .join('');
+  const partLines = order.parts
+    .map((p) => {
+      const meta = itemMeta(p);
+      const lineTotal = (Number(p.price) || 0) * (Number(p.qty) || 1);
+      return `<div class="order-line"><span>${escapeHtml(p.name)}${meta ? ` <span class="order-line-meta">(${escapeHtml(meta)})</span>` : ''}</span><span>${fmtMoney(lineTotal)}</span></div>`;
+    })
+    .join('');
+
+  return `
+    <div class="order-meta">
+      ${order.clientName ? `<div class="order-meta-row"><span>Клиент</span><strong>${escapeHtml(order.clientName)}</strong></div>` : ''}
+      ${order.carLine ? `<div class="order-meta-row"><span>Марка автомобиля</span><strong>${escapeHtml(order.carLine)}</strong></div>` : ''}
+      ${order.partsEta ? `<div class="order-meta-row"><span>Срок поставки запчастей</span><strong>${escapeHtml(order.partsEta)}</strong></div>` : ''}
+    </div>
+    <div class="order-sep"></div>
+    ${order.title ? `<h3 class="order-title">${escapeHtml(order.title)}</h3>` : ''}
+    ${order.date ? `<div class="order-date">${fmtFullDate(new Date(order.date + 'T00:00:00'))}</div>` : ''}
+    ${order.works.length ? `<div class="order-block"><div class="order-block-title">Работы</div>${workLines}<div class="order-line order-line-sum"><span>Сумма работ</span><span>${fmtMoney(order.worksSum)}</span></div></div>` : ''}
+    ${order.parts.length ? `<div class="order-block"><div class="order-block-title">Запчасти</div>${partLines}<div class="order-line order-line-sum"><span>Сумма запчастей</span><span>${fmtMoney(order.partsSum)}</span></div></div>` : ''}
+    ${order.advance > 0 ? `<div class="order-line order-line-advance"><span>Аванс</span><span>− ${fmtMoney(order.advance)}</span></div>` : ''}
+    <div class="order-total"><span>Итого к оплате</span><span>${fmtMoney(order.total)}</span></div>
+    ${order.notes ? `<div class="order-notes">${escapeHtml(order.notes)}</div>` : ''}
+  `;
+}
+
+function buildOrderText(order) {
+  const lines = ['ЗАКАЗ-НАРЯД'];
+  if (order.clientName) lines.push(`Клиент: ${order.clientName}`);
+  if (order.carLine) lines.push(`Марка автомобиля: ${order.carLine}`);
+  if (order.partsEta) lines.push(`Срок поставки запчастей: ${order.partsEta}`);
+  lines.push('');
+  if (order.title) lines.push(order.title);
+  if (order.date) lines.push(fmtFullDate(new Date(order.date + 'T00:00:00')));
+  if (order.works.length) {
+    lines.push('', 'Работы:');
+    order.works.forEach((w) => lines.push(`- ${w.name}: ${fmtMoney(w.price)}`));
+    lines.push(`Сумма работ: ${fmtMoney(order.worksSum)}`);
+  }
+  if (order.parts.length) {
+    lines.push('', 'Запчасти:');
+    order.parts.forEach((p) => {
+      const meta = itemMeta(p);
+      const lineTotal = (Number(p.price) || 0) * (Number(p.qty) || 1);
+      lines.push(`- ${p.name}${meta ? ` (${meta})` : ''}: ${fmtMoney(lineTotal)}`);
+    });
+    lines.push(`Сумма запчастей: ${fmtMoney(order.partsSum)}`);
+  }
+  if (order.advance > 0) lines.push('', `Аванс: − ${fmtMoney(order.advance)}`);
+  lines.push('', `Итого к оплате: ${fmtMoney(order.total)}`);
+  if (order.notes) lines.push('', `Заметки: ${order.notes}`);
+  return lines.join('\n');
+}
+
+document.getElementById('sendToClientBtn').addEventListener('click', () => {
+  const order = buildOrderData();
+  document.getElementById('orderContent').innerHTML = buildOrderHtml(order);
+  currentOrderText = buildOrderText(order);
+  openDialog(orderDialog);
+});
+
+document.getElementById('orderShareBtn').addEventListener('click', async () => {
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Заказ-наряд', text: currentOrderText });
+      return;
+    } catch (err) {
+      if (err?.name === 'AbortError') return;
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(currentOrderText);
+    showToast('Текст заказ-наряда скопирован — отправьте клиенту вручную');
+  } catch (err) {
+    showToast('Не удалось скопировать текст', true);
   }
 });
 

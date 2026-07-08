@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Гараж №1 — учёт клиентов и записей</title>
+<title>ГУРсервис — учёт клиентов и записей</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -14,9 +14,21 @@
 <div id="loginOverlay" class="dialog-overlay hidden">
   <div class="dialog login-dialog">
     <div class="brand login-brand">
-      <span class="brand-mark">01</span>
+      <span class="brand-mark" aria-hidden="true">
+      <svg class="brand-icon" viewBox="0 0 32 32" width="26" height="26" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="6" y="15" width="20" height="5" rx="2.5" fill="var(--bg)"/>
+        <path d="M11 15v5M13.5 15v5M16 15v5M18.5 15v5M21 15v5" stroke="var(--accent)" stroke-width="1" stroke-linecap="round"/>
+        <circle cx="16" cy="9" r="3.2" fill="none" stroke="var(--bg)" stroke-width="1.8"/>
+        <path d="M16 5.2v1.1M16 10.7v1.1M12.5 9h1.1M19.4 9h1.1M13.5 6.5l.8.8M17.7 10.7l.8.8M18.5 6.5l-.8.8M14.3 10.7l-.8.8" stroke="var(--bg)" stroke-width="1" stroke-linecap="round"/>
+        <line x1="16" y1="12.2" x2="16" y2="15" stroke="var(--bg)" stroke-width="1.8"/>
+        <path d="M6 17.5 3 22" stroke="var(--bg)" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="3" cy="23" r="1.6" fill="var(--bg)"/>
+        <path d="M26 17.5 29 22" stroke="var(--bg)" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="29" cy="23" r="1.6" fill="var(--bg)"/>
+      </svg>
+    </span>
       <div class="brand-text">
-        <h1>Гараж №1</h1>
+        <h1>ГУРсервис</h1>
         <p>учёт клиентов и записей</p>
       </div>
     </div>
@@ -33,9 +45,21 @@
 
 <header class="topbar">
   <div class="brand">
-    <span class="brand-mark">01</span>
+    <span class="brand-mark" aria-hidden="true">
+      <svg class="brand-icon" viewBox="0 0 32 32" width="26" height="26" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="6" y="15" width="20" height="5" rx="2.5" fill="var(--bg)"/>
+        <path d="M11 15v5M13.5 15v5M16 15v5M18.5 15v5M21 15v5" stroke="var(--accent)" stroke-width="1" stroke-linecap="round"/>
+        <circle cx="16" cy="9" r="3.2" fill="none" stroke="var(--bg)" stroke-width="1.8"/>
+        <path d="M16 5.2v1.1M16 10.7v1.1M12.5 9h1.1M19.4 9h1.1M13.5 6.5l.8.8M17.7 10.7l.8.8M18.5 6.5l-.8.8M14.3 10.7l-.8.8" stroke="var(--bg)" stroke-width="1" stroke-linecap="round"/>
+        <line x1="16" y1="12.2" x2="16" y2="15" stroke="var(--bg)" stroke-width="1.8"/>
+        <path d="M6 17.5 3 22" stroke="var(--bg)" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="3" cy="23" r="1.6" fill="var(--bg)"/>
+        <path d="M26 17.5 29 22" stroke="var(--bg)" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="29" cy="23" r="1.6" fill="var(--bg)"/>
+      </svg>
+    </span>
     <div class="brand-text">
-      <h1>Гараж №1</h1>
+      <h1>ГУРсервис</h1>
       <p>учёт клиентов и записей</p>
     </div>
   </div>
@@ -104,7 +128,7 @@
       <button type="button" class="ctab" data-ctab="history">История ремонта</button>
     </div>
     <form id="clientForm">
-      <label>Имя <span class="req">*</span><input required name="name" type="text" placeholder="Иван Петров"></label>
+      <label><span>Имя <span class="req">*</span></span><input required name="name" type="text" placeholder="Иван Петров"></label>
       <label>Телефон<input name="phone" id="clientPhoneInput" type="tel" placeholder="+7 928 280 88 50" class="mono-input"></label>
       <div class="row-2">
         <label>Марка<input name="car_make" type="text" placeholder="Toyota"></label>
@@ -149,7 +173,7 @@
 
       <div id="walkinFields" class="walkin-fields hidden">
         <p class="walkin-hint">Разовый визит — данные сохранятся только в этой записи, в базу клиентов не попадут.</p>
-        <label>Имя <span class="req">*</span><input name="walkin_name" type="text" placeholder="Как обращаться"></label>
+        <label><span>Имя <span class="req">*</span></span><input name="walkin_name" type="text" placeholder="Как обращаться"></label>
         <label>Телефон<input name="walkin_phone" id="walkinPhoneInput" type="tel" placeholder="+7 928 280 88 50" class="mono-input"></label>
         <label>Автомобиль<input name="walkin_car" type="text" placeholder="Toyota Camry, AB-123-C"></label>
       </div>
@@ -165,8 +189,8 @@
 
       <div id="apptDetailsFields">
         <div class="row-2">
-          <label>Дата <span class="req">*</span><input required name="date" type="date"></label>
-          <label>Время <span class="req">*</span><input required name="time" type="time"></label>
+          <label><span>Дата <span class="req">*</span></span><input required name="date" type="date"></label>
+          <label><span>Время <span class="req">*</span></span><input required name="time" type="time"></label>
         </div>
         <label>VIN<input name="vin" type="text" placeholder="17 символов, напр. JHMFA16586S000000" class="mono-input" maxlength="17" style="text-transform:uppercase"></label>
         <label>Услуга<input name="service" type="text" placeholder="Замена масла, диагностика…"></label>
@@ -212,7 +236,7 @@
     <h2 id="repairDialogTitle">Новая запись ремонта</h2>
     <form id="repairForm">
       <label>Заголовок<input name="title" type="text" placeholder="Например: ТО-1, ремонт рулевой рейки…"></label>
-      <label>Дата <span class="req">*</span><input required name="date" type="date"></label>
+      <label><span>Дата <span class="req">*</span></span><input required name="date" type="date"></label>
 
       <div class="repair-section">
         <div class="repair-section-head">
@@ -230,19 +254,42 @@
         </div>
         <div id="partsRows" class="repair-rows"></div>
         <div class="repair-sum-row"><span>Сумма запчастей</span><strong id="partsSum">0 ₽</strong></div>
+        <label>Срок поставки запчастей<input name="parts_eta" type="text" placeholder="например: 2-3 дня, к среде…"></label>
       </div>
+
+      <div class="repair-advance">
+        <button type="button" id="advanceToggleBtn" class="btn-ghost">Аванс</button>
+        <div id="advanceAmountWrap" class="hidden">
+          <input type="number" id="advanceAmountInput" min="0" step="0.01" placeholder="Сумма аванса" class="mono-input">
+        </div>
+      </div>
+      <div class="repair-sum-row hidden" id="advanceRow"><span>Аванс</span><strong id="advanceDisplay">− 0 ₽</strong></div>
 
       <div class="repair-total-row"><span>Итоговая сумма</span><strong id="repairTotal">0 ₽</strong></div>
 
       <label>Заметки<textarea name="notes" rows="2" placeholder="Комментарий к ремонту…"></textarea></label>
 
       <div class="dialog-actions">
+        <button type="button" id="sendToClientBtn" class="btn-ghost">Отправить</button>
         <button type="button" id="deleteRepairBtn" class="btn-danger hidden">Удалить</button>
         <div class="spacer"></div>
         <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
-        <button type="submit" class="btn-primary">Сохранить</button>
       </div>
+      <button type="submit" class="btn-primary btn-block">Сохранить</button>
     </form>
+  </div>
+</div>
+
+<!-- ===== Заказ-наряд: предпросмотр и отправка клиенту ===== -->
+<div id="orderDialog" class="dialog-overlay hidden">
+  <div class="dialog order-dialog">
+    <h2>Заказ-наряд</h2>
+    <div id="orderContent" class="order-doc"></div>
+    <div class="dialog-actions">
+      <div class="spacer"></div>
+      <button type="button" class="btn-ghost" data-close-dialog>Закрыть</button>
+      <button type="button" id="orderShareBtn" class="btn-primary">Отправить клиенту</button>
+    </div>
   </div>
 </div>
 

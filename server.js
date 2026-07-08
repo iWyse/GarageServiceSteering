@@ -128,7 +128,12 @@ function parseRepairRecord(row) {
 function normalizeRepairItems(items) {
   if (!Array.isArray(items)) return [];
   return items
-    .map((it) => ({ name: String(it?.name || '').trim(), price: Number(it?.price) || 0 }))
+    .map((it) => {
+      const out = { name: String(it?.name || '').trim(), price: Number(it?.price) || 0 };
+      if (it?.brand !== undefined) out.brand = String(it.brand || '').trim();
+      if (it?.qty !== undefined) out.qty = Number(it.qty) || 0;
+      return out;
+    })
     .filter((it) => it.name || it.price);
 }
 
@@ -141,24 +146,30 @@ function listRepairRecords(clientId) {
 
 function createRepairRecord(clientId, data) {
   const info = db
-    .prepare('INSERT INTO repair_records (client_id, title, date, works, parts, notes) VALUES (?, ?, ?, ?, ?, ?)')
+    .prepare(
+      'INSERT INTO repair_records (client_id, title, date, works, parts, parts_eta, advance, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    )
     .run(
       clientId,
       (data.title || '').trim(),
       data.date,
       JSON.stringify(normalizeRepairItems(data.works)),
       JSON.stringify(normalizeRepairItems(data.parts)),
+      data.parts_eta || '',
+      Number(data.advance) || 0,
       data.notes || ''
     );
   return parseRepairRecord(db.prepare('SELECT * FROM repair_records WHERE id = ?').get(info.lastInsertRowid));
 }
 
 function updateRepairRecord(id, data) {
-  db.prepare('UPDATE repair_records SET title=?, date=?, works=?, parts=?, notes=? WHERE id=?').run(
+  db.prepare('UPDATE repair_records SET title=?, date=?, works=?, parts=?, parts_eta=?, advance=?, notes=? WHERE id=?').run(
     (data.title || '').trim(),
     data.date,
     JSON.stringify(normalizeRepairItems(data.works)),
     JSON.stringify(normalizeRepairItems(data.parts)),
+    data.parts_eta || '',
+    Number(data.advance) || 0,
     data.notes || '',
     id
   );
