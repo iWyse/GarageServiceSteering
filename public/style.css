@@ -323,7 +323,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   text-decoration: none;
 }
 .cell-phone:hover { color: var(--accent); text-decoration: underline; }
-.edit-hint { color: var(--text-muted); display: flex; align-items: center; }
+.edit-hint { color: var(--text-muted); line-height: 0; }
 .clients-table tr:hover .edit-hint { color: var(--accent); }
 
 .empty-state { text-align: center; color: var(--text-muted); padding: 40px 0; }
@@ -454,9 +454,10 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 
 /* Смета (запись ремонта / очередь) — полей много, текст слипался при плотных
    отступах, поэтому здесь вертикальные промежутки немного шире, чем в остальных диалогах. */
-#repairForm, #queueForm { gap: 18px; }
-#repairForm .repair-section, #queueForm .repair-section { gap: 12px; }
-#repairForm .repair-rows, #queueForm .repair-rows { gap: 10px; }
+#repairForm, #queueForm { gap: 24px; }
+#repairForm .repair-section, #queueForm .repair-section { gap: 16px; }
+#repairForm .repair-rows, #queueForm .repair-rows { gap: 14px; }
+#repairForm .repair-row-part, #queueForm .repair-row-part { gap: 10px; padding: 10px; }
 
 .appt-summary {
   display: flex;

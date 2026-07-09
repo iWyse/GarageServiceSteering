@@ -22,6 +22,14 @@ function onlyDigits(v) {
   return (v || '').replace(/\D/g, '');
 }
 
+// Логин вводится без маски — сравниваем по цифрам, но приводим 8XXXXXXXXXX к 7XXXXXXXXXX,
+// как раньше делала маска на клиенте, иначе "8918..." и "+7918..." не совпадут.
+function normalizeRuPhoneDigits(v) {
+  let digits = onlyDigits(v);
+  if (digits.length === 11 && digits[0] === '8') digits = '7' + digits.slice(1);
+  return digits;
+}
+
 function parseCookies(req) {
   const header = req.headers.cookie || '';
   const cookies = {};
@@ -150,12 +158,13 @@ function listRepairRecords(clientId) {
 function createRepairRecord(clientId, data) {
   const info = db
     .prepare(
-      'INSERT INTO repair_records (client_id, title, date, works, parts, parts_eta, advance, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO repair_records (client_id, title, date, mileage, works, parts, parts_eta, advance, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     )
     .run(
       clientId,
       (data.title || '').trim(),
       data.date,
+      data.mileage ? Number(data.mileage) : null,
       JSON.stringify(normalizeRepairItems(data.works)),
       JSON.stringify(normalizeRepairItems(data.parts)),
       data.parts_eta || '',
@@ -166,9 +175,10 @@ function createRepairRecord(clientId, data) {
 }
 
 function updateRepairRecord(id, data) {
-  db.prepare('UPDATE repair_records SET title=?, date=?, works=?, parts=?, parts_eta=?, advance=?, notes=? WHERE id=?').run(
+  db.prepare('UPDATE repair_records SET title=?, date=?, mileage=?, works=?, parts=?, parts_eta=?, advance=?, notes=? WHERE id=?').run(
     (data.title || '').trim(),
     data.date,
+    data.mileage ? Number(data.mileage) : null,
     JSON.stringify(normalizeRepairItems(data.works)),
     JSON.stringify(normalizeRepairItems(data.parts)),
     data.parts_eta || '',
@@ -196,8 +206,8 @@ function listQueueEntries() {
 function createQueueEntry(data) {
   const info = db
     .prepare(
-      `INSERT INTO queue_entries (name, phone, car_make, car_model, plate, vin, status, title, date, works, parts, parts_eta, advance, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO queue_entries (name, phone, car_make, car_model, plate, vin, status, title, date, mileage, works, parts, parts_eta, advance, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       (data.name || '').trim(),
@@ -209,6 +219,7 @@ function createQueueEntry(data) {
       data.status || 'waiting',
       (data.title || '').trim(),
       data.date || '',
+      data.mileage ? Number(data.mileage) : null,
       JSON.stringify(normalizeRepairItems(data.works)),
       JSON.stringify(normalizeRepairItems(data.parts)),
       data.parts_eta || '',
@@ -221,7 +232,7 @@ function createQueueEntry(data) {
 function updateQueueEntry(id, data) {
   db.prepare(
     `UPDATE queue_entries
-     SET name=?, phone=?, car_make=?, car_model=?, plate=?, vin=?, status=?, title=?, date=?, works=?, parts=?, parts_eta=?, advance=?, notes=?
+     SET name=?, phone=?, car_make=?, car_model=?, plate=?, vin=?, status=?, title=?, date=?, mileage=?, works=?, parts=?, parts_eta=?, advance=?, notes=?
      WHERE id=?`
   ).run(
     (data.name || '').trim(),
@@ -233,6 +244,7 @@ function updateQueueEntry(id, data) {
     data.status || 'waiting',
     (data.title || '').trim(),
     data.date || '',
+    data.mileage ? Number(data.mileage) : null,
     JSON.stringify(normalizeRepairItems(data.works)),
     JSON.stringify(normalizeRepairItems(data.parts)),
     data.parts_eta || '',
@@ -412,7 +424,7 @@ const server = http.createServer(async (req, res) => {
     // Auth
     if (pathname === '/api/login' && req.method === 'POST') {
       const body = await readBody(req);
-      const phoneOk = onlyDigits(body.phone) === onlyDigits(OWNER_PHONE);
+      const phoneOk = normalizeRuPhoneDigits(body.phone) === normalizeRuPhoneDigits(OWNER_PHONE);
       const passOk = (body.password || '') === OWNER_PASSWORD;
       if (!phoneOk || !passOk) {
         return sendJSON(res, 401, { error: 'Неверный логин или пароль' });

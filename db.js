@@ -39,6 +39,7 @@ db.exec(`
     client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
     title TEXT,              -- заголовок записи, напр. "ТО-1" или "Ремонт рулевой рейки"
     date TEXT NOT NULL,     -- YYYY-MM-DD
+    mileage INTEGER,         -- пробег авто на момент визита, км; пусто = не указан
     works TEXT NOT NULL DEFAULT '[]', -- JSON [{name, price}] — выполненные работы
     parts TEXT NOT NULL DEFAULT '[]', -- JSON [{name, brand, qty, price}] — запчасти
     parts_eta TEXT,          -- срок поставки запчастей
@@ -58,6 +59,7 @@ db.exec(`
     status TEXT NOT NULL DEFAULT 'waiting', -- waiting | arrived
     title TEXT,
     date TEXT,
+    mileage INTEGER,
     works TEXT NOT NULL DEFAULT '[]',
     parts TEXT NOT NULL DEFAULT '[]',
     parts_eta TEXT,
@@ -178,5 +180,17 @@ function migrateClientTagColumn() {
   }
 }
 migrateClientTagColumn();
+
+// ---------- Миграция: пробег авто ----------
+function migrateMileageColumn() {
+  for (const table of ['repair_records', 'queue_entries']) {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+    if (columns.length && !columns.includes('mileage')) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN mileage INTEGER`);
+      console.log(`База данных обновлена: добавлен пробег авто (${table}).`);
+    }
+  }
+}
+migrateMileageColumn();
 
 export default db;

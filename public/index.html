@@ -31,7 +31,7 @@
       </div>
     </div>
     <form id="loginForm">
-      <label>Телефон<input required name="phone" id="loginPhoneInput" type="tel" placeholder="+7 918 987 90 60" class="mono-input" autocomplete="username"></label>
+      <label>Телефон<input required name="phone" id="loginPhoneInput" type="tel" placeholder="89189879060" class="mono-input" autocomplete="username" inputmode="numeric"></label>
       <label>Пароль<input required name="password" type="password" placeholder="Пароль" class="mono-input" autocomplete="current-password"></label>
       <p id="loginError" class="login-error hidden"></p>
       <button type="submit" class="btn-primary btn-block">Войти</button>
@@ -211,6 +211,7 @@
 
       <label>Заголовок<input name="title" type="text" placeholder="Например: ТО-1, ремонт рулевой рейки…"></label>
       <label><span>Дата <span class="req">*</span></span><input required name="date" type="date"></label>
+      <label>Пробег, км<input name="mileage" type="number" min="0" step="1" placeholder="Например: 85000" class="mono-input"></label>
 
       <div class="repair-section">
         <div class="repair-section-head">
@@ -370,6 +371,7 @@
     <form id="repairForm">
       <label>Заголовок<input name="title" type="text" placeholder="Например: ТО-1, ремонт рулевой рейки…"></label>
       <label><span>Дата <span class="req">*</span></span><input required name="date" type="date"></label>
+      <label>Пробег, км<input name="mileage" type="number" min="0" step="1" placeholder="Например: 85000" class="mono-input"></label>
 
       <div class="repair-section">
         <div class="repair-section-head">

@@ -144,8 +144,9 @@ function attachPhoneMask(input) {
 
 attachPhoneMask(document.getElementById('clientPhoneInput'));
 attachPhoneMask(document.getElementById('walkinPhoneInput'));
-attachPhoneMask(document.getElementById('loginPhoneInput'));
 attachPhoneMask(document.getElementById('queuePhoneInput'));
+// Логин — просто цифры без пробелов, без маски: так быстрее вводить и меньше шансов
+// промахнуться курсором при наборе на телефоне.
 
 // ---------- Tabs ----------
 document.querySelectorAll('.tab').forEach((btn) => {
@@ -268,6 +269,10 @@ function fmtMoney(n) {
   return `${(Number(n) || 0).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ₽`;
 }
 
+function fmtMileage(n) {
+  return `${Number(n).toLocaleString('ru-RU')} км`;
+}
+
 function sumItems(items) {
   return items.reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.qty) || 1), 0);
 }
@@ -309,6 +314,7 @@ async function loadClientHistory(clientId) {
         <strong class="history-total">${fmtMoney(total)}</strong>
       </div>
       ${r.title ? `<span class="history-date">${fmtFullDate(dateObj)}</span>` : ''}
+      ${r.mileage ? `<div class="repair-list-sum"><span>Пробег</span><span>${fmtMileage(r.mileage)}</span></div>` : ''}
       ${renderRepairBlock('Работы', r.works, worksSum)}
       ${renderRepairBlock('Запчасти', r.parts, partsSum)}
       ${r.parts_eta ? `<div class="repair-list-sum"><span>Срок поставки запчастей</span><span>${escapeHtml(r.parts_eta)}</span></div>` : ''}
@@ -527,6 +533,7 @@ function openRepairDialog(record) {
 
   repairForm.elements.title.value = record ? (record.title || '') : '';
   repairForm.elements.date.value = record ? record.date : toISODate(new Date());
+  repairForm.elements.mileage.value = record && record.mileage ? record.mileage : '';
   repairForm.elements.parts_eta.value = record ? (record.parts_eta || '') : '';
   repairForm.elements.notes.value = record ? (record.notes || '') : '';
 
@@ -647,6 +654,7 @@ repairForm.addEventListener('submit', async (e) => {
   const data = {
     title: repairForm.elements.title.value,
     date: repairForm.elements.date.value,
+    mileage: repairForm.elements.mileage.value,
     notes: repairForm.elements.notes.value,
     parts_eta: repairForm.elements.parts_eta.value,
     advance: advanceEnabled ? (Number(document.getElementById('advanceAmountInput').value) || 0) : 0,
@@ -726,6 +734,7 @@ function buildOrderData() {
   return {
     clientName: ctx.clientName,
     carLine: ctx.carLine,
+    mileage: repairForm.elements.mileage.value,
     partsEta: repairForm.elements.parts_eta.value,
     title: repairForm.elements.title.value,
     date: repairForm.elements.date.value,
@@ -759,6 +768,7 @@ function buildOrderHtml(order) {
     <div class="order-meta">
       ${order.clientName ? `<div class="order-meta-row"><span>Клиент</span><strong>${escapeHtml(order.clientName)}</strong></div>` : ''}
       ${order.carLine ? `<div class="order-meta-row"><span>Марка автомобиля</span><strong>${escapeHtml(order.carLine)}</strong></div>` : ''}
+      ${order.mileage ? `<div class="order-meta-row"><span>Пробег</span><strong>${fmtMileage(order.mileage)}</strong></div>` : ''}
       ${order.partsEta ? `<div class="order-meta-row"><span>Срок поставки запчастей</span><strong>${escapeHtml(order.partsEta)}</strong></div>` : ''}
     </div>
     <div class="order-sep"></div>
@@ -906,6 +916,7 @@ async function renderOrderToCanvas() {
 
   if (order.clientName) row('Клиент', order.clientName);
   if (order.carLine) row('Марка автомобиля', order.carLine);
+  if (order.mileage) row('Пробег', fmtMileage(order.mileage));
   if (order.partsEta) row('Срок поставки запчастей', order.partsEta);
   y += 4;
 
@@ -1249,6 +1260,7 @@ function buildQueueOrderData() {
   return {
     clientName: queueForm.elements.name.value,
     carLine: [queueForm.elements.car_make.value, queueForm.elements.car_model.value].filter(Boolean).join(' '),
+    mileage: queueForm.elements.mileage.value,
     partsEta: queueForm.elements.parts_eta.value,
     title: queueForm.elements.title.value,
     date: queueForm.elements.date.value,
