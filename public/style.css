@@ -11,6 +11,7 @@
   --status-progress: #e8a33d;
   --status-done: #5c8a66;
   --status-cancelled: #b4483f;
+  --status-waiting: #d9a916;
   --radius: 3px;
   --font-display: 'Oswald', sans-serif;
   --font-body: 'Inter', sans-serif;
@@ -193,6 +194,11 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   flex-direction: column;
 }
 .day-col.is-today { border-color: var(--accent); }
+@media (max-width: 900px) {
+  /* На мобильных дни идут списком друг под другом — без этого пустой день
+     тянется почти на весь экран (min-height рассчитан на десктопную сетку). */
+  .day-col { min-height: 0; }
+}
 
 .day-head {
   padding: 10px 12px;
@@ -351,7 +357,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   cursor: pointer;
   color: #fff;
 }
-.queue-status-badge[data-status="waiting"] { background: var(--status-planned); }
+.queue-status-badge[data-status="waiting"] { background: var(--status-waiting); color: #1b1a17; }
 .queue-status-badge[data-status="arrived"] { background: var(--status-done); }
 
 /* ---------- Dialog ---------- */

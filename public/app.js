@@ -767,12 +767,267 @@ function buildOrderHtml(order) {
 }
 
 // Кнопка открывает предпросмотр заказ-наряда для скриншота — на мобильных
-// он растягивается на весь экран (см. media-query в style.css), отправки
-// из приложения нет: снимок отправляют клиенту вручную, чем удобно.
+// он растягивается на весь экран (см. media-query в style.css). Плюс кнопка
+// "Скачать картинку" ниже — рисует то же самое в PNG, чтобы удобно переслать
+// в мессенджер, не полагаясь на системный скриншот.
+let currentOrderData = null;
+
 document.getElementById('sendToClientBtn').addEventListener('click', () => {
   const order = buildOrderData();
+  currentOrderData = order;
   document.getElementById('orderContent').innerHTML = buildOrderHtml(order);
   openDialog(orderDialog);
+});
+
+// ---------- Скачать заказ-наряд как PNG ----------
+// Рисуем сразу на <canvas> (без SVG/foreignObject): Chromium "пачкает" canvas
+// при экспорте картинки, нарисованной через foreignObject, даже без внешних
+// ресурсов — toDataURL/toBlob после этого падают с "Tainted canvases may not
+// be exported". Прямая отрисовка текста/фигур такому ограничению не подвержена,
+// и заодно позволяет использовать реальные шрифты сайта (fillText их видит).
+const ORDER_IMG = {
+  width: 480,
+  pad: 28,
+  colors: {
+    bg: '#242220',
+    surface2: '#2c2925',
+    text: '#ede9e1',
+    textMuted: '#a39c8e',
+    accent: '#e8a33d',
+    border: '#3b362e',
+    danger: '#b4483f',
+  },
+  fontDisplay: 'Oswald, sans-serif',
+  fontBody: 'Inter, sans-serif',
+  fontMono: '"JetBrains Mono", monospace',
+};
+
+function wrapCanvasText(ctx, text, maxWidth) {
+  const words = String(text).split(' ');
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (line && ctx.measureText(test).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [''];
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+async function renderOrderToCanvas() {
+  const order = currentOrderData;
+  if (!order) throw new Error('Нет данных заказ-наряда');
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+
+  const { width, pad, colors: C } = ORDER_IMG;
+  const contentW = width - pad * 2;
+  const scale = 2; // рисуем крупнее, чтобы текст не был мыльным при пересылке
+  const maxHeight = 4000;
+
+  const draft = document.createElement('canvas');
+  draft.width = width * scale;
+  draft.height = maxHeight * scale;
+  const ctx = draft.getContext('2d');
+  ctx.scale(scale, scale);
+  ctx.textBaseline = 'alphabetic';
+
+  ctx.fillStyle = C.bg;
+  ctx.fillRect(0, 0, width, maxHeight);
+  ctx.fillStyle = C.accent;
+  ctx.fillRect(0, 0, width, 4);
+
+  let y = 4 + 26;
+
+  function row(label, value, lead = 22) {
+    ctx.font = `600 15px ${ORDER_IMG.fontBody}`;
+    ctx.fillStyle = C.textMuted;
+    ctx.textAlign = 'left';
+    ctx.fillText(label, pad, y);
+    ctx.fillStyle = C.text;
+    ctx.textAlign = 'right';
+    ctx.fillText(value, width - pad, y);
+    ctx.textAlign = 'left';
+    y += lead;
+  }
+  function dashedDivider() {
+    ctx.strokeStyle = C.border;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(pad, y);
+    ctx.lineTo(width - pad, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    y += 18;
+  }
+
+  ctx.font = `600 21px ${ORDER_IMG.fontDisplay}`;
+  ctx.fillStyle = C.text;
+  ctx.textAlign = 'center';
+  ctx.fillText('ГУРСЕРВИС', width / 2, y);
+  y += 24;
+  ctx.font = `14px ${ORDER_IMG.fontBody}`;
+  ctx.fillStyle = C.textMuted;
+  ctx.fillText('ул. Хворостянского 20, ГСК 75А', width / 2, y);
+  ctx.textAlign = 'left';
+  y += 22;
+
+  ctx.strokeStyle = C.border;
+  ctx.beginPath();
+  ctx.moveTo(pad, y);
+  ctx.lineTo(width - pad, y);
+  ctx.stroke();
+  y += 24;
+
+  if (order.clientName) row('Клиент', order.clientName);
+  if (order.carLine) row('Марка автомобиля', order.carLine);
+  if (order.partsEta) row('Срок поставки запчастей', order.partsEta);
+  y += 4;
+
+  if (order.title) {
+    ctx.font = `600 18px ${ORDER_IMG.fontDisplay}`;
+    ctx.fillStyle = C.text;
+    ctx.fillText(order.title.toUpperCase(), pad, y);
+    y += 26;
+  }
+  if (order.date) {
+    ctx.font = `14px ${ORDER_IMG.fontMono}`;
+    ctx.fillStyle = C.accent;
+    ctx.fillText(fmtFullDate(new Date(order.date + 'T00:00:00')), pad, y);
+    y += 24;
+  }
+
+  function block(title, items) {
+    if (!items.length) return;
+    y += 8;
+    ctx.font = `13px ${ORDER_IMG.fontBody}`;
+    ctx.fillStyle = C.textMuted;
+    ctx.fillText(title.toUpperCase(), pad, y);
+    y += 20;
+
+    let sum = 0;
+    items.forEach((it) => {
+      const meta = itemMeta(it);
+      const lineTotal = (Number(it.price) || 0) * (Number(it.qty) || 1);
+      sum += lineTotal;
+      const priceText = fmtMoney(lineTotal);
+
+      ctx.font = `600 15px ${ORDER_IMG.fontBody}`;
+      const priceW = ctx.measureText(priceText).width;
+      const nameLines = wrapCanvasText(ctx, it.name, contentW - priceW - 12);
+
+      ctx.fillStyle = C.text;
+      ctx.textAlign = 'left';
+      ctx.fillText(nameLines[0], pad, y);
+      ctx.textAlign = 'right';
+      ctx.fillText(priceText, width - pad, y);
+      ctx.textAlign = 'left';
+      y += 20;
+      for (let i = 1; i < nameLines.length; i++) {
+        ctx.fillText(nameLines[i], pad, y);
+        y += 20;
+      }
+      if (meta) {
+        ctx.font = `14px ${ORDER_IMG.fontBody}`;
+        ctx.fillStyle = C.textMuted;
+        ctx.fillText(meta, pad, y);
+        y += 19;
+      }
+    });
+
+    dashedDivider();
+    ctx.font = `14px ${ORDER_IMG.fontBody}`;
+    ctx.fillStyle = C.textMuted;
+    ctx.textAlign = 'left';
+    ctx.fillText(`Сумма: ${title.toLowerCase()}`, pad, y);
+    ctx.textAlign = 'right';
+    ctx.fillText(fmtMoney(sum), width - pad, y);
+    ctx.textAlign = 'left';
+    y += 24;
+  }
+
+  block('Работы', order.works);
+  block('Запчасти', order.parts);
+
+  if (order.advance > 0) {
+    ctx.font = `15px ${ORDER_IMG.fontBody}`;
+    ctx.fillStyle = C.danger;
+    ctx.textAlign = 'left';
+    ctx.fillText('Аванс', pad, y);
+    ctx.textAlign = 'right';
+    ctx.fillText(`− ${fmtMoney(order.advance)}`, width - pad, y);
+    ctx.textAlign = 'left';
+    y += 26;
+  }
+
+  y += 4;
+  const totalBoxH = 42;
+  ctx.fillStyle = C.surface2;
+  roundRectPath(ctx, pad, y, contentW, totalBoxH, 4);
+  ctx.fill();
+  ctx.strokeStyle = C.border;
+  ctx.stroke();
+  ctx.font = `600 18px ${ORDER_IMG.fontDisplay}`;
+  ctx.fillStyle = C.text;
+  ctx.textAlign = 'left';
+  ctx.fillText('ИТОГО К ОПЛАТЕ', pad + 14, y + totalBoxH / 2 + 6);
+  ctx.textAlign = 'right';
+  ctx.fillText(fmtMoney(order.total), width - pad - 14, y + totalBoxH / 2 + 6);
+  ctx.textAlign = 'left';
+  y += totalBoxH + 20;
+
+  if (order.notes) {
+    dashedDivider();
+    ctx.font = `15px ${ORDER_IMG.fontBody}`;
+    ctx.fillStyle = C.textMuted;
+    wrapCanvasText(ctx, order.notes, contentW).forEach((line) => {
+      ctx.fillText(line, pad, y);
+      y += 20;
+    });
+  }
+
+  y += 20;
+
+  const finalCanvas = document.createElement('canvas');
+  const finalHeightPx = Math.ceil(y);
+  finalCanvas.width = width * scale;
+  finalCanvas.height = finalHeightPx * scale;
+  const fctx = finalCanvas.getContext('2d');
+  fctx.drawImage(draft, 0, 0, width * scale, finalHeightPx * scale, 0, 0, width * scale, finalHeightPx * scale);
+  return finalCanvas;
+}
+
+document.getElementById('orderDownloadBtn').addEventListener('click', async () => {
+  try {
+    const canvas = await renderOrderToCanvas();
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        showToast('Не удалось сохранить изображение', true);
+        return;
+      }
+      const link = document.createElement('a');
+      link.download = 'zakaz-naryad.png';
+      link.href = URL.createObjectURL(blob);
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+    }, 'image/png');
+  } catch (err) {
+    showToast('Не удалось сохранить изображение', true);
+  }
 });
 
 // ================= QUEUE (клиенты в очереди на запчасти) =================
@@ -806,7 +1061,7 @@ function renderQueue() {
     item.innerHTML = `
       <div class="queue-item-head">
         <span class="queue-item-name">${escapeHtml(q.name)}</span>
-        <button type="button" class="queue-status-badge" data-status="${status}">${status === 'arrived' ? 'Все пришло' : 'В ожидании'}</button>
+        <button type="button" class="queue-status-badge" data-status="${status}">${status === 'arrived' ? 'Запчасти пришли' : 'В ожидании'}</button>
       </div>
       ${carLine ? `<div class="queue-item-car">${escapeHtml(carLine)}</div>` : ''}
       ${q.title ? `<div class="queue-item-title">${escapeHtml(q.title)}</div>` : ''}
@@ -989,6 +1244,7 @@ function buildQueueOrderData() {
 
 document.getElementById('queueOrderBtn').addEventListener('click', () => {
   const order = buildQueueOrderData();
+  currentOrderData = order;
   document.getElementById('orderContent').innerHTML = buildOrderHtml(order);
   openDialog(orderDialog);
 });
