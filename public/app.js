@@ -188,6 +188,20 @@ const EDIT_ICON_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" fill="non
   <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
+const COPY_ICON_SVG = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
+  <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>`;
+
+async function copyVinToClipboard(vin) {
+  try {
+    await navigator.clipboard.writeText(vin);
+    showToast('VIN скопирован');
+  } catch {
+    showToast('Не удалось скопировать VIN', true);
+  }
+}
+
 function renderClients() {
   const q = document.getElementById('clientSearch').value.trim().toLowerCase();
   const body = document.getElementById('clientsBody');
@@ -207,12 +221,19 @@ function renderClients() {
       <td>${escapeHtml([c.car_make, c.car_model].filter(Boolean).join(' ') || '—')}</td>
       <td class="cell-plate">${escapeHtml(c.plate || '—')}</td>
       <td class="cell-tag">${escapeHtml(c.tag || '—')}</td>
-      <td class="cell-plate">${escapeHtml(c.vin || '—')}</td>
+      <td class="cell-plate">${c.vin ? `<span class="cell-vin">${escapeHtml(c.vin)}<button type="button" class="vin-copy-btn" title="Копировать VIN">${COPY_ICON_SVG}</button></span>` : '—'}</td>
       <td class="cell-notes">${escapeHtml(c.notes || '')}</td>
       <td class="edit-hint">${EDIT_ICON_SVG}</td>
     `;
     const phoneLink = tr.querySelector('.cell-phone');
     if (phoneLink) phoneLink.addEventListener('click', (e) => e.stopPropagation());
+    const vinCopyBtn = tr.querySelector('.vin-copy-btn');
+    if (vinCopyBtn) {
+      vinCopyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        copyVinToClipboard(c.vin);
+      });
+    }
     tr.addEventListener('click', () => openClientDialog(c));
     body.appendChild(tr);
   });

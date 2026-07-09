@@ -325,6 +325,20 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .cell-phone:hover { color: var(--accent); text-decoration: underline; }
 .edit-hint { color: var(--text-muted); line-height: 0; }
 .clients-table tr:hover .edit-hint { color: var(--accent); }
+.cell-vin { display: inline-flex; align-items: center; gap: 6px; }
+.vin-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  line-height: 0;
+}
+.vin-copy-btn:hover { color: var(--accent); background: var(--surface-2); }
 
 .empty-state { text-align: center; color: var(--text-muted); padding: 40px 0; }
 
