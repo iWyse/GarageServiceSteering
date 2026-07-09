@@ -314,6 +314,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .clients-table tr:hover { background: var(--surface-2); cursor: pointer; }
 .cell-name { font-weight: 600; }
 .cell-plate { font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
+.cell-tag { font-size: 13px; color: var(--text-muted); }
 .cell-notes { color: var(--text-muted); font-size: 13px; max-width: 220px; }
 .cell-phone {
   font-family: var(--font-mono);
@@ -322,7 +323,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   text-decoration: none;
 }
 .cell-phone:hover { color: var(--accent); text-decoration: underline; }
-.edit-hint { color: var(--text-muted); font-size: 12px; }
+.edit-hint { color: var(--text-muted); display: flex; align-items: center; }
+.clients-table tr:hover .edit-hint { color: var(--accent); }
 
 .empty-state { text-align: center; color: var(--text-muted); padding: 40px 0; }
 
@@ -359,6 +361,42 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 }
 .queue-status-badge[data-status="waiting"] { background: var(--status-waiting); color: #1b1a17; }
 .queue-status-badge[data-status="arrived"] { background: var(--status-done); }
+
+/* ---------- Consumables ---------- */
+.consumables-list { display: flex; flex-direction: column; gap: 14px; }
+.consumable-category {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+.consumable-category-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.consumable-category-name { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.03em; font-size: 14px; }
+.consumable-category-actions { display: flex; gap: 14px; flex-shrink: 0; }
+.consumable-items { display: flex; flex-direction: column; }
+.consumable-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.consumable-item:last-child { border-bottom: none; }
+.consumable-item:hover { background: var(--surface-2); }
+.consumable-item-name { font-size: 14px; }
+.consumable-item-article { font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
+.consumable-items-empty { margin: 0; padding: 12px 14px; font-size: 13px; color: var(--text-muted); }
 
 /* ---------- Dialog ---------- */
 .dialog-overlay {
@@ -413,6 +451,12 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .call-btn:hover { filter: brightness(1.1); transform: scale(1.06); }
 .dialog form { display: flex; flex-direction: column; gap: 12px; }
 .dialog label { font-size: 12px; color: var(--text-muted); display: flex; flex-direction: column; gap: 5px; }
+
+/* Смета (запись ремонта / очередь) — полей много, текст слипался при плотных
+   отступах, поэтому здесь вертикальные промежутки немного шире, чем в остальных диалогах. */
+#repairForm, #queueForm { gap: 18px; }
+#repairForm .repair-section, #queueForm .repair-section { gap: 12px; }
+#repairForm .repair-rows, #queueForm .repair-rows { gap: 10px; }
 
 .appt-summary {
   display: flex;
@@ -612,8 +656,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   border-radius: var(--radius);
   background: var(--surface-2);
 }
-.order-notes { font-size: 15px; color: var(--text-muted); border-top: 1px dashed var(--border); padding-top: 8px; }
-
 /* На мобильных заказ-наряд открывается во весь экран — удобно сразу сделать скриншот. */
 @media (max-width: 600px) {
   #orderDialog { padding: 0; }

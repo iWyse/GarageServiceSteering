@@ -182,12 +182,17 @@ async function loadClients() {
   fillClientSelect();
 }
 
+const EDIT_ICON_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
 function renderClients() {
   const q = document.getElementById('clientSearch').value.trim().toLowerCase();
   const body = document.getElementById('clientsBody');
   const filtered = state.clients.filter((c) => {
     if (!q) return true;
-    return [c.name, c.phone, c.plate, c.car_make, c.car_model].join(' ').toLowerCase().includes(q);
+    return [c.name, c.phone, c.plate, c.tag, c.car_make, c.car_model].join(' ').toLowerCase().includes(q);
   });
   body.innerHTML = '';
   document.getElementById('clientsEmpty').classList.toggle('hidden', state.clients.length !== 0);
@@ -200,9 +205,10 @@ function renderClients() {
       <td>${c.phone ? `<a class="cell-phone" href="tel:${escapeHtml(telHref)}">${escapeHtml(c.phone)}</a>` : '—'}</td>
       <td>${escapeHtml([c.car_make, c.car_model].filter(Boolean).join(' ') || '—')}</td>
       <td class="cell-plate">${escapeHtml(c.plate || '—')}</td>
+      <td class="cell-tag">${escapeHtml(c.tag || '—')}</td>
       <td class="cell-plate">${escapeHtml(c.vin || '—')}</td>
       <td class="cell-notes">${escapeHtml(c.notes || '')}</td>
-      <td class="edit-hint">изменить →</td>
+      <td class="edit-hint">${EDIT_ICON_SVG}</td>
     `;
     const phoneLink = tr.querySelector('.cell-phone');
     if (phoneLink) phoneLink.addEventListener('click', (e) => e.stopPropagation());
@@ -762,7 +768,12 @@ function buildOrderHtml(order) {
     ${order.parts.length ? `<div class="order-block"><div class="order-block-title">Запчасти</div>${partLines}<div class="order-line order-line-sum"><span>Сумма запчастей</span><span>${fmtMoney(order.partsSum)}</span></div></div>` : ''}
     ${order.advance > 0 ? `<div class="order-line order-line-advance"><span>Аванс</span><span>− ${fmtMoney(order.advance)}</span></div>` : ''}
     <div class="order-total"><span>Итого к оплате</span><span>${fmtMoney(order.total)}</span></div>
-    ${order.notes ? `<div class="order-notes">${escapeHtml(order.notes)}</div>` : ''}
+    ${order.notes ? `<div class="order-block"><div class="order-block-title">Рекомендации</div>${order.notes
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => `<div class="order-line"><span>${escapeHtml(line)}</span></div>`)
+      .join('')}</div>` : ''}
   `;
 }
 
@@ -990,13 +1001,22 @@ async function renderOrderToCanvas() {
   ctx.textAlign = 'left';
   y += totalBoxH + 20;
 
-  if (order.notes) {
-    dashedDivider();
-    ctx.font = `15px ${ORDER_IMG.fontBody}`;
+  const recLines = order.notes
+    ? order.notes.split('\n').map((line) => line.trim()).filter(Boolean)
+    : [];
+  if (recLines.length) {
+    y += 8;
+    ctx.font = `13px ${ORDER_IMG.fontBody}`;
     ctx.fillStyle = C.textMuted;
-    wrapCanvasText(ctx, order.notes, contentW).forEach((line) => {
-      ctx.fillText(line, pad, y);
-      y += 20;
+    ctx.fillText('РЕКОМЕНДАЦИИ', pad, y);
+    y += 20;
+    ctx.font = `15px ${ORDER_IMG.fontBody}`;
+    ctx.fillStyle = C.text;
+    recLines.forEach((line) => {
+      wrapCanvasText(ctx, line, contentW).forEach((wrapped) => {
+        ctx.fillText(wrapped, pad, y);
+        y += 20;
+      });
     });
   }
 
@@ -1247,6 +1267,186 @@ document.getElementById('queueOrderBtn').addEventListener('click', () => {
   currentOrderData = order;
   document.getElementById('orderContent').innerHTML = buildOrderHtml(order);
   openDialog(orderDialog);
+});
+
+// ================= CONSUMABLES (расходники) =================
+// Категории и сами расходники (с артикулами) заводит владелец сам —
+// никакого предустановленного списка нет.
+const consumableCategoryDialog = document.getElementById('consumableCategoryDialog');
+const consumableCategoryForm = document.getElementById('consumableCategoryForm');
+const deleteConsumableCategoryBtn = document.getElementById('deleteConsumableCategoryBtn');
+const consumableDialog = document.getElementById('consumableDialog');
+const consumableForm = document.getElementById('consumableForm');
+const deleteConsumableBtn = document.getElementById('deleteConsumableBtn');
+let consumableCategories = [];
+let consumables = [];
+let editingConsumableCategoryId = null;
+let editingConsumableId = null;
+
+async function loadConsumables() {
+  [consumableCategories, consumables] = await Promise.all([
+    api('/api/consumable-categories'),
+    api('/api/consumables'),
+  ]);
+  renderConsumables();
+}
+
+function renderConsumableItems(container, items) {
+  if (!items.length) {
+    const empty = document.createElement('p');
+    empty.className = 'consumable-items-empty';
+    empty.textContent = 'Пока нет расходников в этой категории.';
+    container.appendChild(empty);
+    return;
+  }
+  items.forEach((it) => {
+    const row = document.createElement('div');
+    row.className = 'consumable-item';
+    row.innerHTML = `
+      <span class="consumable-item-name">${escapeHtml(it.name)}</span>
+      ${it.article ? `<span class="consumable-item-article">${escapeHtml(it.article)}</span>` : ''}
+    `;
+    row.addEventListener('click', () => openConsumableDialog(it));
+    container.appendChild(row);
+  });
+}
+
+function renderConsumables() {
+  const list = document.getElementById('consumablesList');
+  const empty = document.getElementById('consumablesEmpty');
+  list.innerHTML = '';
+  empty.classList.toggle('hidden', consumableCategories.length !== 0);
+
+  consumableCategories.forEach((cat) => {
+    const items = consumables.filter((c) => c.category_id === cat.id);
+    const block = document.createElement('div');
+    block.className = 'consumable-category';
+    block.innerHTML = `
+      <div class="consumable-category-head">
+        <span class="consumable-category-name">${escapeHtml(cat.name)}</span>
+        <div class="consumable-category-actions">
+          <button type="button" class="btn-link" data-action="add-item">+ расходник</button>
+          <button type="button" class="btn-link" data-action="edit-category">изменить</button>
+        </div>
+      </div>
+      <div class="consumable-items"></div>
+    `;
+    renderConsumableItems(block.querySelector('.consumable-items'), items);
+    block.querySelector('[data-action="add-item"]').addEventListener('click', () => openConsumableDialog(null, cat.id));
+    block.querySelector('[data-action="edit-category"]').addEventListener('click', () => openConsumableCategoryDialog(cat));
+    list.appendChild(block);
+  });
+
+  // Расходники, у которых категория была удалена, всё равно должны быть видны и доступны для правки.
+  const orphans = consumables.filter((c) => !consumableCategories.some((cat) => cat.id === c.category_id));
+  if (orphans.length) {
+    const block = document.createElement('div');
+    block.className = 'consumable-category';
+    block.innerHTML = '<div class="consumable-category-head"><span class="consumable-category-name">Без категории</span></div><div class="consumable-items"></div>';
+    renderConsumableItems(block.querySelector('.consumable-items'), orphans);
+    list.appendChild(block);
+  }
+}
+
+function fillConsumableCategorySelect(selectedId) {
+  const sel = document.getElementById('consumableCategorySelect');
+  sel.innerHTML = consumableCategories.map((cat) => `<option value="${cat.id}">${escapeHtml(cat.name)}</option>`).join('');
+  if (selectedId) sel.value = selectedId;
+}
+
+function openConsumableCategoryDialog(category) {
+  editingConsumableCategoryId = category ? category.id : null;
+  document.getElementById('consumableCategoryDialogTitle').textContent = category ? 'Категория' : 'Новая категория';
+  deleteConsumableCategoryBtn.classList.toggle('hidden', !category);
+  consumableCategoryForm.reset();
+  if (category) consumableCategoryForm.elements.name.value = category.name;
+  openDialog(consumableCategoryDialog);
+}
+
+document.getElementById('newConsumableCategoryBtn').addEventListener('click', () => openConsumableCategoryDialog(null));
+
+consumableCategoryForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(consumableCategoryForm).entries());
+  try {
+    if (editingConsumableCategoryId) {
+      await api(`/api/consumable-categories/${editingConsumableCategoryId}`, { method: 'PUT', body: JSON.stringify(data) });
+      showToast('Категория обновлена');
+    } else {
+      await api('/api/consumable-categories', { method: 'POST', body: JSON.stringify(data) });
+      showToast('Категория добавлена');
+    }
+    closeDialog(consumableCategoryDialog);
+    await loadConsumables();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+deleteConsumableCategoryBtn.addEventListener('click', async () => {
+  if (!editingConsumableCategoryId) return;
+  if (!confirm('Удалить категорию? Расходники в ней тоже будут удалены.')) return;
+  try {
+    await api(`/api/consumable-categories/${editingConsumableCategoryId}`, { method: 'DELETE' });
+    showToast('Категория удалена');
+    closeDialog(consumableCategoryDialog);
+    await loadConsumables();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+function openConsumableDialog(item, defaultCategoryId) {
+  editingConsumableId = item ? item.id : null;
+  document.getElementById('consumableDialogTitle').textContent = item ? 'Расходник' : 'Новый расходник';
+  deleteConsumableBtn.classList.toggle('hidden', !item);
+  consumableForm.reset();
+  fillConsumableCategorySelect(item ? item.category_id : defaultCategoryId);
+  if (item) {
+    consumableForm.elements.name.value = item.name || '';
+    consumableForm.elements.article.value = item.article || '';
+    consumableForm.elements.notes.value = item.notes || '';
+  }
+  openDialog(consumableDialog);
+}
+
+document.getElementById('newConsumableBtn').addEventListener('click', () => {
+  if (!consumableCategories.length) {
+    showToast('Сначала добавьте категорию', true);
+    return;
+  }
+  openConsumableDialog(null);
+});
+
+consumableForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(consumableForm).entries());
+  try {
+    if (editingConsumableId) {
+      await api(`/api/consumables/${editingConsumableId}`, { method: 'PUT', body: JSON.stringify(data) });
+      showToast('Расходник обновлён');
+    } else {
+      await api('/api/consumables', { method: 'POST', body: JSON.stringify(data) });
+      showToast('Расходник добавлен');
+    }
+    closeDialog(consumableDialog);
+    await loadConsumables();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+deleteConsumableBtn.addEventListener('click', async () => {
+  if (!editingConsumableId) return;
+  if (!confirm('Удалить расходник?')) return;
+  try {
+    await api(`/api/consumables/${editingConsumableId}`, { method: 'DELETE' });
+    showToast('Расходник удалён');
+    closeDialog(consumableDialog);
+    await loadConsumables();
+  } catch (err) {
+    showToast(err.message, true);
+  }
 });
 
 function fillClientSelect() {
@@ -1535,6 +1735,7 @@ async function bootApp() {
     await loadClients();
     await loadWeek();
     await loadQueue();
+    await loadConsumables();
   } catch (err) {
     showToast('Не удалось загрузить данные: ' + err.message, true);
   }

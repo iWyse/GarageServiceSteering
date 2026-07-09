@@ -84,8 +84,8 @@ function listClients() {
 
 function createClient(data) {
   const stmt = db.prepare(
-    `INSERT INTO clients (name, phone, car_make, car_model, plate, vin, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO clients (name, phone, car_make, car_model, plate, tag, vin, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   );
   const info = stmt.run(
     data.name?.trim() || '',
@@ -93,6 +93,7 @@ function createClient(data) {
     data.car_make || '',
     data.car_model || '',
     data.plate || '',
+    data.tag || '',
     (data.vin || '').trim().toUpperCase(),
     data.notes || ''
   );
@@ -101,13 +102,14 @@ function createClient(data) {
 
 function updateClient(id, data) {
   db.prepare(
-    `UPDATE clients SET name=?, phone=?, car_make=?, car_model=?, plate=?, vin=?, notes=? WHERE id=?`
+    `UPDATE clients SET name=?, phone=?, car_make=?, car_model=?, plate=?, tag=?, vin=?, notes=? WHERE id=?`
   ).run(
     data.name?.trim() || '',
     data.phone || '',
     data.car_make || '',
     data.car_model || '',
     data.plate || '',
+    data.tag || '',
     (data.vin || '').trim().toUpperCase(),
     data.notes || '',
     id
@@ -243,6 +245,59 @@ function updateQueueEntry(id, data) {
 
 function deleteQueueEntry(id) {
   db.prepare('DELETE FROM queue_entries WHERE id = ?').run(id);
+}
+
+// ---------- Consumables (расходники) ----------
+// Категории и сами расходники (артикулы) — пользователь заводит и то, и другое сам,
+// никаких предустановленных категорий нет.
+function listConsumableCategories() {
+  return db.prepare('SELECT * FROM consumable_categories ORDER BY name COLLATE NOCASE').all();
+}
+
+function createConsumableCategory(data) {
+  const info = db.prepare('INSERT INTO consumable_categories (name) VALUES (?)').run((data.name || '').trim());
+  return db.prepare('SELECT * FROM consumable_categories WHERE id = ?').get(info.lastInsertRowid);
+}
+
+function updateConsumableCategory(id, data) {
+  db.prepare('UPDATE consumable_categories SET name=? WHERE id=?').run((data.name || '').trim(), id);
+  return db.prepare('SELECT * FROM consumable_categories WHERE id = ?').get(id);
+}
+
+function deleteConsumableCategory(id) {
+  db.prepare('DELETE FROM consumables WHERE category_id = ?').run(id);
+  db.prepare('DELETE FROM consumable_categories WHERE id = ?').run(id);
+}
+
+function listConsumables() {
+  return db.prepare('SELECT * FROM consumables ORDER BY name COLLATE NOCASE').all();
+}
+
+function createConsumable(data) {
+  const info = db
+    .prepare('INSERT INTO consumables (category_id, name, article, notes) VALUES (?, ?, ?, ?)')
+    .run(
+      data.category_id ? Number(data.category_id) : null,
+      (data.name || '').trim(),
+      (data.article || '').trim(),
+      data.notes || ''
+    );
+  return db.prepare('SELECT * FROM consumables WHERE id = ?').get(info.lastInsertRowid);
+}
+
+function updateConsumable(id, data) {
+  db.prepare('UPDATE consumables SET category_id=?, name=?, article=?, notes=? WHERE id=?').run(
+    data.category_id ? Number(data.category_id) : null,
+    (data.name || '').trim(),
+    (data.article || '').trim(),
+    data.notes || '',
+    id
+  );
+  return db.prepare('SELECT * FROM consumables WHERE id = ?').get(id);
+}
+
+function deleteConsumable(id) {
+  db.prepare('DELETE FROM consumables WHERE id = ?').run(id);
 }
 
 // ---------- Appointments ----------
@@ -436,6 +491,44 @@ const server = http.createServer(async (req, res) => {
     }
     if (m && req.method === 'DELETE') {
       deleteQueueEntry(Number(m[1]));
+      return sendJSON(res, 200, { ok: true });
+    }
+
+    // Consumables
+    if (pathname === '/api/consumable-categories' && req.method === 'GET') {
+      return sendJSON(res, 200, listConsumableCategories());
+    }
+    if (pathname === '/api/consumable-categories' && req.method === 'POST') {
+      const body = await readBody(req);
+      if (!body.name || !body.name.trim()) return sendJSON(res, 400, { error: 'Название обязательно' });
+      return sendJSON(res, 201, createConsumableCategory(body));
+    }
+    m = pathname.match(/^\/api\/consumable-categories\/(\d+)$/);
+    if (m && req.method === 'PUT') {
+      const body = await readBody(req);
+      if (!body.name || !body.name.trim()) return sendJSON(res, 400, { error: 'Название обязательно' });
+      return sendJSON(res, 200, updateConsumableCategory(Number(m[1]), body));
+    }
+    if (m && req.method === 'DELETE') {
+      deleteConsumableCategory(Number(m[1]));
+      return sendJSON(res, 200, { ok: true });
+    }
+    if (pathname === '/api/consumables' && req.method === 'GET') {
+      return sendJSON(res, 200, listConsumables());
+    }
+    if (pathname === '/api/consumables' && req.method === 'POST') {
+      const body = await readBody(req);
+      if (!body.name || !body.name.trim()) return sendJSON(res, 400, { error: 'Название обязательно' });
+      return sendJSON(res, 201, createConsumable(body));
+    }
+    m = pathname.match(/^\/api\/consumables\/(\d+)$/);
+    if (m && req.method === 'PUT') {
+      const body = await readBody(req);
+      if (!body.name || !body.name.trim()) return sendJSON(res, 400, { error: 'Название обязательно' });
+      return sendJSON(res, 200, updateConsumable(Number(m[1]), body));
+    }
+    if (m && req.method === 'DELETE') {
+      deleteConsumable(Number(m[1]));
       return sendJSON(res, 200, { ok: true });
     }
 

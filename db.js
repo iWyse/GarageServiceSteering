@@ -13,6 +13,7 @@ db.exec(`
     car_make TEXT,
     car_model TEXT,
     plate TEXT,
+    tag TEXT,
     vin TEXT,
     notes TEXT,
     created_at TEXT DEFAULT (datetime('now'))
@@ -61,6 +62,21 @@ db.exec(`
     parts TEXT NOT NULL DEFAULT '[]',
     parts_eta TEXT,
     advance REAL NOT NULL DEFAULT 0,
+    notes TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS consumable_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS consumables (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_id INTEGER REFERENCES consumable_categories(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    article TEXT,   -- артикул
     notes TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
@@ -152,5 +168,15 @@ function migrateRepairPartsEtaAndAdvance() {
   }
 }
 migrateRepairPartsEtaAndAdvance();
+
+// ---------- Миграция: тег у клиентов ----------
+function migrateClientTagColumn() {
+  const columns = db.prepare(`PRAGMA table_info(clients)`).all().map((c) => c.name);
+  if (!columns.includes('tag')) {
+    db.exec(`ALTER TABLE clients ADD COLUMN tag TEXT`);
+    console.log('База данных обновлена: добавлен тег клиента.');
+  }
+}
+migrateClientTagColumn();
 
 export default db;

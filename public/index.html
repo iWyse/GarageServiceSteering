@@ -63,6 +63,7 @@
     <button class="tab active" data-tab="schedule" role="tab" aria-selected="true">Расписание</button>
     <button class="tab" data-tab="clients" role="tab" aria-selected="false">Клиенты</button>
     <button class="tab" data-tab="queue" role="tab" aria-selected="false">Заказы</button>
+    <button class="tab" data-tab="consumables" role="tab" aria-selected="false">Расходники</button>
   </nav>
   <button id="logoutBtn" class="btn-ghost" title="Выйти" aria-label="Выйти">
     <svg class="logout-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -105,6 +106,7 @@
             <th>Телефон</th>
             <th>Автомобиль</th>
             <th>Гос. номер</th>
+            <th>Тег</th>
             <th>VIN</th>
             <th>Заметки</th>
             <th></th>
@@ -125,6 +127,18 @@
 
     <div id="queueList" class="queue-list"></div>
     <p id="queueEmpty" class="empty-state hidden">Пока нет ни одного заказа. Добавьте первый — кнопка выше.</p>
+  </section>
+
+  <!-- ===== CONSUMABLES VIEW ===== -->
+  <section id="view-consumables" class="view">
+    <div class="clients-toolbar">
+      <button id="newConsumableCategoryBtn" class="btn-ghost">+ Категория</button>
+      <div class="spacer"></div>
+      <button id="newConsumableBtn" class="btn-primary">+ Расходник</button>
+    </div>
+
+    <div id="consumablesList" class="consumables-list"></div>
+    <p id="consumablesEmpty" class="empty-state hidden">Пока нет ни одной категории расходников. Начните с кнопки «+ Категория» выше.</p>
   </section>
 
 </main>
@@ -150,6 +164,7 @@
         <label>Модель<input name="car_model" type="text" placeholder="Camry"></label>
       </div>
       <label>Гос. номер<input name="plate" type="text" placeholder="AB-123-C" class="mono-input"></label>
+      <label>Тег<input name="tag" type="text" placeholder="Например: постоянный, такси, VIP…"></label>
       <label>VIN<input name="vin" type="text" placeholder="17 символов, напр. JHMFA16586S000000" class="mono-input" maxlength="17" style="text-transform:uppercase"></label>
       <label>Заметки<textarea name="notes" rows="2" placeholder="Особенности, история обращений…"></textarea></label>
       <div class="dialog-actions">
@@ -226,7 +241,7 @@
 
       <div class="repair-total-row"><span>Итоговая сумма</span><strong id="queueRepairTotal">0 ₽</strong></div>
 
-      <label>Заметки<textarea name="notes" rows="2" placeholder="Особенности, комментарий…"></textarea></label>
+      <label>Рекомендации<textarea name="notes" rows="2" placeholder="Например: заменить тормозную жидкость, проверить сальники…"></textarea></label>
 
       <div class="dialog-actions">
         <button type="button" id="queueOrderBtn" class="btn-ghost">Заказ-наряд</button>
@@ -236,6 +251,43 @@
       </div>
       <button type="button" id="promoteQueueBtn" class="btn-ghost btn-block">Добавить в список клиентов</button>
       <button type="submit" class="btn-primary btn-block">Сохранить</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Consumable category dialog ===== -->
+<div id="consumableCategoryDialog" class="dialog-overlay hidden">
+  <div class="dialog">
+    <h2 id="consumableCategoryDialogTitle">Новая категория</h2>
+    <form id="consumableCategoryForm">
+      <label><span>Название <span class="req">*</span></span><input required name="name" type="text" placeholder="Например: Масла и фильтры"></label>
+      <div class="dialog-actions">
+        <button type="button" id="deleteConsumableCategoryBtn" class="btn-danger hidden">Удалить</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
+        <button type="submit" class="btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Consumable item dialog ===== -->
+<div id="consumableDialog" class="dialog-overlay hidden">
+  <div class="dialog">
+    <h2 id="consumableDialogTitle">Новый расходник</h2>
+    <form id="consumableForm">
+      <label>Категория
+        <select name="category_id" id="consumableCategorySelect"></select>
+      </label>
+      <label><span>Название <span class="req">*</span></span><input required name="name" type="text" placeholder="Например: Масляный фильтр"></label>
+      <label>Артикул<input name="article" type="text" placeholder="Например: OC90013P" class="mono-input"></label>
+      <label>Заметки<textarea name="notes" rows="2" placeholder="Поставщик, периодичность заказа…"></textarea></label>
+      <div class="dialog-actions">
+        <button type="button" id="deleteConsumableBtn" class="btn-danger hidden">Удалить</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
+        <button type="submit" class="btn-primary">Сохранить</button>
+      </div>
     </form>
   </div>
 </div>
@@ -348,7 +400,7 @@
 
       <div class="repair-total-row"><span>Итоговая сумма</span><strong id="repairTotal">0 ₽</strong></div>
 
-      <label>Заметки<textarea name="notes" rows="2" placeholder="Комментарий к ремонту…"></textarea></label>
+      <label>Рекомендации<textarea name="notes" rows="2" placeholder="Например: заменить тормозную жидкость, проверить сальники…"></textarea></label>
 
       <div class="dialog-actions">
         <button type="button" id="sendToClientBtn" class="btn-ghost">Заказ-наряд</button>
