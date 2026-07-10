@@ -68,8 +68,15 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS consumable_sections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS consumable_categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    section_id INTEGER REFERENCES consumable_sections(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
   );
@@ -192,5 +199,15 @@ function migrateMileageColumn() {
   }
 }
 migrateMileageColumn();
+
+// ---------- Миграция: раздел у категории расходников ----------
+function migrateConsumableCategorySectionColumn() {
+  const columns = db.prepare(`PRAGMA table_info(consumable_categories)`).all().map((c) => c.name);
+  if (columns.length && !columns.includes('section_id')) {
+    db.exec(`ALTER TABLE consumable_categories ADD COLUMN section_id INTEGER REFERENCES consumable_sections(id) ON DELETE SET NULL`);
+    console.log('База данных обновлена: добавлен раздел у категории расходников.');
+  }
+}
+migrateConsumableCategorySectionColumn();
 
 export default db;

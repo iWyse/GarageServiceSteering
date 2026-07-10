@@ -143,6 +143,7 @@ function normalizeRepairItems(items) {
       if (it?.article !== undefined) out.article = String(it.article || '').trim();
       if (it?.brand !== undefined) out.brand = String(it.brand || '').trim();
       if (it?.qty !== undefined) out.qty = Number(it.qty) || 0;
+      if (it?.received !== undefined) out.received = !!it.received;
       return out;
     })
     .filter((it) => it.name || it.price);
@@ -260,19 +261,48 @@ function deleteQueueEntry(id) {
 }
 
 // ---------- Consumables (расходники) ----------
-// Категории и сами расходники (артикулы) — пользователь заводит и то, и другое сам,
-// никаких предустановленных категорий нет.
+// Разделы, категории и сами расходники (артикулы) — пользователь заводит всё сам,
+// никакой предустановленной структуры нет. Иерархия: раздел → категория → расходник.
+function listConsumableSections() {
+  return db.prepare('SELECT * FROM consumable_sections ORDER BY name COLLATE NOCASE').all();
+}
+
+function createConsumableSection(data) {
+  const info = db.prepare('INSERT INTO consumable_sections (name) VALUES (?)').run((data.name || '').trim());
+  return db.prepare('SELECT * FROM consumable_sections WHERE id = ?').get(info.lastInsertRowid);
+}
+
+function updateConsumableSection(id, data) {
+  db.prepare('UPDATE consumable_sections SET name=? WHERE id=?').run((data.name || '').trim(), id);
+  return db.prepare('SELECT * FROM consumable_sections WHERE id = ?').get(id);
+}
+
+function deleteConsumableSection(id) {
+  const categoryIds = db.prepare('SELECT id FROM consumable_categories WHERE section_id = ?').all(id).map((c) => c.id);
+  for (const categoryId of categoryIds) {
+    db.prepare('DELETE FROM consumables WHERE category_id = ?').run(categoryId);
+  }
+  db.prepare('DELETE FROM consumable_categories WHERE section_id = ?').run(id);
+  db.prepare('DELETE FROM consumable_sections WHERE id = ?').run(id);
+}
+
 function listConsumableCategories() {
   return db.prepare('SELECT * FROM consumable_categories ORDER BY name COLLATE NOCASE').all();
 }
 
 function createConsumableCategory(data) {
-  const info = db.prepare('INSERT INTO consumable_categories (name) VALUES (?)').run((data.name || '').trim());
+  const info = db
+    .prepare('INSERT INTO consumable_categories (section_id, name) VALUES (?, ?)')
+    .run(data.section_id ? Number(data.section_id) : null, (data.name || '').trim());
   return db.prepare('SELECT * FROM consumable_categories WHERE id = ?').get(info.lastInsertRowid);
 }
 
 function updateConsumableCategory(id, data) {
-  db.prepare('UPDATE consumable_categories SET name=? WHERE id=?').run((data.name || '').trim(), id);
+  db.prepare('UPDATE consumable_categories SET section_id=?, name=? WHERE id=?').run(
+    data.section_id ? Number(data.section_id) : null,
+    (data.name || '').trim(),
+    id
+  );
   return db.prepare('SELECT * FROM consumable_categories WHERE id = ?').get(id);
 }
 
@@ -507,6 +537,24 @@ const server = http.createServer(async (req, res) => {
     }
 
     // Consumables
+    if (pathname === '/api/consumable-sections' && req.method === 'GET') {
+      return sendJSON(res, 200, listConsumableSections());
+    }
+    if (pathname === '/api/consumable-sections' && req.method === 'POST') {
+      const body = await readBody(req);
+      if (!body.name || !body.name.trim()) return sendJSON(res, 400, { error: 'Название обязательно' });
+      return sendJSON(res, 201, createConsumableSection(body));
+    }
+    m = pathname.match(/^\/api\/consumable-sections\/(\d+)$/);
+    if (m && req.method === 'PUT') {
+      const body = await readBody(req);
+      if (!body.name || !body.name.trim()) return sendJSON(res, 400, { error: 'Название обязательно' });
+      return sendJSON(res, 200, updateConsumableSection(Number(m[1]), body));
+    }
+    if (m && req.method === 'DELETE') {
+      deleteConsumableSection(Number(m[1]));
+      return sendJSON(res, 200, { ok: true });
+    }
     if (pathname === '/api/consumable-categories' && req.method === 'GET') {
       return sendJSON(res, 200, listConsumableCategories());
     }

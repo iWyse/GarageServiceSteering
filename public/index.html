@@ -132,13 +132,14 @@
   <!-- ===== CONSUMABLES VIEW ===== -->
   <section id="view-consumables" class="view">
     <div class="clients-toolbar">
+      <button id="newConsumableSectionBtn" class="btn-ghost">+ Раздел</button>
       <button id="newConsumableCategoryBtn" class="btn-ghost">+ Категория</button>
       <div class="spacer"></div>
       <button id="newConsumableBtn" class="btn-primary">+ Расходник</button>
     </div>
 
     <div id="consumablesList" class="consumables-list"></div>
-    <p id="consumablesEmpty" class="empty-state hidden">Пока нет ни одной категории расходников. Начните с кнопки «+ Категория» выше.</p>
+    <p id="consumablesEmpty" class="empty-state hidden">Пока нет ни одного раздела расходников. Начните с кнопки «+ Раздел» выше.</p>
   </section>
 
 </main>
@@ -256,11 +257,30 @@
   </div>
 </div>
 
+<!-- ===== Consumable section dialog ===== -->
+<div id="consumableSectionDialog" class="dialog-overlay hidden">
+  <div class="dialog">
+    <h2 id="consumableSectionDialogTitle">Новый раздел</h2>
+    <form id="consumableSectionForm">
+      <label><span>Название <span class="req">*</span></span><input required name="name" type="text" placeholder="Например: Расходники по ГУР"></label>
+      <div class="dialog-actions">
+        <button type="button" id="deleteConsumableSectionBtn" class="btn-danger hidden">Удалить</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
+        <button type="submit" class="btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- ===== Consumable category dialog ===== -->
 <div id="consumableCategoryDialog" class="dialog-overlay hidden">
   <div class="dialog">
     <h2 id="consumableCategoryDialogTitle">Новая категория</h2>
     <form id="consumableCategoryForm">
+      <label>Раздел
+        <select name="section_id" id="consumableCategorySectionSelect"></select>
+      </label>
       <label><span>Название <span class="req">*</span></span><input required name="name" type="text" placeholder="Например: Масла и фильтры"></label>
       <div class="dialog-actions">
         <button type="button" id="deleteConsumableCategoryBtn" class="btn-danger hidden">Удалить</button>

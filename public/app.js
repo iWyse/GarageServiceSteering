@@ -202,6 +202,15 @@ async function copyVinToClipboard(vin) {
   }
 }
 
+async function copyArticleToClipboard(article) {
+  try {
+    await navigator.clipboard.writeText(article);
+    showToast('Артикул скопирован');
+  } catch {
+    showToast('Не удалось скопировать артикул', true);
+  }
+}
+
 function renderClients() {
   const q = document.getElementById('clientSearch').value.trim().toLowerCase();
   const body = document.getElementById('clientsBody');
@@ -299,10 +308,12 @@ function sumItems(items) {
 }
 
 // Артикул/фирма/количество показываем только если заполнены — пустые поля
-// не должны засорять ни карточку истории, ни заказ-наряд.
-function itemMeta(it) {
+// не должны засорять ни карточку истории, ни заказ-наряд. includeArticle
+// выключается в истории ремонта, где артикул выводится отдельно, со своей
+// кнопкой копирования (см. renderRepairBlock).
+function itemMeta(it, includeArticle = true) {
   const parts = [];
-  if (it.article) parts.push(`арт. ${it.article}`);
+  if (includeArticle && it.article) parts.push(`арт. ${it.article}`);
   if (it.brand) parts.push(it.brand);
   if (it.qty && it.qty !== 1) parts.push(`×${it.qty}`);
   return parts.join(', ');
@@ -342,6 +353,12 @@ async function loadClientHistory(clientId) {
       ${advance > 0 ? `<div class="repair-list-sum"><span>Аванс</span><span>− ${fmtMoney(advance)}</span></div>` : ''}
       ${r.notes ? `<div class="history-notes">${escapeHtml(r.notes)}</div>` : ''}
     `;
+    item.querySelectorAll('.article-copy-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        copyArticleToClipboard(btn.dataset.article);
+      });
+    });
     item.addEventListener('click', () => openRepairDialog(r));
     list.appendChild(item);
   });
@@ -351,9 +368,12 @@ function renderRepairBlock(label, items, sum) {
   if (!items.length) return '';
   const lines = items
     .map((it) => {
-      const meta = itemMeta(it);
+      const meta = itemMeta(it, false);
       const lineTotal = (Number(it.price) || 0) * (Number(it.qty) || 1);
-      return `<div class="repair-list-line"><span>${escapeHtml(it.name)}${meta ? ` <span class="repair-list-meta">(${escapeHtml(meta)})</span>` : ''}</span><span>${fmtMoney(lineTotal)}</span></div>`;
+      const articleHtml = it.article
+        ? `<div class="repair-list-article">арт. <span class="mono">${escapeHtml(it.article)}</span><button type="button" class="article-copy-btn" data-article="${escapeHtml(it.article)}" title="Копировать артикул">${COPY_ICON_SVG}</button></div>`
+        : '';
+      return `<div class="repair-list-line"><span>${escapeHtml(it.name)}${meta ? ` <span class="repair-list-meta">(${escapeHtml(meta)})</span>` : ''}</span><span>${fmtMoney(lineTotal)}</span></div>${articleHtml}`;
     })
     .join('');
   return `
@@ -438,8 +458,10 @@ function recomputeRepairSums() {
 
 // isPart добавляет поля "Артикул"/"Фирма"/"Кол-во" — они нужны только для запчастей,
 // выполненные работы остаются простой парой название/цена. onChange даёт переиспользовать
-// строки в другом диалоге (очередь) со своим пересчётом сумм.
-function createRepairRow(item, isPart, onChange = recomputeRepairSums) {
+// строки в другом диалоге (очередь) со своим пересчётом сумм. withReceived добавляет
+// переключатель "пришла"/"нет" — нужен только в заказе (очередь на запчасти), чтобы
+// отслеживать, что из заказа уже привезли, а что ещё в пути.
+function createRepairRow(item, isPart, onChange = recomputeRepairSums, withReceived = false) {
   const row = document.createElement('div');
   row.className = 'repair-row' + (isPart ? ' repair-row-part' : '');
 
@@ -490,7 +512,22 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums) {
 
     const line1 = document.createElement('div');
     line1.className = 'repair-row-line1';
-    line1.append(nameInput, removeBtn);
+
+    if (withReceived) {
+      const receivedBtn = document.createElement('button');
+      receivedBtn.type = 'button';
+      receivedBtn.className = 'row-received-btn';
+      const setReceivedState = (received) => {
+        receivedBtn.classList.toggle('active', received);
+        receivedBtn.textContent = received ? 'Пришла ✓' : 'Пришла?';
+        receivedBtn.dataset.received = received ? '1' : '';
+      };
+      setReceivedState(!!item?.received);
+      receivedBtn.addEventListener('click', () => setReceivedState(!receivedBtn.classList.contains('active')));
+      line1.append(nameInput, receivedBtn, removeBtn);
+    } else {
+      line1.append(nameInput, removeBtn);
+    }
 
     const line2 = document.createElement('div');
     line2.className = 'repair-row-line2';
@@ -504,8 +541,8 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums) {
   return row;
 }
 
-function addRepairRow(container, item, isPart, onChange = recomputeRepairSums) {
-  container.appendChild(createRepairRow(item, isPart, onChange));
+function addRepairRow(container, item, isPart, onChange = recomputeRepairSums, withReceived = false) {
+  container.appendChild(createRepairRow(item, isPart, onChange, withReceived));
 }
 
 function collectRepairRows(container) {
@@ -518,9 +555,11 @@ function collectRepairRows(container) {
       const articleInput = row.querySelector('.row-article');
       const brandInput = row.querySelector('.row-brand');
       const qtyInput = row.querySelector('.row-qty');
+      const receivedBtn = row.querySelector('.row-received-btn');
       if (articleInput) out.article = articleInput.value.trim();
       if (brandInput) out.brand = brandInput.value.trim();
       if (qtyInput) out.qty = Number(qtyInput.value) || 0;
+      if (receivedBtn) out.received = receivedBtn.classList.contains('active');
       return out;
     })
     .filter((it) => it.name || it.price);
@@ -1108,6 +1147,8 @@ function renderQueue() {
   queueItems.forEach((q) => {
     const carLine = [q.car_make, q.car_model].filter(Boolean).join(' ');
     const status = q.status === 'arrived' ? 'arrived' : 'waiting';
+    const partsWithName = (q.parts || []).filter((p) => p.name);
+    const receivedCount = partsWithName.filter((p) => p.received).length;
     const item = document.createElement('div');
     item.className = 'queue-item';
     item.innerHTML = `
@@ -1117,6 +1158,7 @@ function renderQueue() {
       </div>
       ${carLine ? `<div class="queue-item-car">${escapeHtml(carLine)}</div>` : ''}
       ${q.title ? `<div class="queue-item-title">${escapeHtml(q.title)}</div>` : ''}
+      ${partsWithName.length ? `<div class="queue-parts-progress">Запчасти: ${receivedCount}/${partsWithName.length} пришло</div>` : ''}
     `;
     item.querySelector('.queue-status-badge').addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -1145,7 +1187,7 @@ function recomputeQueueSums() {
 }
 
 document.getElementById('queueAddWorkRowBtn').addEventListener('click', () => addRepairRow(queueWorksRowsEl, null, false, recomputeQueueSums));
-document.getElementById('queueAddPartRowBtn').addEventListener('click', () => addRepairRow(queuePartsRowsEl, null, true, recomputeQueueSums));
+document.getElementById('queueAddPartRowBtn').addEventListener('click', () => addRepairRow(queuePartsRowsEl, null, true, recomputeQueueSums, true));
 
 document.getElementById('queueAdvanceToggleBtn').addEventListener('click', () => {
   queueAdvanceEnabled = !queueAdvanceEnabled;
@@ -1175,7 +1217,7 @@ function openQueueDialog(entry) {
   const works = entry?.works?.length ? entry.works : [null];
   const parts = entry?.parts?.length ? entry.parts : [null];
   works.forEach((w) => addRepairRow(queueWorksRowsEl, w, false, recomputeQueueSums));
-  parts.forEach((p) => addRepairRow(queuePartsRowsEl, p, true, recomputeQueueSums));
+  parts.forEach((p) => addRepairRow(queuePartsRowsEl, p, true, recomputeQueueSums, true));
 
   queueAdvanceEnabled = !!(entry && Number(entry.advance) > 0);
   document.getElementById('queueAdvanceToggleBtn').classList.toggle('active', queueAdvanceEnabled);
@@ -1303,21 +1345,27 @@ document.getElementById('queueOrderBtn').addEventListener('click', () => {
 });
 
 // ================= CONSUMABLES (расходники) =================
-// Категории и сами расходники (с артикулами) заводит владелец сам —
-// никакого предустановленного списка нет.
+// Разделы, категории и сами расходники (с артикулами) заводит владелец сам —
+// никакого предустановленного списка нет. Иерархия: раздел → категория → расходник.
+const consumableSectionDialog = document.getElementById('consumableSectionDialog');
+const consumableSectionForm = document.getElementById('consumableSectionForm');
+const deleteConsumableSectionBtn = document.getElementById('deleteConsumableSectionBtn');
 const consumableCategoryDialog = document.getElementById('consumableCategoryDialog');
 const consumableCategoryForm = document.getElementById('consumableCategoryForm');
 const deleteConsumableCategoryBtn = document.getElementById('deleteConsumableCategoryBtn');
 const consumableDialog = document.getElementById('consumableDialog');
 const consumableForm = document.getElementById('consumableForm');
 const deleteConsumableBtn = document.getElementById('deleteConsumableBtn');
+let consumableSections = [];
 let consumableCategories = [];
 let consumables = [];
+let editingConsumableSectionId = null;
 let editingConsumableCategoryId = null;
 let editingConsumableId = null;
 
 async function loadConsumables() {
-  [consumableCategories, consumables] = await Promise.all([
+  [consumableSections, consumableCategories, consumables] = await Promise.all([
+    api('/api/consumable-sections'),
     api('/api/consumable-categories'),
     api('/api/consumables'),
   ]);
@@ -1337,61 +1385,168 @@ function renderConsumableItems(container, items) {
     row.className = 'consumable-item';
     row.innerHTML = `
       <span class="consumable-item-name">${escapeHtml(it.name)}</span>
-      ${it.article ? `<span class="consumable-item-article">${escapeHtml(it.article)}</span>` : ''}
+      ${it.article ? `<span class="consumable-item-article">${escapeHtml(it.article)}<button type="button" class="article-copy-btn" title="Копировать артикул">${COPY_ICON_SVG}</button></span>` : ''}
     `;
+    const copyBtn = row.querySelector('.article-copy-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        copyArticleToClipboard(it.article);
+      });
+    }
     row.addEventListener('click', () => openConsumableDialog(it));
     container.appendChild(row);
   });
+}
+
+// Категорийный блок переиспользуется и внутри разделов, и в блоке "Без раздела".
+function renderConsumableCategoryBlock(cat) {
+  const items = consumables.filter((c) => c.category_id === cat.id);
+  const block = document.createElement('div');
+  block.className = 'consumable-category';
+  block.innerHTML = `
+    <div class="consumable-category-head">
+      <span class="consumable-category-name">${escapeHtml(cat.name)}</span>
+      <div class="consumable-category-actions">
+        <button type="button" class="btn-link" data-action="add-item">+ расходник</button>
+        <button type="button" class="btn-link" data-action="edit-category">изменить</button>
+      </div>
+    </div>
+    <div class="consumable-items"></div>
+  `;
+  renderConsumableItems(block.querySelector('.consumable-items'), items);
+  block.querySelector('[data-action="add-item"]').addEventListener('click', () => openConsumableDialog(null, cat.id));
+  block.querySelector('[data-action="edit-category"]').addEventListener('click', () => openConsumableCategoryDialog(cat));
+  return block;
+}
+
+function renderConsumableSectionBlock(section, categories, isOrphan) {
+  const block = document.createElement('div');
+  block.className = 'consumable-section';
+  block.innerHTML = `
+    <div class="consumable-section-head">
+      <span class="consumable-section-name">${escapeHtml(section ? section.name : 'Без раздела')}</span>
+      ${section ? `
+        <div class="consumable-section-actions">
+          <button type="button" class="btn-link" data-action="add-category">+ категория</button>
+          <button type="button" class="btn-link" data-action="edit-section">изменить</button>
+        </div>
+      ` : ''}
+    </div>
+    <div class="consumable-section-categories"></div>
+  `;
+  const catsContainer = block.querySelector('.consumable-section-categories');
+  if (categories.length) {
+    categories.forEach((cat) => catsContainer.appendChild(renderConsumableCategoryBlock(cat)));
+  } else {
+    const emptyP = document.createElement('p');
+    emptyP.className = 'consumable-items-empty';
+    emptyP.textContent = 'Пока нет категорий в этом разделе.';
+    catsContainer.appendChild(emptyP);
+  }
+  if (section) {
+    block.querySelector('[data-action="add-category"]').addEventListener('click', () => openConsumableCategoryDialog(null, section.id));
+    block.querySelector('[data-action="edit-section"]').addEventListener('click', () => openConsumableSectionDialog(section));
+  }
+  if (isOrphan) block.classList.add('consumable-section-orphan');
+  return block;
 }
 
 function renderConsumables() {
   const list = document.getElementById('consumablesList');
   const empty = document.getElementById('consumablesEmpty');
   list.innerHTML = '';
-  empty.classList.toggle('hidden', consumableCategories.length !== 0);
+  empty.classList.toggle('hidden', consumableSections.length !== 0 || consumableCategories.length !== 0);
 
-  consumableCategories.forEach((cat) => {
-    const items = consumables.filter((c) => c.category_id === cat.id);
-    const block = document.createElement('div');
-    block.className = 'consumable-category';
-    block.innerHTML = `
-      <div class="consumable-category-head">
-        <span class="consumable-category-name">${escapeHtml(cat.name)}</span>
-        <div class="consumable-category-actions">
-          <button type="button" class="btn-link" data-action="add-item">+ расходник</button>
-          <button type="button" class="btn-link" data-action="edit-category">изменить</button>
-        </div>
-      </div>
-      <div class="consumable-items"></div>
-    `;
-    renderConsumableItems(block.querySelector('.consumable-items'), items);
-    block.querySelector('[data-action="add-item"]').addEventListener('click', () => openConsumableDialog(null, cat.id));
-    block.querySelector('[data-action="edit-category"]').addEventListener('click', () => openConsumableCategoryDialog(cat));
-    list.appendChild(block);
+  consumableSections.forEach((sec) => {
+    const cats = consumableCategories.filter((c) => c.section_id === sec.id);
+    list.appendChild(renderConsumableSectionBlock(sec, cats, false));
   });
 
+  // Категории, у которых раздел был удалён, всё равно должны быть видны и доступны для правки.
+  const orphanCats = consumableCategories.filter((c) => !consumableSections.some((sec) => sec.id === c.section_id));
+  if (orphanCats.length) {
+    list.appendChild(renderConsumableSectionBlock(null, orphanCats, true));
+  }
+
   // Расходники, у которых категория была удалена, всё равно должны быть видны и доступны для правки.
-  const orphans = consumables.filter((c) => !consumableCategories.some((cat) => cat.id === c.category_id));
-  if (orphans.length) {
+  const orphanItems = consumables.filter((c) => !consumableCategories.some((cat) => cat.id === c.category_id));
+  if (orphanItems.length) {
     const block = document.createElement('div');
     block.className = 'consumable-category';
     block.innerHTML = '<div class="consumable-category-head"><span class="consumable-category-name">Без категории</span></div><div class="consumable-items"></div>';
-    renderConsumableItems(block.querySelector('.consumable-items'), orphans);
+    renderConsumableItems(block.querySelector('.consumable-items'), orphanItems);
     list.appendChild(block);
   }
 }
 
 function fillConsumableCategorySelect(selectedId) {
   const sel = document.getElementById('consumableCategorySelect');
-  sel.innerHTML = consumableCategories.map((cat) => `<option value="${cat.id}">${escapeHtml(cat.name)}</option>`).join('');
+  sel.innerHTML = consumableCategories
+    .map((cat) => {
+      const section = consumableSections.find((sec) => sec.id === cat.section_id);
+      const label = section ? `${section.name} / ${cat.name}` : cat.name;
+      return `<option value="${cat.id}">${escapeHtml(label)}</option>`;
+    })
+    .join('');
   if (selectedId) sel.value = selectedId;
 }
 
-function openConsumableCategoryDialog(category) {
+function fillConsumableCategorySectionSelect(selectedId) {
+  const sel = document.getElementById('consumableCategorySectionSelect');
+  const options = consumableSections.map((sec) => `<option value="${sec.id}">${escapeHtml(sec.name)}</option>`).join('');
+  sel.innerHTML = `<option value="">— без раздела —</option>${options}`;
+  sel.value = selectedId || '';
+}
+
+function openConsumableSectionDialog(section) {
+  editingConsumableSectionId = section ? section.id : null;
+  document.getElementById('consumableSectionDialogTitle').textContent = section ? 'Раздел' : 'Новый раздел';
+  deleteConsumableSectionBtn.classList.toggle('hidden', !section);
+  consumableSectionForm.reset();
+  if (section) consumableSectionForm.elements.name.value = section.name;
+  openDialog(consumableSectionDialog);
+}
+
+document.getElementById('newConsumableSectionBtn').addEventListener('click', () => openConsumableSectionDialog(null));
+
+consumableSectionForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(consumableSectionForm).entries());
+  try {
+    if (editingConsumableSectionId) {
+      await api(`/api/consumable-sections/${editingConsumableSectionId}`, { method: 'PUT', body: JSON.stringify(data) });
+      showToast('Раздел обновлён');
+    } else {
+      await api('/api/consumable-sections', { method: 'POST', body: JSON.stringify(data) });
+      showToast('Раздел добавлен');
+    }
+    closeDialog(consumableSectionDialog);
+    await loadConsumables();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+deleteConsumableSectionBtn.addEventListener('click', async () => {
+  if (!editingConsumableSectionId) return;
+  if (!confirm('Удалить раздел? Категории и расходники в нём тоже будут удалены.')) return;
+  try {
+    await api(`/api/consumable-sections/${editingConsumableSectionId}`, { method: 'DELETE' });
+    showToast('Раздел удалён');
+    closeDialog(consumableSectionDialog);
+    await loadConsumables();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+function openConsumableCategoryDialog(category, defaultSectionId) {
   editingConsumableCategoryId = category ? category.id : null;
   document.getElementById('consumableCategoryDialogTitle').textContent = category ? 'Категория' : 'Новая категория';
   deleteConsumableCategoryBtn.classList.toggle('hidden', !category);
   consumableCategoryForm.reset();
+  fillConsumableCategorySectionSelect(category ? category.section_id : defaultSectionId);
   if (category) consumableCategoryForm.elements.name.value = category.name;
   openDialog(consumableCategoryDialog);
 }

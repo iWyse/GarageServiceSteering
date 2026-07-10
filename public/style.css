@@ -326,7 +326,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .edit-hint { color: var(--text-muted); line-height: 0; }
 .clients-table tr:hover .edit-hint { color: var(--accent); }
 .cell-vin { display: inline-flex; align-items: center; gap: 6px; }
-.vin-copy-btn {
+.vin-copy-btn, .article-copy-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -338,7 +338,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   border-radius: 4px;
   line-height: 0;
 }
-.vin-copy-btn:hover { color: var(--accent); background: var(--surface-2); }
+.vin-copy-btn:hover, .article-copy-btn:hover { color: var(--accent); background: var(--surface-2); }
 
 .empty-state { text-align: center; color: var(--text-muted); padding: 40px 0; }
 
@@ -361,6 +361,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .queue-item-name { font-weight: 600; font-size: 14px; }
 .queue-item-car { font-size: 13px; color: var(--text-muted); }
 .queue-item-title { font-size: 13px; color: var(--text-muted); }
+.queue-parts-progress { font-size: 12px; color: var(--text-muted); }
 .queue-status-badge {
   flex-shrink: 0;
   border: none;
@@ -377,7 +378,25 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .queue-status-badge[data-status="arrived"] { background: var(--status-done); }
 
 /* ---------- Consumables ---------- */
-.consumables-list { display: flex; flex-direction: column; gap: 14px; }
+.consumables-list { display: flex; flex-direction: column; gap: 20px; }
+.consumable-section {
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 14px;
+}
+.consumable-section-orphan { border-top-color: var(--border); }
+.consumable-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.consumable-section-name { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; font-size: 15px; }
+.consumable-section-actions { display: flex; gap: 14px; flex-shrink: 0; }
+.consumable-section-categories { display: flex; flex-direction: column; gap: 12px; }
 .consumable-category {
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -409,7 +428,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .consumable-item:last-child { border-bottom: none; }
 .consumable-item:hover { background: var(--surface-2); }
 .consumable-item-name { font-size: 14px; }
-.consumable-item-article { font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
+.consumable-item-article { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
 .consumable-items-empty { margin: 0; padding: 12px 14px; font-size: 13px; color: var(--text-muted); }
 
 /* ---------- Dialog ---------- */
@@ -567,6 +586,14 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   font-size: 13px;
 }
 .repair-list-meta { color: var(--text-muted); font-size: 12px; }
+.repair-list-article {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.repair-list-article .mono { font-family: var(--font-mono); color: var(--accent); }
 .repair-list-sum { color: var(--text-muted); font-size: 12px; padding-top: 2px; border-top: 1px dashed var(--border); }
 
 /* ---------- Repair record dialog ---------- */
@@ -603,7 +630,20 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   border-radius: var(--radius);
   background: var(--surface-2);
 }
-.repair-row-line1 { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
+.repair-row-line1 { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; align-items: center; }
+.row-received-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.row-received-btn:hover { border-color: var(--accent); color: var(--accent); }
+.row-received-btn.active { background: var(--status-done); border-color: var(--status-done); color: #fff; font-weight: 600; }
 .repair-row-line2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; }
 .row-remove {
   width: 30px;
