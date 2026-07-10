@@ -82,7 +82,7 @@ button, input, select, textarea { font-family: inherit; }
 }
 .brand-text p {
   margin: 2px 0 0;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-muted);
   letter-spacing: 0.03em;
 }
@@ -92,7 +92,7 @@ button, input, select, textarea { font-family: inherit; }
   font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-size: 13px;
+  font-size: 14px;
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -149,7 +149,7 @@ main { max-width: none; margin: 0; padding: 24px 28px; }
   color: var(--accent);
   text-decoration: underline;
   padding: 0;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 input, select, textarea {
@@ -218,12 +218,12 @@ input[type="number"]::-webkit-inner-spin-button {
 .day-head .dow {
   font-family: var(--font-display);
   text-transform: uppercase;
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.06em;
   color: var(--text-muted);
 }
 .day-col.is-today .dow { color: var(--accent); }
-.day-head .dnum { font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); }
+.day-head .dnum { font-family: var(--font-mono); font-size: 14px; color: var(--text-muted); }
 
 .day-body { padding: 8px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 
@@ -233,7 +233,7 @@ input[type="number"]::-webkit-inner-spin-button {
   color: var(--text-muted);
   border-radius: var(--radius);
   padding: 8px;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
   margin-top: auto;
 }
@@ -256,26 +256,26 @@ input[type="number"]::-webkit-inner-spin-button {
 .appt-card[data-status="done"] { border-left-color: var(--status-done); opacity: 0.75; }
 .appt-card[data-status="cancelled"] { border-left-color: var(--status-cancelled); opacity: 0.55; text-decoration: line-through; }
 
-.appt-time { font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
-.appt-client { font-size: 13px; font-weight: 600; margin: 2px 0; }
+.appt-time { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
+.appt-client { font-size: 14px; font-weight: 600; margin: 2px 0; }
 .appt-phone {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 14px;
   color: var(--text-muted);
   text-decoration: none;
   margin-bottom: 2px;
 }
-.appt-phone::before { content: "☎"; font-size: 11px; }
+.appt-phone::before { content: "☎"; font-size: 14px; }
 .appt-phone:hover { color: var(--accent); text-decoration: underline; }
-.appt-service { font-size: 12px; color: var(--text-muted); }
+.appt-service { font-size: 14px; color: var(--text-muted); }
 .appt-plate {
   display: inline-block;
   margin-top: 4px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.05em;
   border: 1px solid var(--border);
   border-radius: 2px;
@@ -285,7 +285,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .appt-vin {
   margin-top: 3px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.03em;
   color: var(--text-muted);
 }
@@ -305,7 +305,7 @@ input[type="number"]::-webkit-inner-spin-button {
   text-align: left;
   font-family: var(--font-display);
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.06em;
   color: var(--text-muted);
   padding: 12px 14px;
@@ -321,12 +321,12 @@ input[type="number"]::-webkit-inner-spin-button {
 .clients-table tr:last-child td { border-bottom: none; }
 .clients-table tr:hover { background: var(--surface-2); cursor: pointer; }
 .cell-name { font-weight: 600; }
-.cell-plate { font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
-.cell-tag { font-size: 13px; color: var(--text-muted); }
-.cell-notes { color: var(--text-muted); font-size: 13px; max-width: 220px; }
+.cell-plate { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
+.cell-tag { font-size: 14px; color: var(--text-muted); }
+.cell-notes { color: var(--text-muted); font-size: 14px; max-width: 220px; }
 .cell-phone {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text);
   text-decoration: none;
 }
@@ -367,9 +367,9 @@ input[type="number"]::-webkit-inner-spin-button {
 .queue-item:hover { border-left-color: var(--accent); }
 .queue-item-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .queue-item-name { font-weight: 600; font-size: 14px; }
-.queue-item-car { font-size: 13px; color: var(--text-muted); }
-.queue-item-title { font-size: 13px; color: var(--text-muted); }
-.queue-parts-received, .queue-parts-pending { font-size: 12px; }
+.queue-item-car { font-size: 14px; color: var(--text-muted); }
+.queue-item-title { font-size: 14px; color: var(--text-muted); }
+.queue-parts-received, .queue-parts-pending { font-size: 14px; }
 .queue-parts-received { color: var(--status-done); }
 .queue-parts-pending { color: var(--status-waiting); }
 .queue-status-badge {
@@ -377,7 +377,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border: none;
   border-radius: var(--radius);
   padding: 5px 10px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -439,8 +439,8 @@ input[type="number"]::-webkit-inner-spin-button {
 .consumable-item:last-child { border-bottom: none; }
 .consumable-item:hover { background: var(--surface-2); }
 .consumable-item-name { font-size: 14px; }
-.consumable-item-article { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
-.consumable-items-empty { margin: 0; padding: 12px 14px; font-size: 13px; color: var(--text-muted); }
+.consumable-item-article { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
+.consumable-items-empty { margin: 0; padding: 12px 14px; font-size: 14px; color: var(--text-muted); }
 
 /* ---------- Dialog ---------- */
 .dialog-overlay {
@@ -495,8 +495,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .call-btn:hover { filter: brightness(1.1); transform: scale(1.06); }
 .dialog form { display: flex; flex-direction: column; gap: 12px; }
-.dialog label { font-size: 12px; color: var(--text-muted); display: flex; flex-direction: column; gap: 5px; }
-.field-hint { font-size: 11px; line-height: 1.4; color: var(--text-muted); }
+.dialog label { font-size: 14px; color: var(--text-muted); display: flex; flex-direction: column; gap: 5px; }
+.field-hint { font-size: 14px; line-height: 1.4; color: var(--text-muted); }
 
 /* Смета (запись ремонта / очередь) — полей много, текст слипался при плотных
    отступах, поэтому здесь вертикальные промежутки немного шире, чем в остальных диалогах. */
@@ -518,7 +518,7 @@ input[type="number"]::-webkit-inner-spin-button {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 13px;
+  font-size: 14px;
 }
 .appt-summary-row span { color: var(--text-muted); }
 .appt-summary-row strong { font-weight: 500; text-align: right; }
@@ -535,7 +535,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: var(--radius);
   background: var(--surface-2);
 }
-.walkin-hint { margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-muted); }
+.walkin-hint { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-muted); }
 #estimatePickerHint { margin-bottom: 14px; }
 
 .appt-card[draggable="true"] { cursor: grab; }
@@ -555,7 +555,7 @@ input[type="number"]::-webkit-inner-spin-button {
   font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-size: 13px;
+  font-size: 14px;
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -583,32 +583,32 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .history-item:hover { border-left-color: var(--accent); }
 .history-item-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.history-date { font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
+.history-date { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
 .history-title { font-size: 14px; font-weight: 600; }
 .history-total { font-size: 14px; }
-.history-notes { font-size: 13px; color: var(--text-muted); }
+.history-notes { font-size: 14px; color: var(--text-muted); }
 #clientHistoryPanel .empty-state { padding: 24px 0; }
 .repair-toolbar { margin-top: 0; margin-bottom: 12px; }
 
 .repair-list-block { display: flex; flex-direction: column; gap: 3px; }
 .repair-list-block + .repair-list-block { margin-top: 10px; }
-.repair-list-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.repair-list-label { font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
 .repair-list-line, .repair-list-sum {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 13px;
+  font-size: 14px;
 }
-.repair-list-meta { color: var(--text-muted); font-size: 12px; }
+.repair-list-meta { color: var(--text-muted); font-size: 14px; }
 .repair-list-article {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-muted);
 }
 .repair-list-article .mono { font-family: var(--font-mono); color: var(--accent); }
-.repair-list-sum { color: var(--text-muted); font-size: 12px; padding-top: 2px; border-top: 1px dashed var(--border); }
+.repair-list-sum { color: var(--text-muted); font-size: 14px; padding-top: 2px; border-top: 1px dashed var(--border); }
 .repair-list-sum-accent { color: var(--accent); }
 
 /* ---------- Repair record dialog ---------- */
@@ -621,7 +621,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: var(--radius);
   background: var(--surface-2);
 }
-.repair-section-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); }
+.repair-section-head { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--text-muted); }
 .repair-rows { display: flex; flex-direction: column; gap: 6px; }
 .repair-row { display: grid; grid-template-columns: 1fr 100px auto; gap: 6px; align-items: center; }
 .repair-row .row-name, .repair-row .row-price, .repair-row .row-brand, .repair-row .row-qty, .repair-row .row-article, .repair-row .row-supplier {
@@ -630,7 +630,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
-  font-size: 13px;
+  font-size: 14px;
   width: 100%;
   min-width: 0; /* иначе инпут не сжимается уже своей "естественной" ширины в узкой grid-колонке и рвёт диалог по горизонтали */
 }
@@ -654,7 +654,7 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: var(--radius);
   background: transparent;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 14px;
   cursor: pointer;
 }
 .row-received-btn:hover { border-color: var(--accent); color: var(--accent); }
@@ -675,7 +675,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .repair-sum-row, .repair-total-row {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-muted);
   padding-top: 4px;
   border-top: 1px dashed var(--border);
@@ -714,7 +714,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .order-date { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
 .order-block { display: flex; flex-direction: column; gap: 8px; }
 .order-block + .order-block { margin-top: 12px; }
-.order-block-title { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px; }
+.order-block-title { font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px; }
 .order-line { display: flex; justify-content: space-between; gap: 12px; font-size: 16px; }
 .order-line-meta { color: var(--text-muted); font-size: 14px; }
 .order-line-sum { color: var(--accent); padding-top: 4px; border-top: 1px dashed var(--border); font-size: 14px; }
@@ -754,7 +754,7 @@ input[type="number"]::-webkit-inner-spin-button {
 #confirmDialog { z-index: 60; }
 .login-brand { justify-content: center; margin-bottom: 20px; }
 #loginForm { display: flex; flex-direction: column; gap: 14px; }
-.login-error { margin: 0; font-size: 13px; color: var(--status-cancelled); }
+.login-error { margin: 0; font-size: 14px; color: var(--status-cancelled); }
 #logoutBtn { margin-left: 12px; display: flex; align-items: center; gap: 6px; }
 
 @media (max-width: 600px) {
@@ -767,6 +767,10 @@ input[type="number"]::-webkit-inner-spin-button {
     padding: 8px;
   }
   #logoutBtn .logout-text { display: none; }
+  /* На узких экранах вкладки шире контейнера — даём им свою горизонтальную
+     прокрутку вместо того, чтобы ломать всю страницу вбок. */
+  .tabs { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tab { flex-shrink: 0; }
 }
 
 /* ---------- Toast ---------- */
