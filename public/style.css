@@ -609,6 +609,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .repair-list-article .mono { font-family: var(--font-mono); color: var(--accent); }
 .repair-list-sum { color: var(--text-muted); font-size: 12px; padding-top: 2px; border-top: 1px dashed var(--border); }
+.repair-list-sum-accent { color: var(--accent); }
 
 /* ---------- Repair record dialog ---------- */
 .repair-section {
@@ -679,6 +680,7 @@ input[type="number"]::-webkit-inner-spin-button {
   padding-top: 4px;
   border-top: 1px dashed var(--border);
 }
+.repair-sum-accent { color: var(--accent); }
 .repair-total-row {
   font-size: 15px;
   font-weight: 600;
@@ -715,7 +717,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .order-block-title { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px; }
 .order-line { display: flex; justify-content: space-between; gap: 12px; font-size: 16px; }
 .order-line-meta { color: var(--text-muted); font-size: 14px; }
-.order-line-sum { color: var(--text-muted); padding-top: 4px; border-top: 1px dashed var(--border); font-size: 14px; }
+.order-line-sum { color: var(--accent); padding-top: 4px; border-top: 1px dashed var(--border); font-size: 14px; }
 .order-line-advance { color: var(--status-cancelled); font-size: 15px; }
 .order-total {
   display: flex;

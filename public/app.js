@@ -417,7 +417,7 @@ function renderRepairBlock(label, items, sum, sumLabel) {
     <div class="repair-list-block">
       <span class="repair-list-label">${label}</span>
       ${lines}
-      <div class="repair-list-sum"><span>${sumLabel}</span><span>${fmtMoney(sum)}</span></div>
+      <div class="repair-list-sum repair-list-sum-accent"><span>${sumLabel}</span><span>${fmtMoney(sum)}</span></div>
     </div>
   `;
 }
@@ -1110,7 +1110,7 @@ async function renderOrderToCanvas() {
 
     dashedDivider();
     ctx.font = `14px ${ORDER_IMG.fontBody}`;
-    ctx.fillStyle = C.textMuted;
+    ctx.fillStyle = C.accent;
     ctx.textAlign = 'left';
     ctx.fillText(sumLabel, pad, y);
     ctx.textAlign = 'right';
