@@ -452,6 +452,18 @@
   </div>
 </div>
 
+<!-- ===== Confirm dialog (замена стандартного window.confirm) ===== -->
+<div id="confirmDialog" class="dialog-overlay hidden">
+  <div class="dialog confirm-dialog">
+    <p id="confirmMessage" class="confirm-message"></p>
+    <div class="dialog-actions">
+      <div class="spacer"></div>
+      <button type="button" id="confirmCancelBtn" class="btn-ghost">Отмена</button>
+      <button type="button" id="confirmOkBtn" class="btn-danger">Удалить</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast hidden"></div>
 
 <script src="app.js"></script>

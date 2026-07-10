@@ -166,12 +166,45 @@ function closeDialog(el) { el.classList.add('hidden'); }
 document.querySelectorAll('[data-close-dialog]').forEach((btn) => {
   btn.addEventListener('click', () => closeDialog(btn.closest('.dialog-overlay')));
 });
+
+// ---------- Confirm dialog (замена стандартного window.confirm — не вписывается
+// в тёмную тему и не стилизуется браузером) ----------
+const confirmDialog = document.getElementById('confirmDialog');
+const confirmMessageEl = document.getElementById('confirmMessage');
+const confirmOkBtn = document.getElementById('confirmOkBtn');
+const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+
+function showConfirm(message, { confirmLabel = 'Удалить', danger = true } = {}) {
+  return new Promise((resolve) => {
+    confirmMessageEl.textContent = message;
+    confirmOkBtn.textContent = confirmLabel;
+    confirmOkBtn.className = danger ? 'btn-danger' : 'btn-primary';
+
+    function cleanup(result) {
+      confirmOkBtn.removeEventListener('click', onOk);
+      confirmCancelBtn.removeEventListener('click', onCancel);
+      confirmDialog.removeEventListener('click', onBackdrop);
+      closeDialog(confirmDialog);
+      resolve(result);
+    }
+    function onOk() { cleanup(true); }
+    function onCancel() { cleanup(false); }
+    function onBackdrop(e) { if (e.target === confirmDialog) cleanup(false); }
+
+    confirmOkBtn.addEventListener('click', onOk);
+    confirmCancelBtn.addEventListener('click', onCancel);
+    confirmDialog.addEventListener('click', onBackdrop);
+    openDialog(confirmDialog);
+  });
+}
+
 document.querySelectorAll('.dialog-overlay').forEach((ov) => {
-  if (ov.id === 'loginOverlay') return; // форму входа нельзя закрыть кликом мимо
+  if (ov.id === 'loginOverlay' || ov.id === 'confirmDialog') return; // форму входа нельзя закрыть кликом мимо, confirm управляет собой сам
   // Клик мимо часто случается случайно, а окна теперь большие (заказ, смета) —
   // подтверждаем, чтобы не терять несохранённые данные одним неловким кликом.
-  ov.addEventListener('click', (e) => {
-    if (e.target === ov && confirm('Закрыть окно? Несохранённые изменения будут потеряны.')) closeDialog(ov);
+  ov.addEventListener('click', async (e) => {
+    if (e.target !== ov) return;
+    if (await showConfirm('Закрыть окно? Несохранённые изменения будут потеряны.', { confirmLabel: 'Закрыть', danger: false })) closeDialog(ov);
   });
 });
 
@@ -415,7 +448,7 @@ clientForm.addEventListener('submit', async (e) => {
 
 deleteClientBtn.addEventListener('click', async () => {
   if (!editingClientId) return;
-  if (!confirm('Удалить клиента? Связанные записи тоже будут удалены.')) return;
+  if (!(await showConfirm('Удалить клиента? Связанные записи тоже будут удалены.'))) return;
   try {
     await api(`/api/clients/${editingClientId}`, { method: 'DELETE' });
     showToast('Клиент удалён');
@@ -778,7 +811,7 @@ repairForm.addEventListener('submit', async (e) => {
 
 deleteRepairBtn.addEventListener('click', async () => {
   if (!editingRepairId) return;
-  if (!confirm('Удалить запись ремонта?')) return;
+  if (!(await showConfirm('Удалить запись ремонта?'))) return;
   try {
     await api(`/api/repairs/${editingRepairId}`, { method: 'DELETE' });
     showToast('Запись ремонта удалена');
@@ -1354,7 +1387,7 @@ queueForm.addEventListener('submit', async (e) => {
 
 deleteQueueBtn.addEventListener('click', async () => {
   if (!editingQueueId) return;
-  if (!confirm('Удалить заказ?')) return;
+  if (!(await showConfirm('Удалить заказ?'))) return;
   try {
     await api(`/api/queue/${editingQueueId}`, { method: 'DELETE' });
     showToast('Заказ удалён');
@@ -1631,7 +1664,7 @@ consumableSectionForm.addEventListener('submit', async (e) => {
 
 deleteConsumableSectionBtn.addEventListener('click', async () => {
   if (!editingConsumableSectionId) return;
-  if (!confirm('Удалить раздел? Категории и расходники в нём тоже будут удалены.')) return;
+  if (!(await showConfirm('Удалить раздел? Категории и расходники в нём тоже будут удалены.'))) return;
   try {
     await api(`/api/consumable-sections/${editingConsumableSectionId}`, { method: 'DELETE' });
     showToast('Раздел удалён');
@@ -1674,7 +1707,7 @@ consumableCategoryForm.addEventListener('submit', async (e) => {
 
 deleteConsumableCategoryBtn.addEventListener('click', async () => {
   if (!editingConsumableCategoryId) return;
-  if (!confirm('Удалить категорию? Расходники в ней тоже будут удалены.')) return;
+  if (!(await showConfirm('Удалить категорию? Расходники в ней тоже будут удалены.'))) return;
   try {
     await api(`/api/consumable-categories/${editingConsumableCategoryId}`, { method: 'DELETE' });
     showToast('Категория удалена');
@@ -1727,7 +1760,7 @@ consumableForm.addEventListener('submit', async (e) => {
 
 deleteConsumableBtn.addEventListener('click', async () => {
   if (!editingConsumableId) return;
-  if (!confirm('Удалить расходник?')) return;
+  if (!(await showConfirm('Удалить расходник?'))) return;
   try {
     await api(`/api/consumables/${editingConsumableId}`, { method: 'DELETE' });
     showToast('Расходник удалён');
@@ -2003,7 +2036,7 @@ apptEstimateBtn.addEventListener('click', () => {
 
 deleteApptBtn.addEventListener('click', async () => {
   if (!editingApptId) return;
-  if (!confirm('Удалить запись?')) return;
+  if (!(await showConfirm('Удалить запись?'))) return;
   try {
     await api(`/api/appointments/${editingApptId}`, { method: 'DELETE' });
     showToast('Запись удалена');
