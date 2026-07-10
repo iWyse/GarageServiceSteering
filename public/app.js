@@ -872,8 +872,8 @@ function buildOrderHtml(order) {
 
 // Кнопка открывает предпросмотр заказ-наряда для скриншота — на мобильных
 // он растягивается на весь экран (см. media-query в style.css). Плюс кнопка
-// "Скачать картинку" ниже — рисует то же самое в PNG, чтобы удобно переслать
-// в мессенджер, не полагаясь на системный скриншот.
+// "Копировать картинку" ниже — рисует то же самое в PNG и кладёт в буфер
+// обмена, чтобы сразу вставить в мессенджер, не полагаясь на системный скриншот.
 let currentOrderData = null;
 
 document.getElementById('sendToClientBtn').addEventListener('click', () => {
@@ -1125,22 +1125,39 @@ async function renderOrderToCanvas() {
   return finalCanvas;
 }
 
+function downloadOrderImage(blob) {
+  const link = document.createElement('a');
+  link.download = 'zakaz-naryad.png';
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+}
+
 document.getElementById('orderDownloadBtn').addEventListener('click', async () => {
   try {
     const canvas = await renderOrderToCanvas();
-    canvas.toBlob((blob) => {
+    canvas.toBlob(async (blob) => {
       if (!blob) {
-        showToast('Не удалось сохранить изображение', true);
+        showToast('Не удалось подготовить изображение', true);
         return;
       }
-      const link = document.createElement('a');
-      link.download = 'zakaz-naryad.png';
-      link.href = URL.createObjectURL(blob);
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+      // В буфер обмена — самый быстрый путь переслать заказ-наряд в мессенджер.
+      // Если браузер не поддерживает копирование картинок (ClipboardItem недоступен
+      // или страница не в защищённом контексте) — откатываемся на скачивание файла.
+      if (window.ClipboardItem && navigator.clipboard?.write) {
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+          showToast('Картинка скопирована в буфер обмена');
+          return;
+        } catch (err) {
+          // падаем в скачивание ниже
+        }
+      }
+      downloadOrderImage(blob);
+      showToast('Буфер обмена недоступен — картинка сохранена файлом', true);
     }, 'image/png');
   } catch (err) {
-    showToast('Не удалось сохранить изображение', true);
+    showToast('Не удалось подготовить изображение', true);
   }
 });
 
