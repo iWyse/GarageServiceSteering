@@ -1064,7 +1064,7 @@ async function renderOrderToCanvas() {
       sum += lineTotal;
       const priceText = fmtMoney(lineTotal);
 
-      ctx.font = `600 15px ${ORDER_IMG.fontBody}`;
+      ctx.font = `600 16px ${ORDER_IMG.fontBody}`;
       const priceW = ctx.measureText(priceText).width;
       const availW = contentW - priceW - 12;
       const nameW = ctx.measureText(it.name).width;
@@ -1075,7 +1075,7 @@ async function renderOrderToCanvas() {
       if (!meta || nameW + metaW <= availW) {
         // Помещается в одну строку целиком — рисуем название и мету рядом
         // (как в HTML-версии наряда), а не отдельной строкой ниже.
-        ctx.font = `600 15px ${ORDER_IMG.fontBody}`;
+        ctx.font = `600 16px ${ORDER_IMG.fontBody}`;
         ctx.fillStyle = C.text;
         ctx.textAlign = 'left';
         ctx.fillText(it.name, pad, y);
@@ -1090,7 +1090,7 @@ async function renderOrderToCanvas() {
         y += 20;
       } else {
         // Не влезает целиком — переносим название, мету оставляем отдельной строкой.
-        ctx.font = `600 15px ${ORDER_IMG.fontBody}`;
+        ctx.font = `600 16px ${ORDER_IMG.fontBody}`;
         const nameLines = wrapCanvasText(ctx, it.name, availW);
         ctx.fillStyle = C.text;
         ctx.textAlign = 'left';
