@@ -511,7 +511,7 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
     qtyInput.placeholder = 'Кол-во';
     qtyInput.min = '0';
     qtyInput.step = '1';
-    qtyInput.value = item?.qty ?? 1;
+    qtyInput.value = item?.qty ?? '';
     qtyInput.addEventListener('input', onChange);
 
     const line1 = document.createElement('div');
@@ -1018,7 +1018,7 @@ async function renderOrderToCanvas() {
 
   function block(title, items) {
     if (!items.length) return;
-    y += 8;
+    y += 20;
     ctx.font = `13px ${ORDER_IMG.fontBody}`;
     ctx.fillStyle = C.textMuted;
     ctx.fillText(title.toUpperCase(), pad, y);

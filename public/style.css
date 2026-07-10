@@ -710,6 +710,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .order-title { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.03em; font-size: 18px; margin: 0; }
 .order-date { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
 .order-block { display: flex; flex-direction: column; gap: 4px; }
+.order-block + .order-block { margin-top: 12px; }
 .order-block-title { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px; }
 .order-line { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
 .order-line-meta { color: var(--text-muted); font-size: 14px; }
