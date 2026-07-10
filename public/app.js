@@ -519,7 +519,7 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
       receivedBtn.className = 'row-received-btn';
       const setReceivedState = (received) => {
         receivedBtn.classList.toggle('active', received);
-        receivedBtn.textContent = received ? 'Пришла ✓' : 'Пришла?';
+        receivedBtn.textContent = received ? 'На складе ✓' : 'На складе?';
         receivedBtn.dataset.received = received ? '1' : '';
       };
       setReceivedState(!!item?.received);
@@ -1178,11 +1178,11 @@ function renderQueue() {
     item.innerHTML = `
       <div class="queue-item-head">
         <span class="queue-item-name">${escapeHtml(q.name)}</span>
-        <button type="button" class="queue-status-badge" data-status="${status}"${autoStatus ? ' disabled title="Определяется автоматически по отметкам «пришла» у запчастей"' : ''}>${status === 'arrived' ? 'Запчасти пришли' : 'В ожидании'}</button>
+        <button type="button" class="queue-status-badge" data-status="${status}"${autoStatus ? ' disabled title="Определяется автоматически по отметкам «на складе» у запчастей"' : ''}>${status === 'arrived' ? 'Запчасти пришли' : 'В ожидании'}</button>
       </div>
       ${carLine ? `<div class="queue-item-car">${escapeHtml(carLine)}</div>` : ''}
       ${q.title ? `<div class="queue-item-title">${escapeHtml(q.title)}</div>` : ''}
-      ${receivedNames.length ? `<div class="queue-parts-received">Пришла: ${escapeHtml(receivedNames.join(', '))}</div>` : ''}
+      ${receivedNames.length ? `<div class="queue-parts-received">На складе: ${escapeHtml(receivedNames.join(', '))}</div>` : ''}
       ${pendingNames.length ? `<div class="queue-parts-pending">Ожидаем: ${escapeHtml(pendingNames.join(', '))}</div>` : ''}
     `;
     if (!autoStatus) {
