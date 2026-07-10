@@ -361,7 +361,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .queue-item-name { font-weight: 600; font-size: 14px; }
 .queue-item-car { font-size: 13px; color: var(--text-muted); }
 .queue-item-title { font-size: 13px; color: var(--text-muted); }
-.queue-parts-progress { font-size: 12px; color: var(--text-muted); }
+.queue-parts-received, .queue-parts-pending { font-size: 12px; }
+.queue-parts-received { color: var(--status-done); }
+.queue-parts-pending { color: var(--status-waiting); }
 .queue-status-badge {
   flex-shrink: 0;
   border: none;

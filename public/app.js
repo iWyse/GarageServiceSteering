@@ -1148,7 +1148,8 @@ function renderQueue() {
     const carLine = [q.car_make, q.car_model].filter(Boolean).join(' ');
     const status = q.status === 'arrived' ? 'arrived' : 'waiting';
     const partsWithName = (q.parts || []).filter((p) => p.name);
-    const receivedCount = partsWithName.filter((p) => p.received).length;
+    const receivedNames = partsWithName.filter((p) => p.received).map((p) => p.name);
+    const pendingNames = partsWithName.filter((p) => !p.received).map((p) => p.name);
     const item = document.createElement('div');
     item.className = 'queue-item';
     item.innerHTML = `
@@ -1158,7 +1159,8 @@ function renderQueue() {
       </div>
       ${carLine ? `<div class="queue-item-car">${escapeHtml(carLine)}</div>` : ''}
       ${q.title ? `<div class="queue-item-title">${escapeHtml(q.title)}</div>` : ''}
-      ${partsWithName.length ? `<div class="queue-parts-progress">Запчасти: ${receivedCount}/${partsWithName.length} пришло</div>` : ''}
+      ${receivedNames.length ? `<div class="queue-parts-received">Пришла: ${escapeHtml(receivedNames.join(', '))}</div>` : ''}
+      ${pendingNames.length ? `<div class="queue-parts-pending">Ожидаем: ${escapeHtml(pendingNames.join(', '))}</div>` : ''}
     `;
     item.querySelector('.queue-status-badge').addEventListener('click', async (e) => {
       e.stopPropagation();
