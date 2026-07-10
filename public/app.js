@@ -1033,20 +1033,43 @@ async function renderOrderToCanvas() {
 
       ctx.font = `600 15px ${ORDER_IMG.fontBody}`;
       const priceW = ctx.measureText(priceText).width;
-      const nameLines = wrapCanvasText(ctx, it.name, contentW - priceW - 12);
+      const availW = contentW - priceW - 12;
+      const nameW = ctx.measureText(it.name).width;
+      const metaText = meta ? ` (${meta})` : '';
+      ctx.font = `14px ${ORDER_IMG.fontBody}`;
+      const metaW = meta ? ctx.measureText(metaText).width : 0;
 
-      ctx.fillStyle = C.text;
-      ctx.textAlign = 'left';
-      ctx.fillText(nameLines[0], pad, y);
-      ctx.textAlign = 'right';
-      ctx.fillText(priceText, width - pad, y);
-      ctx.textAlign = 'left';
-      y += 20;
-      for (let i = 1; i < nameLines.length; i++) {
-        ctx.fillText(nameLines[i], pad, y);
+      if (!meta || nameW + metaW <= availW) {
+        // Помещается в одну строку целиком — рисуем название и мету рядом
+        // (как в HTML-версии наряда), а не отдельной строкой ниже.
+        ctx.font = `600 15px ${ORDER_IMG.fontBody}`;
+        ctx.fillStyle = C.text;
+        ctx.textAlign = 'left';
+        ctx.fillText(it.name, pad, y);
+        if (meta) {
+          ctx.font = `14px ${ORDER_IMG.fontBody}`;
+          ctx.fillStyle = C.textMuted;
+          ctx.fillText(metaText, pad + nameW, y);
+        }
+        ctx.textAlign = 'right';
+        ctx.fillText(priceText, width - pad, y);
+        ctx.textAlign = 'left';
         y += 20;
-      }
-      if (meta) {
+      } else {
+        // Не влезает целиком — переносим название, мету оставляем отдельной строкой.
+        ctx.font = `600 15px ${ORDER_IMG.fontBody}`;
+        const nameLines = wrapCanvasText(ctx, it.name, availW);
+        ctx.fillStyle = C.text;
+        ctx.textAlign = 'left';
+        ctx.fillText(nameLines[0], pad, y);
+        ctx.textAlign = 'right';
+        ctx.fillText(priceText, width - pad, y);
+        ctx.textAlign = 'left';
+        y += 20;
+        for (let i = 1; i < nameLines.length; i++) {
+          ctx.fillText(nameLines[i], pad, y);
+          y += 20;
+        }
         ctx.font = `14px ${ORDER_IMG.fontBody}`;
         ctx.fillStyle = C.textMuted;
         ctx.fillText(meta, pad, y);
