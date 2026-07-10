@@ -650,7 +650,7 @@ function openRepairDialog(record) {
   repairForm.elements.title.value = record ? (record.title || '') : '';
   repairForm.elements.date.value = record ? record.date : toISODate(new Date());
   repairForm.elements.mileage.value = record && record.mileage ? record.mileage : '';
-  repairForm.elements.parts_eta.value = record ? (record.parts_eta || '') : '';
+  repairForm.elements.parts_eta.value = record ? (record.parts_eta || '') : 'до 5 рабочих дней';
   repairForm.elements.notes.value = record ? (record.notes || '') : '';
 
   advanceEnabled = !!(record && Number(record.advance) > 0);
@@ -885,13 +885,12 @@ function buildOrderHtml(order) {
       ${order.clientName ? `<div class="order-meta-row"><span>Клиент</span><strong>${escapeHtml(order.clientName)}</strong></div>` : ''}
       ${order.carLine ? `<div class="order-meta-row"><span>Автомобиль</span><strong>${escapeHtml(order.carLine)}</strong></div>` : ''}
       ${order.mileage ? `<div class="order-meta-row"><span>Пробег</span><strong>${fmtMileage(order.mileage)}</strong></div>` : ''}
-      ${order.partsEta ? `<div class="order-meta-row"><span>Срок поставки запчастей</span><strong>${escapeHtml(order.partsEta)}</strong></div>` : ''}
     </div>
     <div class="order-sep"></div>
     ${order.title ? `<h3 class="order-title">${escapeHtml(order.title)}</h3>` : ''}
     ${order.date ? `<div class="order-date">${fmtFullDate(new Date(order.date + 'T00:00:00'))}</div>` : ''}
     ${order.works.length ? `<div class="order-block"><div class="order-block-title">Работы</div>${workLines}<div class="order-line order-line-sum"><span>Сумма работ</span><span>${fmtMoney(order.worksSum)}</span></div></div>` : ''}
-    ${order.parts.length ? `<div class="order-block"><div class="order-block-title">Запчасти</div>${partLines}<div class="order-line order-line-sum"><span>Сумма запчастей</span><span>${fmtMoney(order.partsSum)}</span></div></div>` : ''}
+    ${order.parts.length ? `<div class="order-block"><div class="order-block-title">Запчасти</div>${partLines}<div class="order-line order-line-sum"><span>Сумма запчастей</span><span>${fmtMoney(order.partsSum)}</span></div>${order.partsEta ? `<div class="order-meta-row"><span>Срок поставки запчастей</span><strong>${escapeHtml(order.partsEta)}</strong></div>` : ''}</div>` : ''}
     ${order.advance > 0 ? `<div class="order-line order-line-advance"><span>Аванс</span><span>− ${fmtMoney(order.advance)}</span></div>` : ''}
     <div class="order-total"><span>Итого к оплате</span><span>${fmtMoney(order.total)}</span></div>
     ${order.notes ? `<div class="order-block"><div class="order-block-title">Рекомендации</div>${order.notes
@@ -1033,7 +1032,6 @@ async function renderOrderToCanvas() {
   if (order.clientName) row('Клиент', order.clientName);
   if (order.carLine) row('Автомобиль', order.carLine);
   if (order.mileage) row('Пробег', fmtMileage(order.mileage));
-  if (order.partsEta) row('Срок поставки запчастей', order.partsEta);
   y += 16;
 
   if (order.title) {
@@ -1123,6 +1121,7 @@ async function renderOrderToCanvas() {
 
   block('Работы', order.works, 'Сумма работ:');
   block('Запчасти', order.parts, 'Сумма запчастей');
+  if (order.partsEta && order.parts.length) row('Срок поставки запчастей', order.partsEta);
 
   if (order.advance > 0) {
     ctx.font = `15px ${ORDER_IMG.fontBody}`;
@@ -1340,6 +1339,7 @@ function openQueueDialog(entry) {
     }
   } else {
     queueForm.elements.date.value = toISODate(new Date());
+    queueForm.elements.parts_eta.value = 'до 5 рабочих дней';
   }
 
   queueWorksRowsEl.innerHTML = '';
