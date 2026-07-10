@@ -485,6 +485,7 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
   removeBtn.type = 'button';
   removeBtn.className = 'row-remove';
   removeBtn.setAttribute('aria-label', 'Удалить строку');
+  removeBtn.tabIndex = -1;
   removeBtn.textContent = '×';
 
   priceInput.addEventListener('input', onChange);
@@ -495,6 +496,7 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
     articleInput.type = 'text';
     articleInput.className = 'row-article mono-input';
     articleInput.placeholder = 'Артикул';
+    articleInput.tabIndex = -1;
     articleInput.value = item?.article || '';
 
     const brandInput = document.createElement('input');
@@ -533,8 +535,8 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
 
     const line2 = document.createElement('div');
     line2.className = 'repair-row-line2';
-    // Название уже в line1, дальше по порядку: цена, кол-во, потом остальные детали.
-    line2.append(priceInput, qtyInput, articleInput, brandInput);
+    // Название уже в line1, дальше по порядку: цена, кол-во, фирма, артикул.
+    line2.append(priceInput, qtyInput, brandInput, articleInput);
 
     // Поставщик — только для запчастей в заказе (см. withReceived), в смете/истории
     // ремонта эта информация не нужна и нигде больше не отображается.
@@ -888,7 +890,7 @@ document.getElementById('sendToClientBtn').addEventListener('click', () => {
 // be exported". Прямая отрисовка текста/фигур такому ограничению не подвержена,
 // и заодно позволяет использовать реальные шрифты сайта (fillText их видит).
 const ORDER_IMG = {
-  width: 480,
+  width: 600,
   pad: 28,
   colors: {
     bg: '#242220',

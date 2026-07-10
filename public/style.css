@@ -698,7 +698,7 @@ input[type="number"]::-webkit-inner-spin-button {
 #advanceRow strong { color: var(--status-cancelled); }
 
 /* ---------- Заказ-наряд ---------- */
-.order-dialog { max-width: 460px; }
+.order-dialog { max-width: 600px; }
 .order-doc { display: flex; flex-direction: column; gap: 14px; font-size: 15px; }
 .order-brand { text-align: center; }
 .order-brand-name { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; font-size: 21px; }
