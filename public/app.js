@@ -1001,7 +1001,7 @@ async function renderOrderToCanvas() {
   if (order.carLine) row('Автомобиль', order.carLine);
   if (order.mileage) row('Пробег', fmtMileage(order.mileage));
   if (order.partsEta) row('Срок поставки запчастей', order.partsEta);
-  y += 4;
+  y += 16;
 
   if (order.title) {
     ctx.font = `600 18px ${ORDER_IMG.fontDisplay}`;
@@ -1022,7 +1022,7 @@ async function renderOrderToCanvas() {
     ctx.font = `13px ${ORDER_IMG.fontBody}`;
     ctx.fillStyle = C.textMuted;
     ctx.fillText(title.toUpperCase(), pad, y);
-    y += 20;
+    y += 26;
 
     let sum = 0;
     items.forEach((it) => {
