@@ -144,6 +144,7 @@ function normalizeRepairItems(items) {
       if (it?.brand !== undefined) out.brand = String(it.brand || '').trim();
       if (it?.qty !== undefined) out.qty = Number(it.qty) || 0;
       if (it?.received !== undefined) out.received = !!it.received;
+      if (it?.supplier !== undefined) out.supplier = String(it.supplier || '').trim();
       return out;
     })
     .filter((it) => it.name || it.price);

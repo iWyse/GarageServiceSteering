@@ -195,6 +195,9 @@
   <div class="dialog dialog-wide">
     <h2 id="queueDialogTitle">Новый заказ</h2>
     <form id="queueForm">
+      <label>Клиент из базы
+        <select id="queueClientSelect"><option value="">— новый клиент (не из базы) —</option></select>
+      </label>
       <label><span>Имя <span class="req">*</span></span><input required name="name" type="text" placeholder="Иван Петров"></label>
       <label>Телефон<input name="phone" id="queuePhoneInput" type="tel" placeholder="+7 928 280 88 50" class="mono-input"></label>
       <div class="row-2">
@@ -208,6 +211,7 @@
           <option value="waiting">В ожидании</option>
           <option value="arrived">Запчасти пришли</option>
         </select>
+        <span class="field-hint">Если в заказе есть запчасти, статус определяется автоматически по отметкам «пришла» у каждой из них.</span>
       </label>
 
       <label>Заголовок<input name="title" type="text" placeholder="Например: ТО-1, ремонт рулевой рейки…"></label>

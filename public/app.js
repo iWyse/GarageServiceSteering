@@ -533,6 +533,22 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
     line2.className = 'repair-row-line2';
     line2.append(articleInput, brandInput, qtyInput, priceInput);
 
+    // Поставщик — только для запчастей в заказе (см. withReceived), в смете/истории
+    // ремонта эта информация не нужна и нигде больше не отображается.
+    if (withReceived) {
+      const supplierSelect = document.createElement('select');
+      supplierSelect.className = 'row-supplier mono-input';
+      supplierSelect.innerHTML = `
+        <option value="">Поставщик</option>
+        <option value="АТС">АТС</option>
+        <option value="ПЛ">ПЛ</option>
+        <option value="emex">emex</option>
+        <option value="Микадо">Микадо</option>
+      `;
+      supplierSelect.value = item?.supplier || '';
+      line2.append(supplierSelect);
+    }
+
     row.append(line1, line2);
   } else {
     row.append(nameInput, priceInput, removeBtn);
@@ -556,10 +572,12 @@ function collectRepairRows(container) {
       const brandInput = row.querySelector('.row-brand');
       const qtyInput = row.querySelector('.row-qty');
       const receivedBtn = row.querySelector('.row-received-btn');
+      const supplierSelect = row.querySelector('.row-supplier');
       if (articleInput) out.article = articleInput.value.trim();
       if (brandInput) out.brand = brandInput.value.trim();
       if (qtyInput) out.qty = Number(qtyInput.value) || 0;
       if (receivedBtn) out.received = receivedBtn.classList.contains('active');
+      if (supplierSelect) out.supplier = supplierSelect.value;
       return out;
     })
     .filter((it) => it.name || it.price);
@@ -1146,32 +1164,39 @@ function renderQueue() {
 
   queueItems.forEach((q) => {
     const carLine = [q.car_make, q.car_model].filter(Boolean).join(' ');
-    const status = q.status === 'arrived' ? 'arrived' : 'waiting';
     const partsWithName = (q.parts || []).filter((p) => p.name);
-    const receivedNames = partsWithName.filter((p) => p.received).map((p) => p.name);
-    const pendingNames = partsWithName.filter((p) => !p.received).map((p) => p.name);
+    // Пока в заказе есть хоть одна запчасть, статус считаем по отметкам "пришла" на них,
+    // а не по ручному переключателю — так бейдж всегда отражает реальную картину.
+    const autoStatus = partsWithName.length > 0;
+    const allReceived = autoStatus && partsWithName.every((p) => p.received);
+    const status = autoStatus ? (allReceived ? 'arrived' : 'waiting') : (q.status === 'arrived' ? 'arrived' : 'waiting');
+    const formatPart = (p) => (p.supplier ? `${p.name} (${p.supplier})` : p.name);
+    const receivedNames = partsWithName.filter((p) => p.received).map(formatPart);
+    const pendingNames = partsWithName.filter((p) => !p.received).map(formatPart);
     const item = document.createElement('div');
     item.className = 'queue-item';
     item.innerHTML = `
       <div class="queue-item-head">
         <span class="queue-item-name">${escapeHtml(q.name)}</span>
-        <button type="button" class="queue-status-badge" data-status="${status}">${status === 'arrived' ? 'Запчасти пришли' : 'В ожидании'}</button>
+        <button type="button" class="queue-status-badge" data-status="${status}"${autoStatus ? ' disabled title="Определяется автоматически по отметкам «пришла» у запчастей"' : ''}>${status === 'arrived' ? 'Запчасти пришли' : 'В ожидании'}</button>
       </div>
       ${carLine ? `<div class="queue-item-car">${escapeHtml(carLine)}</div>` : ''}
       ${q.title ? `<div class="queue-item-title">${escapeHtml(q.title)}</div>` : ''}
       ${receivedNames.length ? `<div class="queue-parts-received">Пришла: ${escapeHtml(receivedNames.join(', '))}</div>` : ''}
       ${pendingNames.length ? `<div class="queue-parts-pending">Ожидаем: ${escapeHtml(pendingNames.join(', '))}</div>` : ''}
     `;
-    item.querySelector('.queue-status-badge').addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const nextStatus = status === 'arrived' ? 'waiting' : 'arrived';
-      try {
-        await api(`/api/queue/${q.id}`, { method: 'PUT', body: JSON.stringify({ ...q, status: nextStatus }) });
-        await loadQueue();
-      } catch (err) {
-        showToast(err.message, true);
-      }
-    });
+    if (!autoStatus) {
+      item.querySelector('.queue-status-badge').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const nextStatus = status === 'arrived' ? 'waiting' : 'arrived';
+        try {
+          await api(`/api/queue/${q.id}`, { method: 'PUT', body: JSON.stringify({ ...q, status: nextStatus }) });
+          await loadQueue();
+        } catch (err) {
+          showToast(err.message, true);
+        }
+      });
+    }
     item.addEventListener('click', () => openQueueDialog(q));
     list.appendChild(item);
   });
@@ -1200,11 +1225,36 @@ document.getElementById('queueAdvanceToggleBtn').addEventListener('click', () =>
 });
 document.getElementById('queueAdvanceAmountInput').addEventListener('input', recomputeQueueSums);
 
+// Позволяет подтянуть данные уже существующего клиента вместо ручного ввода —
+// заказ всё равно хранит свою копию полей (car_make/phone/...), клиент не привязывается по id.
+function fillQueueClientSelect() {
+  const sel = document.getElementById('queueClientSelect');
+  const options = state.clients
+    .map((c) => {
+      const car = [c.car_make, c.car_model].filter(Boolean).join(' ');
+      return `<option value="${c.id}">${escapeHtml(c.name)}${car ? ' — ' + escapeHtml(car) : ''}</option>`;
+    })
+    .join('');
+  sel.innerHTML = `<option value="">— новый клиент (не из базы) —</option>${options}`;
+}
+
+document.getElementById('queueClientSelect').addEventListener('change', (e) => {
+  const client = state.clients.find((c) => c.id === Number(e.target.value));
+  if (!client) return;
+  queueForm.elements.name.value = client.name || '';
+  queueForm.elements.phone.value = client.phone || '';
+  queueForm.elements.car_make.value = client.car_make || '';
+  queueForm.elements.car_model.value = client.car_model || '';
+  queueForm.elements.plate.value = client.plate || '';
+  queueForm.elements.vin.value = client.vin || '';
+});
+
 function openQueueDialog(entry) {
   editingQueueId = entry ? entry.id : null;
   document.getElementById('queueDialogTitle').textContent = entry ? 'Заказ' : 'Новый заказ';
   deleteQueueBtn.classList.toggle('hidden', !entry);
   queueForm.reset();
+  fillQueueClientSelect();
 
   if (entry) {
     for (const [k, v] of Object.entries(entry)) {
@@ -1238,6 +1288,10 @@ queueForm.addEventListener('submit', async (e) => {
   data.advance = queueAdvanceEnabled ? (Number(document.getElementById('queueAdvanceAmountInput').value) || 0) : 0;
   data.works = collectRepairRows(queueWorksRowsEl);
   data.parts = collectRepairRows(queuePartsRowsEl);
+  const partsWithName = data.parts.filter((p) => p.name);
+  if (partsWithName.length) {
+    data.status = partsWithName.every((p) => p.received) ? 'arrived' : 'waiting';
+  }
   try {
     if (editingQueueId) {
       await api(`/api/queue/${editingQueueId}`, { method: 'PUT', body: JSON.stringify(data) });
