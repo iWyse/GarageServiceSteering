@@ -168,7 +168,11 @@ document.querySelectorAll('[data-close-dialog]').forEach((btn) => {
 });
 document.querySelectorAll('.dialog-overlay').forEach((ov) => {
   if (ov.id === 'loginOverlay') return; // форму входа нельзя закрыть кликом мимо
-  ov.addEventListener('click', (e) => { if (e.target === ov) closeDialog(ov); });
+  // Клик мимо часто случается случайно, а окна теперь большие (заказ, смета) —
+  // подтверждаем, чтобы не терять несохранённые данные одним неловким кликом.
+  ov.addEventListener('click', (e) => {
+    if (e.target === ov && confirm('Закрыть окно? Несохранённые изменения будут потеряны.')) closeDialog(ov);
+  });
 });
 
 // ================= CLIENTS =================
@@ -304,7 +308,7 @@ function fmtMileage(n) {
 }
 
 function sumItems(items) {
-  return items.reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.qty) || 1), 0);
+  return items.reduce((sum, it) => sum + (Number(it.price) || 0), 0);
 }
 
 // Артикул/фирма/количество показываем только если заполнены — пустые поля
@@ -369,7 +373,7 @@ function renderRepairBlock(label, items, sum) {
   const lines = items
     .map((it) => {
       const meta = itemMeta(it, false);
-      const lineTotal = (Number(it.price) || 0) * (Number(it.qty) || 1);
+      const lineTotal = Number(it.price) || 0;
       const articleHtml = it.article
         ? `<div class="repair-list-article">арт. <span class="mono">${escapeHtml(it.article)}</span><button type="button" class="article-copy-btn" data-article="${escapeHtml(it.article)}" title="Копировать артикул">${COPY_ICON_SVG}</button></div>`
         : '';
@@ -439,9 +443,7 @@ let advanceEnabled = false;
 function sumRowInputs(container) {
   return Array.from(container.querySelectorAll('.repair-row')).reduce((sum, row) => {
     const price = Number(row.querySelector('.row-price')?.value) || 0;
-    const qtyInput = row.querySelector('.row-qty');
-    const qty = qtyInput ? (Number(qtyInput.value) || 0) : 1;
-    return sum + price * qty;
+    return sum + price;
   }, 0);
 }
 
@@ -531,7 +533,8 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
 
     const line2 = document.createElement('div');
     line2.className = 'repair-row-line2';
-    line2.append(articleInput, brandInput, qtyInput, priceInput);
+    // Название уже в line1, дальше по порядку: цена, кол-во, потом остальные детали.
+    line2.append(priceInput, qtyInput, articleInput, brandInput);
 
     // Поставщик — только для запчастей в заказе (см. withReceived), в смете/истории
     // ремонта эта информация не нужна и нигде больше не отображается.
@@ -833,7 +836,7 @@ function buildOrderHtml(order) {
   const partLines = order.parts
     .map((p) => {
       const meta = itemMeta(p);
-      const lineTotal = (Number(p.price) || 0) * (Number(p.qty) || 1);
+      const lineTotal = Number(p.price) || 0;
       return `<div class="order-line"><span>${escapeHtml(p.name)}${meta ? ` <span class="order-line-meta">(${escapeHtml(meta)})</span>` : ''}</span><span>${fmtMoney(lineTotal)}</span></div>`;
     })
     .join('');
@@ -845,7 +848,7 @@ function buildOrderHtml(order) {
     </div>
     <div class="order-meta">
       ${order.clientName ? `<div class="order-meta-row"><span>Клиент</span><strong>${escapeHtml(order.clientName)}</strong></div>` : ''}
-      ${order.carLine ? `<div class="order-meta-row"><span>Марка автомобиля</span><strong>${escapeHtml(order.carLine)}</strong></div>` : ''}
+      ${order.carLine ? `<div class="order-meta-row"><span>Автомобиль</span><strong>${escapeHtml(order.carLine)}</strong></div>` : ''}
       ${order.mileage ? `<div class="order-meta-row"><span>Пробег</span><strong>${fmtMileage(order.mileage)}</strong></div>` : ''}
       ${order.partsEta ? `<div class="order-meta-row"><span>Срок поставки запчастей</span><strong>${escapeHtml(order.partsEta)}</strong></div>` : ''}
     </div>
@@ -993,7 +996,7 @@ async function renderOrderToCanvas() {
   y += 24;
 
   if (order.clientName) row('Клиент', order.clientName);
-  if (order.carLine) row('Марка автомобиля', order.carLine);
+  if (order.carLine) row('Автомобиль', order.carLine);
   if (order.mileage) row('Пробег', fmtMileage(order.mileage));
   if (order.partsEta) row('Срок поставки запчастей', order.partsEta);
   y += 4;
@@ -1022,7 +1025,7 @@ async function renderOrderToCanvas() {
     let sum = 0;
     items.forEach((it) => {
       const meta = itemMeta(it);
-      const lineTotal = (Number(it.price) || 0) * (Number(it.qty) || 1);
+      const lineTotal = Number(it.price) || 0;
       sum += lineTotal;
       const priceText = fmtMoney(lineTotal);
 
