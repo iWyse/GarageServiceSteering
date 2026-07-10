@@ -351,8 +351,8 @@ async function loadClientHistory(clientId) {
       </div>
       ${r.title ? `<span class="history-date">${fmtFullDate(dateObj)}</span>` : ''}
       ${r.mileage ? `<div class="repair-list-sum"><span>Пробег</span><span>${fmtMileage(r.mileage)}</span></div>` : ''}
-      ${renderRepairBlock('Работы', r.works, worksSum)}
-      ${renderRepairBlock('Запчасти', r.parts, partsSum)}
+      ${renderRepairBlock('Работы', r.works, worksSum, 'Сумма работ:')}
+      ${renderRepairBlock('Запчасти', r.parts, partsSum, 'Сумма запчастей')}
       ${r.parts_eta ? `<div class="repair-list-sum"><span>Срок поставки запчастей</span><span>${escapeHtml(r.parts_eta)}</span></div>` : ''}
       ${advance > 0 ? `<div class="repair-list-sum"><span>Аванс</span><span>− ${fmtMoney(advance)}</span></div>` : ''}
       ${r.notes ? `<div class="history-notes">${escapeHtml(r.notes)}</div>` : ''}
@@ -368,7 +368,7 @@ async function loadClientHistory(clientId) {
   });
 }
 
-function renderRepairBlock(label, items, sum) {
+function renderRepairBlock(label, items, sum, sumLabel) {
   if (!items.length) return '';
   const lines = items
     .map((it) => {
@@ -384,7 +384,7 @@ function renderRepairBlock(label, items, sum) {
     <div class="repair-list-block">
       <span class="repair-list-label">${label}</span>
       ${lines}
-      <div class="repair-list-sum"><span>Сумма: ${label.toLowerCase()}</span><span>${fmtMoney(sum)}</span></div>
+      <div class="repair-list-sum"><span>${sumLabel}</span><span>${fmtMoney(sum)}</span></div>
     </div>
   `;
 }
@@ -1016,7 +1016,7 @@ async function renderOrderToCanvas() {
     y += 24;
   }
 
-  function block(title, items) {
+  function block(title, items, sumLabel) {
     if (!items.length) return;
     y += 20;
     ctx.font = `13px ${ORDER_IMG.fontBody}`;
@@ -1081,15 +1081,15 @@ async function renderOrderToCanvas() {
     ctx.font = `14px ${ORDER_IMG.fontBody}`;
     ctx.fillStyle = C.textMuted;
     ctx.textAlign = 'left';
-    ctx.fillText(`Сумма: ${title.toLowerCase()}`, pad, y);
+    ctx.fillText(sumLabel, pad, y);
     ctx.textAlign = 'right';
     ctx.fillText(fmtMoney(sum), width - pad, y);
     ctx.textAlign = 'left';
     y += 24;
   }
 
-  block('Работы', order.works);
-  block('Запчасти', order.parts);
+  block('Работы', order.works, 'Сумма работ:');
+  block('Запчасти', order.parts, 'Сумма запчастей');
 
   if (order.advance > 0) {
     ctx.font = `15px ${ORDER_IMG.fontBody}`;
