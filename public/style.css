@@ -767,31 +767,29 @@ input[type="number"]::-webkit-inner-spin-button {
 
 @media (max-width: 880px) {
   /* Бренд + меню + кнопка выхода в один ряд не помещаются без сжатия текста
-     (из-за которого раньше вкладки наезжали на бренд и на кнопку) — вместо
-     сжатия переносим бренд и меню друг под друга на всю ширину. */
-  .topbar { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 600px) {
-  .topbar { position: relative; }
-  /* Резерв под абсолютно спозиционированную кнопку выхода — на самом бренде,
-     а не на всём topbar: иначе паддинг топбара становится несимметричным и
-     вкладки в строке ниже съезжают влево вместо центра. */
-  .brand { padding-right: 50px; }
-  #logoutBtn {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    margin-left: 0;
-    padding: 8px;
+     (из-за которого раньше вкладки наезжали на бренд и на кнопку). Вместо
+     этого — 2 ряда: бренд и "Выйти" по краям первого ряда, меню на всю
+     ширину вторым рядом. */
+  .topbar {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "brand logout" "tabs tabs";
   }
-  #logoutBtn .logout-text { display: none; }
+  .brand { grid-area: brand; justify-self: start; }
+  #logoutBtn { grid-area: logout; justify-self: end; }
+  .tabs { grid-area: tabs; }
 }
 
 @media (max-width: 560px) {
   /* Вкладки не помещаются в одну строку — вместо переноса в несколько
      колонок или горизонтальной прокрутки складываем их в одну колонку. */
   .tabs { flex-direction: column; width: 100%; justify-self: stretch; }
+}
+
+@media (max-width: 400px) {
+  /* На самых узких экранах бренду и кнопке выхода вместе с текстом тесно
+     в одном ряду — прячем текст кнопки, оставляем только иконку. */
+  #logoutBtn .logout-text { display: none; }
+  #logoutBtn { padding: 8px; }
 }
 
 /* ---------- Toast ---------- */
