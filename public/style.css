@@ -767,10 +767,9 @@ input[type="number"]::-webkit-inner-spin-button {
     padding: 8px;
   }
   #logoutBtn .logout-text { display: none; }
-  /* На узких экранах вкладки шире контейнера — даём им свою горизонтальную
-     прокрутку вместо того, чтобы ломать всю страницу вбок. */
-  .tabs { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .tab { flex-shrink: 0; }
+  /* На узких экранах 4 вкладки в одну строку не помещаются — переносим их
+     в 2 строки вместо горизонтальной прокрутки хедера. */
+  .tabs { flex-wrap: wrap; }
 }
 
 /* ---------- Toast ---------- */
