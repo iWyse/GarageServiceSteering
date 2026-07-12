@@ -46,23 +46,19 @@ button, input, select, textarea { font-family: inherit; }
 /* ---------- Topbar ---------- */
 /* Грид вместо flex/space-between: у крайних колонок одинаковый 1fr, поэтому
    меню навигации в середине оказывается ровно по центру независимо от того,
-   что бренд слева шире кнопки "Выйти" справа. */
+   что бренд слева шире кнопки "Выйти" справа. Колонки НЕ сжимаются меньше
+   контента (без minmax(0, ...) — это раньше приводило к тому, что вкладки
+   наезжали на бренд/кнопку выхода при нехватке места); вместо сжатия ниже
+   880px бренд и меню просто переносятся друг под друга (см. медиа-запрос).*/
 .topbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   padding: 18px 28px;
   border-bottom: 3px solid var(--accent);
   background: var(--surface);
   gap: 16px;
 }
-
-/* minmax(0, ...) на треках позволяет им сжиматься при нехватке места, но по
-   умолчанию грид-айтемы всё равно не сжимаются меньше своего контента —
-   min-width: 0 снимает это ограничение, чтобы бренд и кнопка "Выйти"
-   переносили текст, а не раздвигали шапку вбок. */
-.brand { min-width: 0; }
-#logoutBtn { min-width: 0; }
 
 .tabs { justify-self: center; }
 #logoutBtn { justify-self: end; }
@@ -769,8 +765,19 @@ input[type="number"]::-webkit-inner-spin-button {
 .login-error { margin: 0; font-size: 14px; color: var(--status-cancelled); }
 #logoutBtn { margin-left: 12px; display: flex; align-items: center; gap: 6px; }
 
+@media (max-width: 880px) {
+  /* Бренд + меню + кнопка выхода в один ряд не помещаются без сжатия текста
+     (из-за которого раньше вкладки наезжали на бренд и на кнопку) — вместо
+     сжатия переносим бренд и меню друг под друга на всю ширину. */
+  .topbar { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 600px) {
-  .topbar { position: relative; padding-right: 60px; }
+  .topbar { position: relative; }
+  /* Резерв под абсолютно спозиционированную кнопку выхода — на самом бренде,
+     а не на всём topbar: иначе паддинг топбара становится несимметричным и
+     вкладки в строке ниже съезжают влево вместо центра. */
+  .brand { padding-right: 50px; }
   #logoutBtn {
     position: absolute;
     top: 14px;
@@ -782,9 +789,6 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 @media (max-width: 560px) {
-  /* На узких экранах колонки 1fr/auto/1fr больше не нужны — бренд и меню
-     просто идут друг под другом на всю ширину. */
-  .topbar { grid-template-columns: 1fr; }
   /* Вкладки не помещаются в одну строку — вместо переноса в несколько
      колонок или горизонтальной прокрутки складываем их в одну колонку. */
   .tabs { flex-direction: column; width: 100%; justify-self: stretch; }
