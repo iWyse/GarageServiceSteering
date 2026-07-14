@@ -2149,6 +2149,7 @@ document.getElementById('editApptDetailsBtn').addEventListener('click', () => {
 apptForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(apptForm).entries());
+  const wasEditing = !!editingApptId;
   try {
     if (editingApptId) {
       await api(`/api/appointments/${editingApptId}`, { method: 'PUT', body: JSON.stringify(data) });
@@ -2157,8 +2158,20 @@ apptForm.addEventListener('submit', async (e) => {
       await api('/api/appointments', { method: 'POST', body: JSON.stringify(data) });
       showToast('Запись создана');
     }
-    closeDialog(apptDialog);
     await loadWeek();
+    // При редактировании окно не закрываем — возвращаемся к сводке с уже
+    // сохранёнными данными, а не выкидываем в расписание. Закрываем только
+    // при создании новой записи, и если после сохранения запись почему-то
+    // не нашлась в текущей неделе (например, дату перенесли на другую неделю).
+    const updated = wasEditing ? state.appointments.find((a) => a.id === editingApptId) : null;
+    if (wasEditing && updated) {
+      currentApptRecord = updated;
+      fillApptSummary(updated);
+      document.getElementById('apptSummary').classList.remove('hidden');
+      document.getElementById('apptDetailsFields').classList.add('hidden');
+    } else {
+      closeDialog(apptDialog);
+    }
   } catch (err) {
     showToast(err.message, true);
   }
