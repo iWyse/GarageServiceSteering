@@ -2065,19 +2065,21 @@ function openApptDialog(appt, defaultDate) {
     apptForm.elements.date.value = defaultDate;
     apptForm.elements.time.value = '09:00';
   }
-  toggleWalkinFields();
-
   // Для уже существующей записи прячем поля даты/времени/VIN/услуги/статуса/заметок
   // за кнопкой "Редактировать", чтобы окно не пугало кучей полей при простом просмотре.
+  // Поля разового визита (имя/телефон/авто) — туда же, за кнопку: иначе они лезли
+  // поверх сводки, хотя та же информация уже показана в рамке апптSummary.
   const detailsFields = document.getElementById('apptDetailsFields');
   const summary = document.getElementById('apptSummary');
   if (appt) {
     fillApptSummary(appt);
     summary.classList.remove('hidden');
     detailsFields.classList.add('hidden');
+    document.getElementById('walkinFields').classList.add('hidden');
   } else {
     summary.classList.add('hidden');
     detailsFields.classList.remove('hidden');
+    toggleWalkinFields();
   }
 
   openDialog(apptDialog);
@@ -2144,6 +2146,7 @@ function fillApptSummary(appt) {
 document.getElementById('editApptDetailsBtn').addEventListener('click', () => {
   document.getElementById('apptSummary').classList.add('hidden');
   document.getElementById('apptDetailsFields').classList.remove('hidden');
+  toggleWalkinFields();
 });
 
 apptForm.addEventListener('submit', async (e) => {
@@ -2169,6 +2172,7 @@ apptForm.addEventListener('submit', async (e) => {
       fillApptSummary(updated);
       document.getElementById('apptSummary').classList.remove('hidden');
       document.getElementById('apptDetailsFields').classList.add('hidden');
+      document.getElementById('walkinFields').classList.add('hidden');
     } else {
       closeDialog(apptDialog);
     }
