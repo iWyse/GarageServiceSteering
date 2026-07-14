@@ -1096,6 +1096,10 @@ async function renderOrderToCanvas() {
           ctx.fillStyle = C.textMuted;
           ctx.fillText(metaText, pad + nameW, y);
         }
+        // Иначе цена наследует приглушённый цвет меты, нарисованной строчкой
+        // выше, и запчасти с "(мета)" оказываются другого цвета, чем работы.
+        ctx.font = `600 16px ${ORDER_IMG.fontBody}`;
+        ctx.fillStyle = C.text;
         ctx.textAlign = 'right';
         ctx.fillText(priceText, width - pad, y);
         ctx.textAlign = 'left';
@@ -1123,7 +1127,7 @@ async function renderOrderToCanvas() {
     });
 
     dashedDivider();
-    ctx.font = `14px ${ORDER_IMG.fontBody}`;
+    ctx.font = `600 18px ${ORDER_IMG.fontBody}`;
     ctx.fillStyle = C.accent;
     ctx.textAlign = 'left';
     ctx.fillText(sumLabel, pad, y);
