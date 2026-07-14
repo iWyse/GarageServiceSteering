@@ -333,7 +333,9 @@ function fmtFullDate(d) {
 }
 
 function fmtMoney(n) {
-  return `${(Number(n) || 0).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ₽`;
+  // Неразрывный пробел перед ₽ — иначе в узких строках (например, в объёмной
+  // смете) значок рубля переносится на следующую строку от суммы.
+  return `${(Number(n) || 0).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ₽`;
 }
 
 function fmtMileage(n) {
