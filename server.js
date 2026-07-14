@@ -620,6 +620,25 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { ok: true });
     }
 
+    // Backup — отдаём сырой файл SQLite как есть; восстановление — просто
+    // положить скачанный файл обратно под именем autoservice.db.
+    if (pathname === '/api/backup' && req.method === 'GET') {
+      const dbPath = path.join(__dirname, 'autoservice.db');
+      let data;
+      try {
+        data = fs.readFileSync(dbPath);
+      } catch (err) {
+        return sendJSON(res, 500, { error: 'Не удалось прочитать базу данных' });
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      res.writeHead(200, {
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': `attachment; filename="autoservice-backup-${today}.db"`,
+        'Content-Length': data.length,
+      });
+      return res.end(data);
+    }
+
     if (pathname.startsWith('/api/')) {
       return sendJSON(res, 404, { error: 'Не найдено' });
     }
