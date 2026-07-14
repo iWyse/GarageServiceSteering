@@ -160,6 +160,7 @@ main { max-width: none; margin: 0; padding: 24px 28px; }
   border: none;
   color: var(--accent);
   text-decoration: underline;
+  text-decoration-skip-ink: none; /* иначе браузер "прерывает" линию под нижними засечками букв вроде "Д" */
   padding: 0;
   font-size: 14px;
 }
