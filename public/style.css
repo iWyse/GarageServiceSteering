@@ -21,6 +21,9 @@
 * { box-sizing: border-box; }
 
 html, body {
+  /* Иначе нативные иконки date/time-инпутов рисуются в светлой теме браузера
+     и выглядят посторонним светлым пятном на тёмном фоне приложения. */
+  color-scheme: dark;
   margin: 0;
   padding: 0;
   background: var(--bg);
@@ -42,6 +45,7 @@ body {
 button, input, select, textarea { font-family: inherit; }
 
 .hidden { display: none !important; }
+body.dialog-open { overflow: hidden; }
 
 /* ---------- Topbar ---------- */
 /* Грид вместо flex/space-between: у крайних колонок одинаковый 1fr, поэтому
@@ -538,6 +542,9 @@ input[type="number"]::-webkit-inner-spin-button {
 #editApptDetailsBtn { align-self: flex-start; margin-top: 4px; }
 .req { color: var(--status-cancelled); }
 .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* Иначе колонки не сжимаются меньше нативного виджета даты/времени и вылезают
+   за диалог на узких экранах (тот же класс бага, что чинили в шапке и сетке недели). */
+.row-2 > label { min-width: 0; }
 
 .walkin-fields {
   display: flex;
@@ -550,6 +557,27 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .walkin-hint { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text-muted); }
 #estimatePickerHint { margin-bottom: 14px; }
+
+/* ---------- Поиск клиента (замена обычного select) ---------- */
+.client-picker { position: relative; }
+.client-picker-native { display: none; }
+.client-picker-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  z-index: 20;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.client-picker-item { padding: 9px 11px; font-size: 14px; cursor: pointer; }
+.client-picker-item:hover, .client-picker-item:active { background: var(--surface); color: var(--accent); }
+.client-picker-item-empty { color: var(--text-muted); border-bottom: 1px solid var(--border); }
+.client-picker-empty { padding: 9px 11px; font-size: 14px; color: var(--text-muted); }
 
 .appt-card[draggable="true"] { cursor: grab; }
 .appt-card.dragging { opacity: 0.35; cursor: grabbing; }
@@ -742,18 +770,29 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: var(--radius);
   background: var(--surface-2);
 }
-/* На мобильных заказ-наряд открывается во весь экран — удобно сразу сделать скриншот. */
+/* На мобильных диалоги открываются во весь экран, а не маленьким окном
+   поверх сайта — форм слишком много, чтобы ужиматься в узкую карточку.
+   Confirm и логин — исключение: это компактные попапы, а не формы. */
 @media (max-width: 600px) {
-  #orderDialog { padding: 0; }
-  #orderDialog .dialog {
+  .dialog-overlay { padding: 0; }
+  .dialog-overlay .dialog {
     max-width: none;
     max-height: none;
     width: 100vw;
     height: 100vh;
     border-radius: 0;
-    display: flex;
-    flex-direction: column;
+    overflow-y: auto;
   }
+  #confirmDialog, #loginOverlay { padding: 20px; }
+  #confirmDialog .dialog, #loginOverlay .dialog {
+    width: 100%;
+    height: auto;
+    max-height: 90vh;
+    border-radius: var(--radius);
+  }
+  /* Заказ-наряд: шапка с кнопками остаётся на месте, скроллится только
+     сам документ — так удобнее делать скриншот и не терять кнопки внизу. */
+  #orderDialog .dialog { display: flex; flex-direction: column; overflow-y: hidden; }
   #orderDialog .order-doc { flex: 1; overflow-y: auto; }
 }
 

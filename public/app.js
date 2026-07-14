@@ -161,8 +161,20 @@ document.querySelectorAll('.tab').forEach((btn) => {
 });
 
 // ---------- Dialog helpers ----------
-function openDialog(el) { el.classList.remove('hidden'); }
-function closeDialog(el) { el.classList.add('hidden'); }
+// Иначе на телефоне скролл внутри открытого диалога прокручивает сайт под
+// ним, а не содержимое самого диалога. Класс снимаем только когда закрыт
+// последний диалог — иначе confirm поверх другого окна преждевременно
+// разблокирует прокрутку фона.
+function openDialog(el) {
+  el.classList.remove('hidden');
+  document.body.classList.add('dialog-open');
+}
+function closeDialog(el) {
+  el.classList.add('hidden');
+  if (!document.querySelector('.dialog-overlay:not(.hidden)')) {
+    document.body.classList.remove('dialog-open');
+  }
+}
 document.querySelectorAll('[data-close-dialog]').forEach((btn) => {
   btn.addEventListener('click', () => closeDialog(btn.closest('.dialog-overlay')));
 });
@@ -1327,6 +1339,7 @@ document.getElementById('queueClientSelect').addEventListener('change', (e) => {
   queueForm.elements.plate.value = client.plate || '';
   queueForm.elements.vin.value = client.vin || '';
 });
+enhanceClientSelect(document.getElementById('queueClientSelect'), '— новый клиент (не из базы) —');
 
 function openQueueDialog(entry) {
   editingQueueId = entry ? entry.id : null;
@@ -1792,11 +1805,105 @@ function toggleWalkinFields() {
   apptForm.elements.walkin_name.required = isWalkin;
 }
 document.getElementById('apptClientSelect').addEventListener('change', toggleWalkinFields);
+enhanceClientSelect(document.getElementById('apptClientSelect'), '— Разовый визит (без базы) —');
 
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str ?? '';
   return div.innerHTML;
+}
+
+// Обычный <select> с 1000+ клиентами на телефоне неюзабелен — нет поиска,
+// системный пикер занимает весь экран одним столбцом текста. Прячем select
+// (он остаётся источником правды: value читают fillClientSelect/FormData/
+// toggleWalkinFields без изменений) и рисуем поверх текстовое поле с
+// выпадающим списком, который фильтруется по вводу.
+function enhanceClientSelect(selectEl, emptyLabel) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'client-picker';
+  selectEl.before(wrapper);
+  wrapper.appendChild(selectEl);
+  selectEl.classList.add('client-picker-native');
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'client-picker-input';
+  input.placeholder = emptyLabel;
+  input.autocomplete = 'off';
+  wrapper.insertBefore(input, selectEl);
+
+  const list = document.createElement('div');
+  list.className = 'client-picker-list hidden';
+  wrapper.appendChild(list);
+
+  function syncInputFromSelect() {
+    const opt = selectEl.options[selectEl.selectedIndex];
+    input.value = opt && opt.value ? opt.textContent : '';
+  }
+
+  function closeList() { list.classList.add('hidden'); }
+
+  function renderList(filterText) {
+    const q = filterText.trim().toLowerCase();
+    const options = Array.from(selectEl.options).filter((o) => o.value); // без "— не из базы —"
+    const matches = q ? options.filter((o) => o.textContent.toLowerCase().includes(q)) : options;
+    const shown = matches.slice(0, 100);
+    list.innerHTML = '';
+
+    const emptyItem = document.createElement('div');
+    emptyItem.className = 'client-picker-item client-picker-item-empty';
+    emptyItem.textContent = emptyLabel;
+    emptyItem.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      selectEl.value = '';
+      selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+      input.value = '';
+      closeList();
+    });
+    list.appendChild(emptyItem);
+
+    if (!shown.length) {
+      const empty = document.createElement('div');
+      empty.className = 'client-picker-empty';
+      empty.textContent = 'Ничего не найдено';
+      list.appendChild(empty);
+    }
+    shown.forEach((o) => {
+      const item = document.createElement('div');
+      item.className = 'client-picker-item';
+      item.textContent = o.textContent;
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault(); // иначе blur инпута срабатывает раньше клика по пункту
+        selectEl.value = o.value;
+        selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        syncInputFromSelect();
+        closeList();
+      });
+      list.appendChild(item);
+    });
+    if (matches.length > shown.length) {
+      const hint = document.createElement('div');
+      hint.className = 'client-picker-empty';
+      hint.textContent = `Показаны первые ${shown.length} из ${matches.length} — уточните запрос`;
+      list.appendChild(hint);
+    }
+  }
+
+  input.addEventListener('focus', () => { renderList(''); list.classList.remove('hidden'); });
+  input.addEventListener('input', () => { renderList(input.value); list.classList.remove('hidden'); });
+  input.addEventListener('blur', () => {
+    setTimeout(() => { syncInputFromSelect(); closeList(); }, 150);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { syncInputFromSelect(); closeList(); input.blur(); }
+  });
+
+  // childList — на случай fillClientSelect()/fillQueueClientSelect() (пересобирают
+  // <option>); change — на случай, когда код где-то ещё выставляет .value напрямую
+  // и явно рассылает событие (программная установка .value событие не создаёт).
+  new MutationObserver(syncInputFromSelect).observe(selectEl, { childList: true });
+  selectEl.addEventListener('change', syncInputFromSelect);
+  syncInputFromSelect();
 }
 
 // ================= SCHEDULE =================
@@ -1949,6 +2056,7 @@ function openApptDialog(appt, defaultDate) {
       if (apptForm.elements[k]) apptForm.elements[k].value = v || '';
     }
     apptForm.elements.client_id.value = appt.client_id || '';
+    apptForm.elements.client_id.dispatchEvent(new Event('change'));
   } else {
     apptForm.elements.date.value = defaultDate;
     apptForm.elements.time.value = '09:00';
@@ -1972,6 +2080,27 @@ function openApptDialog(appt, defaultDate) {
 }
 
 function fillApptSummary(appt) {
+  document.getElementById('summaryName').textContent = appt.client_name || '';
+
+  const phoneRow = document.getElementById('summaryPhoneRow');
+  if (appt.client_phone) {
+    document.getElementById('summaryPhone').textContent = appt.client_phone;
+    phoneRow.classList.remove('hidden');
+  } else {
+    phoneRow.classList.add('hidden');
+  }
+
+  const carRow = document.getElementById('summaryCarRow');
+  const carLine = appt.client_id
+    ? [appt.car_make, appt.car_model].filter(Boolean).join(' ')
+    : (appt.walkin_car || '');
+  if (carLine) {
+    document.getElementById('summaryCar').textContent = carLine;
+    carRow.classList.remove('hidden');
+  } else {
+    carRow.classList.add('hidden');
+  }
+
   const dateObj = new Date(appt.date + 'T00:00:00');
   document.getElementById('summaryDateTime').textContent = `${fmtDayLabel(dateObj)} в ${appt.time}`;
 

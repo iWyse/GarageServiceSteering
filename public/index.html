@@ -31,7 +31,7 @@
       </div>
     </div>
     <form id="loginForm">
-      <label>Телефон<input required name="phone" id="loginPhoneInput" type="tel" class="mono-input" autocomplete="username" inputmode="numeric"></label>
+      <label>Телефон<input required name="phone" id="loginPhoneInput" type="tel" class="mono-input" autocomplete="username" inputmode="tel"></label>
       <label>Пароль<input required name="password" type="password" placeholder="Пароль" class="mono-input" autocomplete="current-password"></label>
       <p id="loginError" class="login-error hidden"></p>
       <button type="submit" class="btn-primary btn-block">Войти</button>
@@ -167,11 +167,11 @@
       <button type="button" class="ctab" data-ctab="history">История ремонта</button>
     </div>
     <form id="clientForm">
-      <label><span>Имя <span class="req">*</span></span><input required name="name" type="text" placeholder="Иван Петров"></label>
-      <label>Телефон<input name="phone" id="clientPhoneInput" type="tel" placeholder="+7 928 280 88 50" class="mono-input"></label>
+      <label><span>Имя <span class="req">*</span></span><input required name="name" type="text"></label>
+      <label>Телефон<input name="phone" id="clientPhoneInput" type="tel" class="mono-input"></label>
       <div class="row-2">
-        <label>Марка<input name="car_make" type="text" placeholder="Toyota"></label>
-        <label>Модель<input name="car_model" type="text" placeholder="Camry"></label>
+        <label>Марка<input name="car_make" type="text"></label>
+        <label>Модель<input name="car_model" type="text"></label>
       </div>
       <label>Гос. номер<input name="plate" type="text" placeholder="AB-123-C" class="mono-input"></label>
       <label>Тег<input name="tag" type="text" placeholder="Например: постоянный, такси, VIP…"></label>
@@ -207,11 +207,11 @@
       <label>Клиент из базы
         <select id="queueClientSelect"><option value="">— новый клиент (не из базы) —</option></select>
       </label>
-      <label><span>Имя <span class="req">*</span></span><input required name="name" type="text" placeholder="Иван Петров"></label>
-      <label>Телефон<input name="phone" id="queuePhoneInput" type="tel" placeholder="+7 928 280 88 50" class="mono-input"></label>
+      <label><span>Имя <span class="req">*</span></span><input required name="name" type="text"></label>
+      <label>Телефон<input name="phone" id="queuePhoneInput" type="tel" class="mono-input"></label>
       <div class="row-2">
-        <label>Марка<input name="car_make" type="text" placeholder="Toyota"></label>
-        <label>Модель<input name="car_model" type="text" placeholder="Camry"></label>
+        <label>Марка<input name="car_make" type="text"></label>
+        <label>Модель<input name="car_model" type="text"></label>
       </div>
       <label>Гос. номер<input name="plate" type="text" placeholder="AB-123-C" class="mono-input"></label>
       <label>VIN<input name="vin" type="text" placeholder="17 символов, напр. JHMFA16586S000000" class="mono-input" maxlength="17" style="text-transform:uppercase"></label>
@@ -340,12 +340,15 @@
 
       <div id="walkinFields" class="walkin-fields hidden">
         <p class="walkin-hint">Разовый визит — данные сохранятся только в этой записи, в базу клиентов не попадут.</p>
-        <label><span>Имя <span class="req">*</span></span><input name="walkin_name" type="text" placeholder="Как обращаться"></label>
-        <label>Телефон<input name="walkin_phone" id="walkinPhoneInput" type="tel" placeholder="+7 928 280 88 50" class="mono-input"></label>
-        <label>Автомобиль<input name="walkin_car" type="text" placeholder="Toyota Camry, AB-123-C"></label>
+        <label><span>Имя <span class="req">*</span></span><input name="walkin_name" type="text"></label>
+        <label>Телефон<input name="walkin_phone" id="walkinPhoneInput" type="tel" class="mono-input"></label>
+        <label>Автомобиль<input name="walkin_car" type="text"></label>
       </div>
 
       <div id="apptSummary" class="appt-summary hidden">
+        <div class="appt-summary-row"><span>Имя</span><strong id="summaryName"></strong></div>
+        <div class="appt-summary-row hidden" id="summaryPhoneRow"><span>Телефон</span><strong id="summaryPhone"></strong></div>
+        <div class="appt-summary-row hidden" id="summaryCarRow"><span>Автомобиль</span><strong id="summaryCar"></strong></div>
         <div class="appt-summary-row"><span>Дата и время</span><strong id="summaryDateTime"></strong></div>
         <div class="appt-summary-row" id="summaryServiceRow"><span>Услуга</span><strong id="summaryService"></strong></div>
         <div class="appt-summary-row" id="summaryStatusRow"><span>Статус</span><strong id="summaryStatus"></strong></div>
