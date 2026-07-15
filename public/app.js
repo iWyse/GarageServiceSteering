@@ -531,6 +531,7 @@ clientForm.addEventListener('submit', async (e) => {
     closeDialog(clientDialog);
     await loadClients();
     await loadWeek();
+    await loadRequests();
   } catch (err) {
     showToast(err.message, true);
   }
@@ -2319,12 +2320,13 @@ async function loadRequests() {
     const telHref = r.client_phone ? r.client_phone.replace(/[^\d+]/g, '') : '';
     item.innerHTML = `
       <div class="request-item-head">
-        <span><span class="request-item-name">${senderName}</span> <span class="request-item-vin">${escapeHtml(r.vin)}</span></span>
+        <span><span class="request-item-name">${senderName}</span> <span class="request-item-vin">VIN: ${escapeHtml(r.vin)}</span></span>
         <span class="request-item-date">${fmtDateTime(r.created_at)}</span>
       </div>
       ${r.message ? `<p class="request-item-message">${escapeHtml(r.message)}</p>` : ''}
       ${r.photo ? `<img src="${r.photo}" class="request-item-photo" alt="Фото от клиента">` : ''}
       <div class="request-item-actions">
+        ${!r.client_name ? `<button type="button" class="btn-primary request-add-client-btn">Добавить клиента</button>` : ''}
         ${telHref ? `<a href="tel:${escapeHtml(telHref)}" class="btn-ghost">Позвонить</a>` : ''}
         <button type="button" class="btn-danger request-delete-btn">Удалить</button>
       </div>
@@ -2333,6 +2335,14 @@ async function loadRequests() {
     if (photoImg) photoImg.addEventListener('click', (e) => { e.stopPropagation(); window.open(r.photo, '_blank'); });
     const telLink = item.querySelector('.request-item-actions a');
     if (telLink) telLink.addEventListener('click', (e) => e.stopPropagation());
+    const addClientBtn = item.querySelector('.request-add-client-btn');
+    if (addClientBtn) {
+      addClientBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openClientDialog(null);
+        clientForm.elements.vin.value = r.vin;
+      });
+    }
     item.querySelector('.request-delete-btn').addEventListener('click', async (e) => {
       e.stopPropagation();
       if (!(await showConfirm('Удалить заявку?'))) return;
