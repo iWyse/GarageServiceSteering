@@ -18,6 +18,26 @@ const OWNER_PASSWORD = 'REDACTED';
 const SESSION_COOKIE = 'session';
 const sessions = new Set();
 
+// ---------- Авторизация клиента (вход по VIN) ----------
+// Отдельная от владельца сессия: клиент входит по VIN своей машины. Если VIN
+// не найден в базе — просим пароль (текущий год), чтобы отсечь спам-ботов,
+// но не мешать реальным новым клиентам, которых ещё нет в базе.
+const CLIENT_SESSION_COOKIE = 'client_session';
+const clientSessions = new Map(); // token -> vin
+
+function normalizeVin(v) {
+  return (v || '').trim().toUpperCase().slice(0, 17);
+}
+
+function currentYearPassword() {
+  return String(new Date().getFullYear());
+}
+
+function getClientVin(req) {
+  const token = parseCookies(req)[CLIENT_SESSION_COOKIE];
+  return token ? clientSessions.get(token) || null : null;
+}
+
 function onlyDigits(v) {
   return (v || '').replace(/\D/g, '');
 }
@@ -343,6 +363,88 @@ function deleteConsumable(id) {
   db.prepare('DELETE FROM consumables WHERE id = ?').run(id);
 }
 
+// ---------- Client portal (кабинет клиента) ----------
+function getClientProfile(vin) {
+  const matched = db.prepare('SELECT * FROM clients WHERE UPPER(vin) = ?').all(vin);
+  const profile = db.prepare('SELECT * FROM client_car_profiles WHERE vin = ?').get(vin);
+  const repairs = db
+    .prepare(
+      `SELECT r.* FROM repair_records r
+       JOIN clients c ON c.id = r.client_id
+       WHERE UPPER(c.vin) = ?
+       ORDER BY r.date DESC, r.id DESC`
+    )
+    .all(vin)
+    .map(parseRepairRecord);
+  const fallback = matched[0] || {};
+  return {
+    vin,
+    known: matched.length > 0,
+    car: {
+      car_make: profile?.car_make ?? fallback.car_make ?? '',
+      car_model: profile?.car_model ?? fallback.car_model ?? '',
+      plate: profile?.plate ?? fallback.plate ?? '',
+      notes: profile?.notes ?? '',
+    },
+    repairs,
+  };
+}
+
+function saveClientCarProfile(vin, data) {
+  const car_make = (data.car_make || '').trim();
+  const car_model = (data.car_model || '').trim();
+  const plate = (data.plate || '').trim();
+  const notes = (data.notes || '').trim();
+  const existing = db.prepare('SELECT vin FROM client_car_profiles WHERE vin = ?').get(vin);
+  if (existing) {
+    db.prepare(`UPDATE client_car_profiles SET car_make=?, car_model=?, plate=?, notes=?, updated_at=datetime('now') WHERE vin=?`).run(
+      car_make,
+      car_model,
+      plate,
+      notes,
+      vin
+    );
+  } else {
+    db.prepare('INSERT INTO client_car_profiles (vin, car_make, car_model, plate, notes) VALUES (?, ?, ?, ?, ?)').run(
+      vin,
+      car_make,
+      car_model,
+      plate,
+      notes
+    );
+  }
+  return getClientProfile(vin);
+}
+
+function createClientRequest(vin, data) {
+  const info = db
+    .prepare('INSERT INTO client_requests (vin, message, photo) VALUES (?, ?, ?)')
+    .run(vin, (data.message || '').trim(), data.photo || null);
+  return db.prepare('SELECT * FROM client_requests WHERE id = ?').get(info.lastInsertRowid);
+}
+
+function listClientRequestsByVin(vin) {
+  return db.prepare('SELECT * FROM client_requests WHERE vin = ? ORDER BY created_at DESC').all(vin);
+}
+
+function listClientRequestsForAdmin() {
+  return db
+    .prepare('SELECT * FROM client_requests ORDER BY created_at DESC')
+    .all()
+    .map((r) => {
+      const client = db.prepare('SELECT name, phone FROM clients WHERE UPPER(vin) = ? LIMIT 1').get(r.vin);
+      return { ...r, client_name: client ? client.name : null, client_phone: client ? client.phone : null };
+    });
+}
+
+function markClientRequestRead(id) {
+  db.prepare('UPDATE client_requests SET is_read = 1 WHERE id = ?').run(id);
+}
+
+function deleteClientRequest(id) {
+  db.prepare('DELETE FROM client_requests WHERE id = ?').run(id);
+}
+
 // ---------- Appointments ----------
 function listAppointments(start, end) {
   return db
@@ -475,6 +577,64 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { authenticated: isAuthenticated(req) });
     }
 
+    // Авторизация клиента по VIN — отдельная от владельца, со своим гейтом ниже.
+    if (pathname === '/api/client-login' && req.method === 'POST') {
+      const body = await readBody(req);
+      const vin = normalizeVin(body.vin);
+      if (!vin) return sendJSON(res, 400, { error: 'Введите VIN' });
+      const known = !!db.prepare('SELECT 1 FROM clients WHERE UPPER(vin) = ? LIMIT 1').get(vin);
+      if (!known) {
+        const password = (body.password || '').trim();
+        if (!password) return sendJSON(res, 200, { ok: false, needPassword: true });
+        if (password !== currentYearPassword()) {
+          return sendJSON(res, 401, { error: 'Неверный пароль' });
+        }
+      }
+      const token = crypto.randomUUID();
+      clientSessions.set(token, vin);
+      res.setHeader('Set-Cookie', `${CLIENT_SESSION_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`);
+      return sendJSON(res, 200, { ok: true });
+    }
+    if (pathname === '/api/client-logout' && req.method === 'POST') {
+      const token = parseCookies(req)[CLIENT_SESSION_COOKIE];
+      if (token) clientSessions.delete(token);
+      res.setHeader('Set-Cookie', `${CLIENT_SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0`);
+      return sendJSON(res, 200, { ok: true });
+    }
+    if (pathname === '/api/client-session' && req.method === 'GET') {
+      return sendJSON(res, 200, { authenticated: !!getClientVin(req) });
+    }
+
+    // API кабинета клиента — доступ по клиентской сессии (VIN), не по владельческой.
+    if (pathname === '/api/client/me' && req.method === 'GET') {
+      const vin = getClientVin(req);
+      if (!vin) return sendJSON(res, 401, { error: 'Требуется авторизация' });
+      return sendJSON(res, 200, getClientProfile(vin));
+    }
+    if (pathname === '/api/client/car' && req.method === 'PUT') {
+      const vin = getClientVin(req);
+      if (!vin) return sendJSON(res, 401, { error: 'Требуется авторизация' });
+      const body = await readBody(req);
+      return sendJSON(res, 200, saveClientCarProfile(vin, body));
+    }
+    if (pathname === '/api/client/requests' && req.method === 'GET') {
+      const vin = getClientVin(req);
+      if (!vin) return sendJSON(res, 401, { error: 'Требуется авторизация' });
+      return sendJSON(res, 200, listClientRequestsByVin(vin));
+    }
+    if (pathname === '/api/client/requests' && req.method === 'POST') {
+      const vin = getClientVin(req);
+      if (!vin) return sendJSON(res, 401, { error: 'Требуется авторизация' });
+      const body = await readBody(req);
+      if (!(body.message || '').trim() && !body.photo) {
+        return sendJSON(res, 400, { error: 'Добавьте текст сообщения или фото' });
+      }
+      if (body.photo && body.photo.length > 3_000_000) {
+        return sendJSON(res, 400, { error: 'Фото слишком большое' });
+      }
+      return sendJSON(res, 201, createClientRequest(vin, body));
+    }
+
     // Всё остальное API — только для авторизованного владельца.
     if (pathname.startsWith('/api/') && !isAuthenticated(req)) {
       return sendJSON(res, 401, { error: 'Требуется авторизация' });
@@ -515,6 +675,21 @@ const server = http.createServer(async (req, res) => {
     }
     if (m && req.method === 'DELETE') {
       deleteRepairRecord(Number(m[1]));
+      return sendJSON(res, 200, { ok: true });
+    }
+
+    // Заявки клиентов (входящие, видит только владелец)
+    if (pathname === '/api/requests' && req.method === 'GET') {
+      return sendJSON(res, 200, listClientRequestsForAdmin());
+    }
+    m = pathname.match(/^\/api\/requests\/(\d+)\/read$/);
+    if (m && req.method === 'PUT') {
+      markClientRequestRead(Number(m[1]));
+      return sendJSON(res, 200, { ok: true });
+    }
+    m = pathname.match(/^\/api\/requests\/(\d+)$/);
+    if (m && req.method === 'DELETE') {
+      deleteClientRequest(Number(m[1]));
       return sendJSON(res, 200, { ok: true });
     }
 

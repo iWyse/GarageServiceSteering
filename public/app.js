@@ -64,27 +64,65 @@ async function api(path, options) {
     ...options,
   });
   const data = await res.json().catch(() => ({}));
-  if (res.status === 401 && path !== '/api/login') showLogin();
+  if (res.status === 401) {
+    if (path === '/api/login' || path === '/api/client-login') {
+      // Неверный логин/пароль — просто покажем ошибку в форме, экран входа не трогаем.
+    } else if (path.startsWith('/api/client/')) {
+      showLogin('client');
+    } else {
+      showLogin('owner');
+    }
+  }
   if (!res.ok) throw new Error(data.error || 'Ошибка запроса');
   return data;
 }
 
 // ---------- Авторизация ----------
-// Один пользователь — владелец автосервиса. Пока сессии нет, всё API отдаёт
-// 401 (см. server.js), поэтому просто прячем приложение и показываем форму входа.
+// Два независимых входа: владелец (телефон+пароль, видит всё приложение) и
+// клиент (по VIN своей машины, видит только свой кабинет). Пока сессии нет,
+// соответствующее API отдаёт 401 (см. server.js) — прячем приложение и
+// показываем экран входа с нужной вкладкой.
 const loginOverlay = document.getElementById('loginOverlay');
 const appRoot = document.getElementById('appRoot');
+const clientRoot = document.getElementById('clientRoot');
 const loginForm = document.getElementById('loginForm');
 const loginError = document.getElementById('loginError');
+const clientLoginForm = document.getElementById('clientLoginForm');
+const clientLoginError = document.getElementById('clientLoginError');
+const clientLoginHint = document.getElementById('clientLoginHint');
+const clientPasswordLabel = document.getElementById('clientPasswordLabel');
 
-function showLogin() {
+function setLoginMode(mode) {
+  document.querySelectorAll('.login-mode-btn').forEach((b) => {
+    const active = b.dataset.loginMode === mode;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-selected', String(active));
+  });
+  loginForm.classList.toggle('hidden', mode !== 'owner');
+  clientLoginForm.classList.toggle('hidden', mode !== 'client');
+}
+
+document.querySelectorAll('.login-mode-btn').forEach((btn) => {
+  btn.addEventListener('click', () => setLoginMode(btn.dataset.loginMode));
+});
+
+function showLogin(mode) {
   appRoot.classList.add('hidden');
+  clientRoot.classList.add('hidden');
   loginOverlay.classList.remove('hidden');
+  if (mode) setLoginMode(mode);
 }
 
 function showApp() {
   loginOverlay.classList.add('hidden');
+  clientRoot.classList.add('hidden');
   appRoot.classList.remove('hidden');
+}
+
+function showClientApp() {
+  loginOverlay.classList.add('hidden');
+  appRoot.classList.add('hidden');
+  clientRoot.classList.remove('hidden');
 }
 
 loginForm.addEventListener('submit', async (e) => {
@@ -102,13 +140,45 @@ loginForm.addEventListener('submit', async (e) => {
   }
 });
 
+clientLoginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clientLoginError.classList.add('hidden');
+  const data = Object.fromEntries(new FormData(clientLoginForm).entries());
+  try {
+    const result = await api('/api/client-login', { method: 'POST', body: JSON.stringify(data) });
+    if (result.needPassword) {
+      clientPasswordLabel.classList.remove('hidden');
+      clientLoginHint.classList.remove('hidden');
+      document.getElementById('clientPasswordInput').focus();
+      return;
+    }
+    clientLoginForm.reset();
+    clientPasswordLabel.classList.add('hidden');
+    clientLoginHint.classList.add('hidden');
+    showClientApp();
+    await bootClientApp();
+  } catch (err) {
+    clientLoginError.textContent = err.message;
+    clientLoginError.classList.remove('hidden');
+  }
+});
+
+document.getElementById('clientLogoutBtn').addEventListener('click', async () => {
+  try {
+    await api('/api/client-logout', { method: 'POST' });
+  } catch (err) {
+    // сессии всё равно больше нет смысла — показываем форму входа в любом случае
+  }
+  showLogin('client');
+});
+
 document.getElementById('logoutBtn').addEventListener('click', async () => {
   try {
     await api('/api/logout', { method: 'POST' });
   } catch (err) {
     // сессии всё равно больше нет смысла — показываем форму входа в любом случае
   }
-  showLogin();
+  showLogin('owner');
 });
 
 // ---------- Маска телефона ----------
@@ -157,6 +227,7 @@ document.querySelectorAll('.tab').forEach((btn) => {
     const target = btn.dataset.tab;
     document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
     document.getElementById(`view-${target}`).classList.add('active');
+    if (target === 'requests') loadRequests();
   });
 });
 
@@ -343,6 +414,13 @@ document.querySelectorAll('#clientDialogTabs .ctab').forEach((btn) => {
 
 function fmtFullDate(d) {
   return `${d.getDate()} ${MONTHS_GEN[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+// created_at из sqlite приходит как "YYYY-MM-DD HH:MM:SS" в UTC без указания зоны —
+// добавляем T/Z, чтобы Date распознал её как UTC и показал в локальном времени клиента.
+function fmtDateTime(sqliteStr) {
+  const d = new Date(sqliteStr.replace(' ', 'T') + 'Z');
+  return `${fmtFullDate(d)}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function fmtMoney(n) {
@@ -2219,6 +2297,235 @@ document.getElementById('prevWeek').addEventListener('click', () => { state.week
 document.getElementById('nextWeek').addEventListener('click', () => { state.weekStart = addDays(state.weekStart, 7); loadWeek(); });
 document.getElementById('todayBtn').addEventListener('click', () => { state.weekStart = startOfWeek(new Date()); loadWeek(); });
 
+// ---------- Заявки клиентов (вкладка админа) ----------
+async function loadRequests() {
+  const list = document.getElementById('requestsList');
+  const empty = document.getElementById('requestsEmpty');
+  const badge = document.getElementById('requestsBadge');
+  let items;
+  try {
+    items = await api('/api/requests');
+  } catch (err) {
+    showToast('Не удалось загрузить заявки: ' + err.message, true);
+    return;
+  }
+  list.innerHTML = '';
+  empty.classList.toggle('hidden', items.length !== 0);
+  const unreadCount = items.filter((r) => !r.is_read).length;
+  badge.textContent = String(unreadCount);
+  badge.classList.toggle('hidden', unreadCount === 0);
+
+  items.forEach((r) => {
+    const item = document.createElement('div');
+    item.className = 'request-item' + (r.is_read ? '' : ' unread');
+    const senderName = r.client_name ? escapeHtml(r.client_name) : 'Клиент не найден в базе';
+    const telHref = r.client_phone ? r.client_phone.replace(/[^\d+]/g, '') : '';
+    item.innerHTML = `
+      <div class="request-item-head">
+        <span><span class="request-item-name">${senderName}</span> <span class="request-item-vin">${escapeHtml(r.vin)}</span></span>
+        <span class="request-item-date">${fmtDateTime(r.created_at)}</span>
+      </div>
+      ${r.message ? `<p class="request-item-message">${escapeHtml(r.message)}</p>` : ''}
+      ${r.photo ? `<img src="${r.photo}" class="request-item-photo" alt="Фото от клиента">` : ''}
+      <div class="request-item-actions">
+        ${telHref ? `<a href="tel:${escapeHtml(telHref)}" class="btn-ghost">Позвонить</a>` : ''}
+        <button type="button" class="btn-danger request-delete-btn">Удалить</button>
+      </div>
+    `;
+    const photoImg = item.querySelector('.request-item-photo');
+    if (photoImg) photoImg.addEventListener('click', (e) => { e.stopPropagation(); window.open(r.photo, '_blank'); });
+    const telLink = item.querySelector('.request-item-actions a');
+    if (telLink) telLink.addEventListener('click', (e) => e.stopPropagation());
+    item.querySelector('.request-delete-btn').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!(await showConfirm('Удалить заявку?'))) return;
+      try {
+        await api(`/api/requests/${r.id}`, { method: 'DELETE' });
+        await loadRequests();
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    });
+    if (!r.is_read) {
+      item.addEventListener('click', async () => {
+        try {
+          await api(`/api/requests/${r.id}/read`, { method: 'PUT' });
+          await loadRequests();
+        } catch (err) {
+          // бейдж просто останется прежним — не критично
+        }
+      });
+    }
+    list.appendChild(item);
+  });
+}
+
+// ---------- Кабинет клиента (вход по VIN) ----------
+const clientCarForm = document.getElementById('clientCarForm');
+const clientRequestForm = document.getElementById('clientRequestForm');
+const clientRequestPhotoInput = document.getElementById('clientRequestPhotoInput');
+const clientRequestPhotoPreview = document.getElementById('clientRequestPhotoPreview');
+const clientRequestPhotoImg = document.getElementById('clientRequestPhotoImg');
+const clientRequestError = document.getElementById('clientRequestError');
+let clientRequestPhotoData = null;
+
+async function loadClientProfile() {
+  const profile = await api('/api/client/me');
+  document.getElementById('clientVinBadge').textContent = profile.vin;
+  clientCarForm.elements.car_make.value = profile.car.car_make || '';
+  clientCarForm.elements.car_model.value = profile.car.car_model || '';
+  clientCarForm.elements.plate.value = profile.car.plate || '';
+  clientCarForm.elements.notes.value = profile.car.notes || '';
+  autoResizeTextarea(clientCarForm.elements.notes);
+  renderClientRepairs(profile.repairs);
+}
+
+function renderClientRepairs(records) {
+  const list = document.getElementById('clientRepairsList');
+  const empty = document.getElementById('clientRepairsEmpty');
+  list.innerHTML = '';
+  empty.classList.toggle('hidden', records.length !== 0);
+  records.forEach((r) => {
+    const worksSum = sumItems(r.works);
+    const partsSum = sumItems(r.parts);
+    const advance = Number(r.advance) || 0;
+    const total = Math.max(0, worksSum + partsSum - advance);
+    const dateObj = new Date(r.date + 'T00:00:00');
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+      <div class="history-item-head">
+        <span class="${r.title ? 'history-title' : 'history-date'}">${r.title ? escapeHtml(r.title) : fmtFullDate(dateObj)}</span>
+        <strong class="history-total">${fmtMoney(total)}</strong>
+      </div>
+      ${r.title ? `<span class="history-date">${fmtFullDate(dateObj)}</span>` : ''}
+      ${r.mileage ? `<div class="repair-list-sum"><span>Пробег</span><span>${fmtMileage(r.mileage)}</span></div>` : ''}
+      ${renderRepairBlock('Работы', r.works, worksSum, 'Сумма работ:')}
+      ${renderRepairBlock('Запчасти', r.parts, partsSum, 'Сумма запчастей')}
+      ${r.parts_eta ? `<div class="repair-list-sum"><span>Срок поставки запчастей</span><span>${escapeHtml(r.parts_eta)}</span></div>` : ''}
+      ${advance > 0 ? `<div class="repair-list-sum"><span>Аванс</span><span>− ${fmtMoney(advance)}</span></div>` : ''}
+      ${r.notes ? `<div class="history-notes">${escapeHtml(r.notes)}</div>` : ''}
+    `;
+    item.querySelectorAll('.article-copy-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        copyArticleToClipboard(btn.dataset.article);
+      });
+    });
+    list.appendChild(item);
+  });
+}
+
+clientCarForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(clientCarForm).entries());
+  try {
+    await api('/api/client/car', { method: 'PUT', body: JSON.stringify(data) });
+    showToast('Сохранено');
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+// Фото ужимаем на канвасе перед отправкой — иначе снимок с телефона (несколько
+// мегабайт) раздувает JSON-запрос и base64 в базе; 1280px по длинной стороне
+// с лёгким сжатием JPEG достаточно, чтобы админ разглядел, что прислали.
+function compressImageFile(file, maxDim = 1280, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Не удалось прочитать файл'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Не удалось прочитать изображение'));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+clientRequestPhotoInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    clientRequestPhotoData = await compressImageFile(file);
+    clientRequestPhotoImg.src = clientRequestPhotoData;
+    clientRequestPhotoPreview.classList.remove('hidden');
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+document.getElementById('clientRequestPhotoRemove').addEventListener('click', () => {
+  clientRequestPhotoData = null;
+  clientRequestPhotoInput.value = '';
+  clientRequestPhotoPreview.classList.add('hidden');
+});
+
+clientRequestForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clientRequestError.classList.add('hidden');
+  const message = clientRequestForm.elements.message.value.trim();
+  if (!message && !clientRequestPhotoData) {
+    clientRequestError.textContent = 'Добавьте текст сообщения или фото';
+    clientRequestError.classList.remove('hidden');
+    return;
+  }
+  try {
+    await api('/api/client/requests', { method: 'POST', body: JSON.stringify({ message, photo: clientRequestPhotoData }) });
+    clientRequestForm.reset();
+    clientRequestPhotoData = null;
+    clientRequestPhotoPreview.classList.add('hidden');
+    showToast('Заявка отправлена');
+    await loadClientRequests();
+  } catch (err) {
+    clientRequestError.textContent = err.message;
+    clientRequestError.classList.remove('hidden');
+  }
+});
+
+async function loadClientRequests() {
+  const list = document.getElementById('clientRequestsList');
+  let items;
+  try {
+    items = await api('/api/client/requests');
+  } catch (err) {
+    return;
+  }
+  list.innerHTML = '';
+  items.forEach((r) => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+      <div class="history-item-head"><span class="history-date">${fmtDateTime(r.created_at)}</span></div>
+      ${r.message ? `<div class="history-notes">${escapeHtml(r.message)}</div>` : ''}
+      ${r.photo ? `<img src="${r.photo}" alt="Фото к заявке" style="max-width:160px;height:auto;border-radius:3px;margin-top:6px;display:block;">` : ''}
+    `;
+    list.appendChild(item);
+  });
+}
+
+async function bootClientApp() {
+  try {
+    await loadClientProfile();
+    await loadClientRequests();
+  } catch (err) {
+    showToast('Не удалось загрузить данные: ' + err.message, true);
+  }
+}
+
 // ---------- Init ----------
 async function bootApp() {
   try {
@@ -2226,6 +2533,7 @@ async function bootApp() {
     await loadWeek();
     await loadQueue();
     await loadConsumables();
+    await loadRequests();
   } catch (err) {
     showToast('Не удалось загрузить данные: ' + err.message, true);
   }
@@ -2237,10 +2545,20 @@ async function bootApp() {
     if (authenticated) {
       showApp();
       await bootApp();
-    } else {
-      showLogin();
+      return;
     }
   } catch (err) {
-    showLogin();
+    // не авторизован как владелец — проверим клиентскую сессию ниже
   }
+  try {
+    const { authenticated } = await api('/api/client-session');
+    if (authenticated) {
+      showClientApp();
+      await bootClientApp();
+      return;
+    }
+  } catch (err) {
+    // не авторизован и как клиент — покажем экран входа
+  }
+  showLogin('owner');
 })();

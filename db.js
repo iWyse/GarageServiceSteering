@@ -89,6 +89,30 @@ db.exec(`
     notes TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  -- Данные о машине, которые клиент вносит сам в своём кабинете (вход по VIN).
+  -- Хранится отдельно от clients — так правки клиента никогда не затирают
+  -- карточку клиента, которую ведёт админ, а один и тот же VIN может встречаться
+  -- у нескольких строк clients (см. память об импорте чек-листов).
+  CREATE TABLE IF NOT EXISTS client_car_profiles (
+    vin TEXT PRIMARY KEY,
+    car_make TEXT,
+    car_model TEXT,
+    plate TEXT,
+    notes TEXT,
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Заявки от клиентов из личного кабинета (текст + опционально фото), админ
+  -- видит их во вкладке «Заявки».
+  CREATE TABLE IF NOT EXISTS client_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vin TEXT NOT NULL,
+    message TEXT,
+    photo TEXT, -- base64 data URL, может отсутствовать
+    is_read INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // ---------- Миграция старых баз (версия до "разовых визитов") ----------

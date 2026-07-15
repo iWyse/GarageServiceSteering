@@ -30,10 +30,23 @@
         <p>учёт клиентов и&nbsp;записей</p>
       </div>
     </div>
-    <form id="loginForm">
+    <div class="login-mode-switch" role="tablist">
+      <button type="button" class="login-mode-btn active" data-login-mode="owner" role="tab" aria-selected="true">Я владелец</button>
+      <button type="button" class="login-mode-btn" data-login-mode="client" role="tab" aria-selected="false">Я клиент</button>
+    </div>
+
+    <form id="loginForm" class="login-mode-form">
       <label>Телефон<input required name="phone" id="loginPhoneInput" type="tel" class="mono-input" autocomplete="username" inputmode="tel"></label>
       <label>Пароль<input required name="password" type="password" placeholder="Пароль" class="mono-input" autocomplete="current-password"></label>
       <p id="loginError" class="login-error hidden"></p>
+      <button type="submit" class="btn-primary btn-block">Войти</button>
+    </form>
+
+    <form id="clientLoginForm" class="login-mode-form hidden">
+      <label>VIN автомобиля<input required name="vin" id="clientVinInput" type="text" class="mono-input" maxlength="17" style="text-transform:uppercase" placeholder="17 символов, напр. JHMFA16586S000000" autocomplete="off" autocapitalize="characters"></label>
+      <label id="clientPasswordLabel" class="hidden">Пароль<input name="password" id="clientPasswordInput" type="password" placeholder="Пароль" class="mono-input" autocomplete="off"></label>
+      <p id="clientLoginHint" class="walkin-hint hidden">Такой VIN не найден в базе. Введите пароль (актуален в этом году), чтобы продолжить.</p>
+      <p id="clientLoginError" class="login-error hidden"></p>
       <button type="submit" class="btn-primary btn-block">Войти</button>
     </form>
   </div>
@@ -64,6 +77,7 @@
     <button class="tab" data-tab="clients" role="tab" aria-selected="false">Клиенты</button>
     <button class="tab" data-tab="queue" role="tab" aria-selected="false">Заказы</button>
     <button class="tab" data-tab="consumables" role="tab" aria-selected="false">Расходники</button>
+    <button class="tab tab-with-badge" data-tab="requests" role="tab" aria-selected="false">Заявки<span id="requestsBadge" class="tab-badge hidden">0</span></button>
   </nav>
   <div class="topbar-actions">
     <button id="logoutBtn" class="btn-ghost" title="Выйти" aria-label="Выйти">
@@ -142,6 +156,85 @@
 
     <div id="consumablesList" class="consumables-list"></div>
     <p id="consumablesEmpty" class="empty-state hidden">Пока нет ни одного раздела расходников. Начните с кнопки «+ Раздел» выше.</p>
+  </section>
+
+  <!-- ===== REQUESTS VIEW (заявки от клиентов) ===== -->
+  <section id="view-requests" class="view">
+    <div id="requestsList" class="requests-list"></div>
+    <p id="requestsEmpty" class="empty-state hidden">Пока нет заявок от клиентов.</p>
+  </section>
+
+</main>
+
+</div>
+
+<!-- ===== Client portal (кабинет клиента, вход по VIN) ===== -->
+<div id="clientRoot" class="hidden">
+
+<header class="topbar client-topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">
+      <svg class="brand-icon" viewBox="0 0 32 32" width="26" height="26" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="14" width="24" height="6" rx="3" fill="var(--bg)"/>
+        <circle cx="16" cy="10" r="4.6" fill="var(--bg)"/>
+        <circle cx="16" cy="10" r="1.7" fill="var(--accent)"/>
+        <path d="M5 17.5 2 23" stroke="var(--bg)" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="2" cy="24" r="2.1" fill="var(--bg)"/>
+        <path d="M27 17.5 30 23" stroke="var(--bg)" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="30" cy="24" r="2.1" fill="var(--bg)"/>
+      </svg>
+    </span>
+    <div class="brand-text">
+      <h1>ГУРсервис</h1>
+      <p>кабинет клиента</p>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <button id="clientLogoutBtn" class="btn-ghost" title="Выйти" aria-label="Выйти">
+      <svg class="logout-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="logout-text">Выйти</span>
+    </button>
+  </div>
+</header>
+
+<main class="client-main">
+
+  <section class="client-card">
+    <h2>Мой автомобиль <span id="clientVinBadge" class="mono-input client-vin-badge"></span></h2>
+    <form id="clientCarForm">
+      <div class="row-2">
+        <label>Марка<input name="car_make" type="text"></label>
+        <label>Модель<input name="car_model" type="text"></label>
+      </div>
+      <label>Гос. номер<input name="plate" type="text" placeholder="AB-123-C" class="mono-input"></label>
+      <label>Заметки<textarea name="notes" rows="2" class="notes-textarea" placeholder="Особенности машины, на что обратить внимание…"></textarea></label>
+      <button type="submit" class="btn-primary btn-block">Сохранить</button>
+    </form>
+  </section>
+
+  <section class="client-card">
+    <h2>История ремонта</h2>
+    <div id="clientRepairsList" class="history-list"></div>
+    <p id="clientRepairsEmpty" class="empty-state hidden">Пока нет записей о выполненных работах.</p>
+  </section>
+
+  <section class="client-card">
+    <h2>Написать в сервис</h2>
+    <form id="clientRequestForm">
+      <label>Сообщение<textarea name="message" rows="3" class="notes-textarea" placeholder="Например: хочу прислать другой VIN, вопрос по ремонту…"></textarea></label>
+      <label>Фото (необязательно)<input type="file" accept="image/*" id="clientRequestPhotoInput"></label>
+      <div id="clientRequestPhotoPreview" class="client-photo-preview hidden">
+        <img id="clientRequestPhotoImg" alt="Фото к заявке">
+        <button type="button" id="clientRequestPhotoRemove" class="btn-ghost">Убрать фото</button>
+      </div>
+      <p id="clientRequestError" class="login-error hidden"></p>
+      <button type="submit" class="btn-primary btn-block">Отправить заявку</button>
+    </form>
+    <div id="clientRequestsList" class="history-list"></div>
   </section>
 
 </main>
