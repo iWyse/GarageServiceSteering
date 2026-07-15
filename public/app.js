@@ -225,19 +225,27 @@ function attachCarWordMask(input) {
 document.querySelectorAll('input[name="car_make"], input[name="car_model"]').forEach(attachCarWordMask);
 
 // ---------- Маска гос. номера ----------
-// Российский гос. номер — заглавные буквы и цифры, буквы только из набора,
-// разрешённого ГОСТом (визуально совпадают с латиницей на знаке): А В Е К М
-// Н О Р С Т У Х. Латинские "двойники" (A B E K M H O P C T Y X) при вводе
-// автоматически заменяются на кириллические.
+// Формат: буква-буква-цифра-цифра-цифра-буква-цифра-цифра-цифра (ЛЛ ДДД Л ДДД).
+// Буквы — только из набора, разрешённого ГОСТом (визуально совпадают с
+// латиницей на знаке): А В Е К М Н О Р С Т У Х. Латинские "двойники"
+// (A B E K M H O P C T Y X) при вводе автоматически заменяются на кириллические.
+// Каждый символ засчитывается только на "своей" позиции по порядку — так
+// нельзя случайно вставить цифру туда, где должна быть буква, и наоборот.
 const PLATE_LATIN_TO_CYRILLIC = { A: 'А', B: 'В', E: 'Е', K: 'К', M: 'М', H: 'Н', O: 'О', P: 'Р', C: 'С', T: 'Т', Y: 'У', X: 'Х' };
 const PLATE_ALLOWED_LETTERS = 'АВЕКМНОРСТУХ';
+const PLATE_PATTERN = ['letter', 'letter', 'digit', 'digit', 'digit', 'letter', 'digit', 'digit', 'digit'];
 
 function formatPlateMask(raw) {
   let out = '';
+  let pos = 0;
   for (const ch of raw.toUpperCase()) {
-    if (/[0-9]/.test(ch)) { out += ch; continue; }
-    const mapped = PLATE_LATIN_TO_CYRILLIC[ch] || ch;
-    if (PLATE_ALLOWED_LETTERS.includes(mapped)) out += mapped;
+    if (pos >= PLATE_PATTERN.length) break;
+    if (PLATE_PATTERN[pos] === 'digit') {
+      if (/[0-9]/.test(ch)) { out += ch; pos++; }
+    } else {
+      const mapped = PLATE_LATIN_TO_CYRILLIC[ch] || ch;
+      if (PLATE_ALLOWED_LETTERS.includes(mapped)) { out += mapped; pos++; }
+    }
   }
   return out;
 }
