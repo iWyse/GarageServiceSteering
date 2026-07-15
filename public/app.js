@@ -142,7 +142,15 @@ loginForm.addEventListener('submit', async (e) => {
 clientLoginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   clientLoginError.classList.add('hidden');
-  const data = Object.fromEntries(new FormData(clientLoginForm).entries());
+  // Поле пароля лежит в DOM скрытым до первой попытки — браузер иногда всё
+  // равно подставляет туда сохранённый пароль автозаполнением. Отправляем
+  // пароль, только если шаг с паролем реально показан пользователю, иначе
+  // невидимый автозаполненный мусор ломает вход даже по известному VIN.
+  const passwordShown = !clientPasswordLabel.classList.contains('hidden');
+  const data = {
+    vin: document.getElementById('clientVinInput').value,
+    password: passwordShown ? document.getElementById('clientPasswordInput').value : '',
+  };
   try {
     const result = await api('/api/client-login', { method: 'POST', body: JSON.stringify(data) });
     if (result.needPassword) {
@@ -225,7 +233,7 @@ function attachCarWordMask(input) {
 document.querySelectorAll('input[name="car_make"], input[name="car_model"]').forEach(attachCarWordMask);
 
 // ---------- Маска гос. номера ----------
-// Формат: буква-буква-цифра-цифра-цифра-буква-цифра-цифра-цифра (ЛЛ ДДД Л ДДД).
+// Формат: буква-цифра-цифра-цифра-буква-буква-цифра-цифра-цифра (Л ДДД ЛЛ ДДД).
 // Буквы — только из набора, разрешённого ГОСТом (визуально совпадают с
 // латиницей на знаке): А В Е К М Н О Р С Т У Х. Латинские "двойники"
 // (A B E K M H O P C T Y X) при вводе автоматически заменяются на кириллические.
@@ -233,7 +241,7 @@ document.querySelectorAll('input[name="car_make"], input[name="car_model"]').for
 // нельзя случайно вставить цифру туда, где должна быть буква, и наоборот.
 const PLATE_LATIN_TO_CYRILLIC = { A: 'А', B: 'В', E: 'Е', K: 'К', M: 'М', H: 'Н', O: 'О', P: 'Р', C: 'С', T: 'Т', Y: 'У', X: 'Х' };
 const PLATE_ALLOWED_LETTERS = 'АВЕКМНОРСТУХ';
-const PLATE_PATTERN = ['letter', 'letter', 'digit', 'digit', 'digit', 'letter', 'digit', 'digit', 'digit'];
+const PLATE_PATTERN = ['letter', 'digit', 'digit', 'digit', 'letter', 'letter', 'digit', 'digit', 'digit'];
 
 function formatPlateMask(raw) {
   let out = '';

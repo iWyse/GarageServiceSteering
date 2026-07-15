@@ -44,7 +44,7 @@
 
     <form id="clientLoginForm" class="login-mode-form hidden">
       <label>VIN автомобиля<input required name="vin" id="clientVinInput" type="text" class="mono-input" maxlength="17" style="text-transform:uppercase" placeholder="VIN номер" autocomplete="off" autocapitalize="characters"></label>
-      <label id="clientPasswordLabel" class="hidden">Пароль<input name="password" id="clientPasswordInput" type="password" placeholder="Пароль" class="mono-input" autocomplete="off"></label>
+      <label id="clientPasswordLabel" class="hidden">Пароль<input name="password" id="clientPasswordInput" type="password" placeholder="Пароль" class="mono-input" autocomplete="new-password"></label>
       <p id="clientLoginError" class="login-error hidden"></p>
       <button type="submit" class="btn-primary btn-block">Войти</button>
     </form>
@@ -209,7 +209,7 @@
         <label>Марка<input name="car_make" type="text"></label>
         <label>Модель<input name="car_model" type="text"></label>
       </div>
-      <label>Гос. номер<input name="plate" type="text" placeholder="АВ123К456" class="mono-input" maxlength="9"></label>
+      <label>Гос. номер<input name="plate" type="text" placeholder="А123ВС456" class="mono-input" maxlength="9"></label>
       <label>Заметки<textarea name="notes" rows="2" class="notes-textarea" placeholder="Особенности машины, на что обратить внимание…"></textarea></label>
       <button type="submit" class="btn-primary btn-block">Сохранить</button>
     </form>
@@ -258,7 +258,7 @@
         <label>Марка<input name="car_make" type="text"></label>
         <label>Модель<input name="car_model" type="text"></label>
       </div>
-      <label>Гос. номер<input name="plate" type="text" placeholder="АВ123К456" class="mono-input" maxlength="9"></label>
+      <label>Гос. номер<input name="plate" type="text" placeholder="А123ВС456" class="mono-input" maxlength="9"></label>
       <label>Тег<input name="tag" type="text" placeholder="Например: постоянный, такси, VIP…"></label>
       <label>VIN<input name="vin" type="text" placeholder="17 символов, напр. JHMFA16586S000000" class="mono-input" maxlength="17" style="text-transform:uppercase"></label>
       <label>Заметки<textarea name="notes" rows="2" class="notes-textarea" placeholder="Особенности, история обращений…"></textarea></label>
@@ -298,7 +298,7 @@
         <label>Марка<input name="car_make" type="text"></label>
         <label>Модель<input name="car_model" type="text"></label>
       </div>
-      <label>Гос. номер<input name="plate" type="text" placeholder="АВ123К456" class="mono-input" maxlength="9"></label>
+      <label>Гос. номер<input name="plate" type="text" placeholder="А123ВС456" class="mono-input" maxlength="9"></label>
       <label>VIN<input name="vin" type="text" placeholder="17 символов, напр. JHMFA16586S000000" class="mono-input" maxlength="17" style="text-transform:uppercase"></label>
       <label>Статус заказа
         <select name="status">
