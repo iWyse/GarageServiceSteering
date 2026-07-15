@@ -932,6 +932,13 @@ input[type="number"]::-webkit-inner-spin-button {
 #clientRequestsList .history-item { cursor: default; }
 #clientRequestsList .history-item:hover { border-left-color: var(--border); }
 
+@media (max-width: 600px) {
+  /* На телефоне боковые отступы main съедают экран впустую — карточки
+     кабинета клиента растягиваем на всю ширину, без бокового паддинга. */
+  .client-main { max-width: none; padding-left: 0; padding-right: 0; }
+  .client-card { border-radius: 0; border-left: none; border-right: none; }
+}
+
 @media (max-width: 880px) {
   /* Бренд + меню + кнопка выхода в один ряд не помещаются без сжатия текста
      (из-за которого раньше вкладки наезжали на бренд и на кнопку). Вместо
