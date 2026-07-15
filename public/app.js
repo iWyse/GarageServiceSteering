@@ -179,25 +179,14 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
 });
 
 // ---------- Маска телефона ----------
-// Клиенты — российские номера, поэтому номер, начинающийся на 7/8/9, приводим
-// к виду +7 928 280 88 50 (8 и голый мобильный код 9XX считаем тем же +7).
-// Всё остальное группируем по 2 цифры — простой паттерн для прочих номеров,
-// не привязанный к длине конкретного кода страны.
+// Клиенты — российские номера. Строго цифры, без пробелов и разделителей,
+// всегда с кодом +7 (8 и голый мобильный код 9XX приводим к тому же +7).
 function formatPhoneMask(raw) {
   let digits = raw.replace(/\D/g, '');
-
-  if (/^[789]/.test(digits)) {
-    digits = (digits[0] === '9' ? '7' + digits : '7' + digits.slice(1)).slice(0, 11);
-    const parts = [digits.slice(0, 1), digits.slice(1, 4), digits.slice(4, 7), digits.slice(7, 9), digits.slice(9, 11)]
-      .filter(Boolean);
-    return '+' + parts.join(' ');
-  }
-
-  if (digits.length > 15) digits = digits.slice(0, 15);
-  const hasPlus = raw.trim().startsWith('+');
-  const groups = digits.match(/.{1,2}/g) || [];
-  const joined = groups.join(' ');
-  return hasPlus ? '+' + joined : joined;
+  if (digits[0] === '8') digits = digits.slice(1);
+  else if (digits[0] === '7') digits = digits.slice(1);
+  digits = digits.slice(0, 10);
+  return digits ? '+7' + digits : '';
 }
 
 function attachPhoneMask(input) {
@@ -214,6 +203,55 @@ attachPhoneMask(document.getElementById('walkinPhoneInput'));
 attachPhoneMask(document.getElementById('queuePhoneInput'));
 // Логин — просто цифры без пробелов, без маски: так быстрее вводить и меньше шансов
 // промахнуться курсором при наборе на телефоне.
+
+// ---------- Маска марки/модели авто ----------
+// Только английские буквы (плюс пробел/дефис для составных названий вроде
+// "Land Rover", "Mercedes-Benz"), первая буква слова — заглавная, остальные
+// строчные; всё остальное (кириллица, цифры, прочие символы) отбрасывается.
+function formatCarWordMask(raw) {
+  const cleaned = raw.replace(/[^a-zA-Z\s-]/g, '').toLowerCase();
+  return cleaned.replace(/(^|[\s-])([a-z])/g, (m, sep, ch) => sep + ch.toUpperCase());
+}
+
+function attachCarWordMask(input) {
+  if (!input) return;
+  input.addEventListener('input', () => {
+    const formatted = formatCarWordMask(input.value);
+    input.value = formatted;
+    input.setSelectionRange(formatted.length, formatted.length);
+  });
+}
+
+document.querySelectorAll('input[name="car_make"], input[name="car_model"]').forEach(attachCarWordMask);
+
+// ---------- Маска гос. номера ----------
+// Российский гос. номер — заглавные буквы и цифры, буквы только из набора,
+// разрешённого ГОСТом (визуально совпадают с латиницей на знаке): А В Е К М
+// Н О Р С Т У Х. Латинские "двойники" (A B E K M H O P C T Y X) при вводе
+// автоматически заменяются на кириллические.
+const PLATE_LATIN_TO_CYRILLIC = { A: 'А', B: 'В', E: 'Е', K: 'К', M: 'М', H: 'Н', O: 'О', P: 'Р', C: 'С', T: 'Т', Y: 'У', X: 'Х' };
+const PLATE_ALLOWED_LETTERS = 'АВЕКМНОРСТУХ';
+
+function formatPlateMask(raw) {
+  let out = '';
+  for (const ch of raw.toUpperCase()) {
+    if (/[0-9]/.test(ch)) { out += ch; continue; }
+    const mapped = PLATE_LATIN_TO_CYRILLIC[ch] || ch;
+    if (PLATE_ALLOWED_LETTERS.includes(mapped)) out += mapped;
+  }
+  return out;
+}
+
+function attachPlateMask(input) {
+  if (!input) return;
+  input.addEventListener('input', () => {
+    const formatted = formatPlateMask(input.value);
+    input.value = formatted;
+    input.setSelectionRange(formatted.length, formatted.length);
+  });
+}
+
+document.querySelectorAll('input[name="plate"]').forEach(attachPlateMask);
 
 // ---------- Tabs ----------
 document.querySelectorAll('.tab').forEach((btn) => {
