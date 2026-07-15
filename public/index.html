@@ -66,13 +66,6 @@
     <button class="tab" data-tab="consumables" role="tab" aria-selected="false">Расходники</button>
   </nav>
   <div class="topbar-actions">
-    <a id="backupBtn" class="btn-ghost icon-btn" href="/api/backup" title="Скачать резервную копию базы" aria-label="Скачать резервную копию базы">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <path d="M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-    </a>
     <button id="logoutBtn" class="btn-ghost" title="Выйти" aria-label="Выйти">
       <svg class="logout-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -331,7 +324,13 @@
   <div class="dialog">
     <div class="dialog-header">
       <h2 id="apptDialogTitle">Новая запись</h2>
-      <a id="apptCallLink" href="#" class="call-btn hidden" title="Позвонить клиенту">☎</a>
+      <button type="button" class="btn-ghost icon-btn" data-close-dialog title="Закрыть" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
     </div>
     <form id="apptForm">
       <label>Клиент
@@ -378,9 +377,8 @@
       <div class="dialog-actions">
         <button type="button" id="apptEstimateBtn" class="btn-ghost hidden">Смета</button>
         <button type="button" id="deleteApptBtn" class="btn-danger hidden">Удалить</button>
-        <div class="spacer"></div>
-        <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
       </div>
+      <a id="apptCallLink" href="#" class="call-btn-wide btn-block hidden">Позвонить клиенту</a>
       <button type="submit" class="btn-primary btn-block">Сохранить</button>
     </form>
   </div>

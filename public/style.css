@@ -519,6 +519,20 @@ input[type="number"]::-webkit-inner-spin-button {
   transition: filter 0.15s, transform 0.1s;
 }
 .call-btn:hover { filter: brightness(1.1); transform: scale(1.06); }
+.call-btn-wide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  background: var(--status-done);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: filter 0.15s;
+}
+.call-btn-wide:hover { filter: brightness(1.1); }
 .dialog form { display: flex; flex-direction: column; gap: 12px; }
 .dialog label { font-size: 14px; color: var(--text-muted); display: flex; flex-direction: column; gap: 5px; }
 #apptForm label { gap: 10px; }
