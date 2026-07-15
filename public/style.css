@@ -177,6 +177,12 @@ input, select, textarea {
   outline: none;
 }
 input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+/* На iOS нативные date/time-инпуты иногда игнорируют width:100% родителя
+   и рисуются по ширине своего содержимого, вылезая за рамку. */
+input[type="date"], input[type="time"] { max-width: 100%; min-width: 0; }
+/* Высота подгоняется под содержимое из app.js — ручной ресайз и своя
+   прокрутка тут только мешали бы. */
+.notes-textarea { resize: none; overflow: hidden; min-height: 60px; }
 .mono-input { font-family: var(--font-mono); letter-spacing: 0.05em; }
 
 /* Стрелочки инкремента у number-инпутов нигде в приложении не нужны — только мешают. */
@@ -515,6 +521,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .call-btn:hover { filter: brightness(1.1); transform: scale(1.06); }
 .dialog form { display: flex; flex-direction: column; gap: 12px; }
 .dialog label { font-size: 14px; color: var(--text-muted); display: flex; flex-direction: column; gap: 5px; }
+#apptForm label { gap: 10px; }
 .field-hint { font-size: 14px; line-height: 1.4; color: var(--text-muted); }
 
 /* Смета (запись ремонта / очередь) — полей много, текст слипался при плотных

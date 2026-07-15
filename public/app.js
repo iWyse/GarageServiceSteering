@@ -666,6 +666,7 @@ function openRepairDialog(record) {
   repairForm.elements.mileage.value = record && record.mileage ? record.mileage : '';
   repairForm.elements.parts_eta.value = record ? (record.parts_eta || '') : 'до 5 рабочих дней';
   repairForm.elements.notes.value = record ? (record.notes || '') : '';
+  autoResizeTextarea(repairForm.elements.notes);
 
   advanceEnabled = !!(record && Number(record.advance) > 0);
   document.getElementById('advanceToggleBtn').classList.toggle('active', advanceEnabled);
@@ -1360,6 +1361,7 @@ function openQueueDialog(entry) {
     queueForm.elements.date.value = toISODate(new Date());
     queueForm.elements.parts_eta.value = 'до 5 рабочих дней';
   }
+  autoResizeTextarea(queueForm.elements.notes);
 
   queueWorksRowsEl.innerHTML = '';
   queuePartsRowsEl.innerHTML = '';
@@ -1816,6 +1818,16 @@ function escapeHtml(str) {
   div.textContent = str ?? '';
   return div.innerHTML;
 }
+
+// "Рекомендации" растёт по высоте под текст вместо фиксированных 2 строк
+// с внутренней прокруткой.
+function autoResizeTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+document.querySelectorAll('.notes-textarea').forEach((el) => {
+  el.addEventListener('input', () => autoResizeTextarea(el));
+});
 
 // Обычный <select> с 1000+ клиентами на телефоне неюзабелен — нет поиска,
 // системный пикер занимает весь экран одним столбцом текста. Прячем select
