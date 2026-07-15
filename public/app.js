@@ -209,6 +209,7 @@ function attachPhoneMask(input) {
 attachPhoneMask(document.getElementById('clientPhoneInput'));
 attachPhoneMask(document.getElementById('walkinPhoneInput'));
 attachPhoneMask(document.getElementById('queuePhoneInput'));
+attachPhoneMask(document.getElementById('clientCarPhoneInput'));
 // Логин — просто цифры без пробелов, без маски: так быстрее вводить и меньше шансов
 // промахнуться курсором при наборе на телефоне.
 
@@ -2395,6 +2396,17 @@ async function loadRequests() {
         e.stopPropagation();
         openClientDialog(null);
         clientForm.elements.vin.value = r.vin;
+        // Если клиент уже сам заполнил анкету в своём кабинете (телефон,
+        // машина) — подтягиваем её, чтобы админ не вбивал всё заново.
+        const p = r.client_profile;
+        if (p) {
+          if (p.phone) clientForm.elements.phone.value = p.phone;
+          if (p.car_make) clientForm.elements.car_make.value = p.car_make;
+          if (p.car_model) clientForm.elements.car_model.value = p.car_model;
+          if (p.plate) clientForm.elements.plate.value = p.plate;
+          if (p.notes) clientForm.elements.notes.value = p.notes;
+          autoResizeTextarea(clientForm.elements.notes);
+        }
       });
     }
     item.querySelector('.request-delete-btn').addEventListener('click', async (e) => {
@@ -2433,6 +2445,7 @@ let clientRequestPhotoData = null;
 async function loadClientProfile() {
   const profile = await api('/api/client/me');
   document.getElementById('clientVinBadge').textContent = profile.vin;
+  clientCarForm.elements.phone.value = profile.car.phone || '';
   clientCarForm.elements.car_make.value = profile.car.car_make || '';
   clientCarForm.elements.car_model.value = profile.car.car_model || '';
   clientCarForm.elements.plate.value = profile.car.plate || '';

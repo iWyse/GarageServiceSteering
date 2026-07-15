@@ -96,6 +96,7 @@ db.exec(`
   -- у нескольких строк clients (см. память об импорте чек-листов).
   CREATE TABLE IF NOT EXISTS client_car_profiles (
     vin TEXT PRIMARY KEY,
+    phone TEXT,
     car_make TEXT,
     car_model TEXT,
     plate TEXT,
@@ -233,5 +234,15 @@ function migrateConsumableCategorySectionColumn() {
   }
 }
 migrateConsumableCategorySectionColumn();
+
+// ---------- Миграция: телефон в анкете клиента (кабинет по VIN) ----------
+function migrateClientCarProfilePhoneColumn() {
+  const columns = db.prepare(`PRAGMA table_info(client_car_profiles)`).all().map((c) => c.name);
+  if (columns.length && !columns.includes('phone')) {
+    db.exec(`ALTER TABLE client_car_profiles ADD COLUMN phone TEXT`);
+    console.log('База данных обновлена: добавлен телефон в анкету клиента.');
+  }
+}
+migrateClientCarProfilePhoneColumn();
 
 export default db;

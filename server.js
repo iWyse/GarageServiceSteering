@@ -381,6 +381,7 @@ function getClientProfile(vin) {
     vin,
     known: matched.length > 0,
     car: {
+      phone: profile?.phone ?? fallback.phone ?? '',
       car_make: profile?.car_make ?? fallback.car_make ?? '',
       car_model: profile?.car_model ?? fallback.car_model ?? '',
       plate: profile?.plate ?? fallback.plate ?? '',
@@ -391,13 +392,15 @@ function getClientProfile(vin) {
 }
 
 function saveClientCarProfile(vin, data) {
+  const phone = (data.phone || '').trim();
   const car_make = (data.car_make || '').trim();
   const car_model = (data.car_model || '').trim();
   const plate = (data.plate || '').trim();
   const notes = (data.notes || '').trim();
   const existing = db.prepare('SELECT vin FROM client_car_profiles WHERE vin = ?').get(vin);
   if (existing) {
-    db.prepare(`UPDATE client_car_profiles SET car_make=?, car_model=?, plate=?, notes=?, updated_at=datetime('now') WHERE vin=?`).run(
+    db.prepare(`UPDATE client_car_profiles SET phone=?, car_make=?, car_model=?, plate=?, notes=?, updated_at=datetime('now') WHERE vin=?`).run(
+      phone,
       car_make,
       car_model,
       plate,
@@ -405,8 +408,9 @@ function saveClientCarProfile(vin, data) {
       vin
     );
   } else {
-    db.prepare('INSERT INTO client_car_profiles (vin, car_make, car_model, plate, notes) VALUES (?, ?, ?, ?, ?)').run(
+    db.prepare('INSERT INTO client_car_profiles (vin, phone, car_make, car_model, plate, notes) VALUES (?, ?, ?, ?, ?, ?)').run(
       vin,
+      phone,
       car_make,
       car_model,
       plate,
@@ -433,7 +437,16 @@ function listClientRequestsForAdmin() {
     .all()
     .map((r) => {
       const client = db.prepare('SELECT name, phone FROM clients WHERE UPPER(vin) = ? LIMIT 1').get(r.vin);
-      return { ...r, client_name: client ? client.name : null, client_phone: client ? client.phone : null };
+      // Если клиента ещё нет в базе, но он сам успел заполнить анкету в своём
+      // кабинете (машина/телефон) — отдаём её, чтобы админ мог подтянуть эти
+      // данные в диалог "Добавить клиента", а не вбивать их заново вручную.
+      const profile = client ? null : db.prepare('SELECT phone, car_make, car_model, plate, notes FROM client_car_profiles WHERE vin = ?').get(r.vin);
+      return {
+        ...r,
+        client_name: client ? client.name : null,
+        client_phone: client ? client.phone : null,
+        client_profile: profile || null,
+      };
     });
 }
 
