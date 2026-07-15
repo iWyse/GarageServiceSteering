@@ -89,7 +89,6 @@ const loginForm = document.getElementById('loginForm');
 const loginError = document.getElementById('loginError');
 const clientLoginForm = document.getElementById('clientLoginForm');
 const clientLoginError = document.getElementById('clientLoginError');
-const clientLoginHint = document.getElementById('clientLoginHint');
 const clientPasswordLabel = document.getElementById('clientPasswordLabel');
 
 function setLoginMode(mode) {
@@ -148,13 +147,11 @@ clientLoginForm.addEventListener('submit', async (e) => {
     const result = await api('/api/client-login', { method: 'POST', body: JSON.stringify(data) });
     if (result.needPassword) {
       clientPasswordLabel.classList.remove('hidden');
-      clientLoginHint.classList.remove('hidden');
       document.getElementById('clientPasswordInput').focus();
       return;
     }
     clientLoginForm.reset();
     clientPasswordLabel.classList.add('hidden');
-    clientLoginHint.classList.add('hidden');
     showClientApp();
     await bootClientApp();
   } catch (err) {

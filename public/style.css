@@ -827,6 +827,11 @@ input[type="number"]::-webkit-inner-spin-button {
 /* ---------- Login ---------- */
 #loginOverlay { background: var(--bg); background-image: none; }
 .login-dialog { max-width: 340px; }
+@media (max-width: 600px) {
+  /* На телефоне узкая карточка входа выглядит потерянной посреди экрана —
+     растягиваем на всю доступную ширину вместо фиксированных 340px. */
+  .login-dialog { max-width: none; }
+}
 
 /* ---------- Confirm dialog ---------- */
 .confirm-dialog { max-width: 360px; z-index: 60; }
