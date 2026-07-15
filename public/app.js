@@ -317,6 +317,7 @@ function openClientDialog(client) {
       if (clientForm.elements[k]) clientForm.elements[k].value = v || '';
     }
   }
+  autoResizeTextarea(clientForm.elements.notes);
 
   // Вкладка с историей ремонта имеет смысл только для клиента, который уже есть в базе —
   // у нового клиента (ещё не сохранён) истории по определению нет.
@@ -1750,6 +1751,7 @@ function openConsumableDialog(item, defaultCategoryId) {
     consumableForm.elements.article.value = item.article || '';
     consumableForm.elements.notes.value = item.notes || '';
   }
+  autoResizeTextarea(consumableForm.elements.notes);
   openDialog(consumableDialog);
 }
 
@@ -2092,6 +2094,7 @@ function openApptDialog(appt, defaultDate) {
     summary.classList.add('hidden');
     detailsFields.classList.remove('hidden');
     toggleWalkinFields();
+    autoResizeTextarea(apptForm.elements.notes); // при hidden-родителе scrollHeight не посчитать
   }
 
   openDialog(apptDialog);
@@ -2159,6 +2162,7 @@ document.getElementById('editApptDetailsBtn').addEventListener('click', () => {
   document.getElementById('apptSummary').classList.add('hidden');
   document.getElementById('apptDetailsFields').classList.remove('hidden');
   toggleWalkinFields();
+  autoResizeTextarea(apptForm.elements.notes);
 });
 
 apptForm.addEventListener('submit', async (e) => {

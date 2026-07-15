@@ -176,7 +176,7 @@
       <label>Гос. номер<input name="plate" type="text" placeholder="AB-123-C" class="mono-input"></label>
       <label>Тег<input name="tag" type="text" placeholder="Например: постоянный, такси, VIP…"></label>
       <label>VIN<input name="vin" type="text" placeholder="17 символов, напр. JHMFA16586S000000" class="mono-input" maxlength="17" style="text-transform:uppercase"></label>
-      <label>Заметки<textarea name="notes" rows="2" placeholder="Особенности, история обращений…"></textarea></label>
+      <label>Заметки<textarea name="notes" rows="2" class="notes-textarea" placeholder="Особенности, история обращений…"></textarea></label>
       <div class="dialog-actions">
         <button type="button" id="deleteClientBtn" class="btn-danger hidden">Удалить</button>
         <div class="spacer"></div>
@@ -315,7 +315,7 @@
       </label>
       <label><span>Название <span class="req">*</span></span><input required name="name" type="text" placeholder="Например: Масляный фильтр"></label>
       <label>Артикул<input name="article" type="text" placeholder="Например: OC90013P" class="mono-input"></label>
-      <label>Заметки<textarea name="notes" rows="2" placeholder="Поставщик, периодичность заказа…"></textarea></label>
+      <label>Заметки<textarea name="notes" rows="2" class="notes-textarea" placeholder="Поставщик, периодичность заказа…"></textarea></label>
       <div class="dialog-actions">
         <button type="button" id="deleteConsumableBtn" class="btn-danger hidden">Удалить</button>
         <div class="spacer"></div>
@@ -373,7 +373,7 @@
             <option value="cancelled">Отменено</option>
           </select>
         </label>
-        <label>Заметки<textarea name="notes" rows="2" placeholder="Что нужно сделать…"></textarea></label>
+        <label>Заметки<textarea name="notes" rows="2" class="notes-textarea" placeholder="Что нужно сделать…"></textarea></label>
       </div>
       <div class="dialog-actions">
         <button type="button" id="apptEstimateBtn" class="btn-ghost hidden">Смета</button>
