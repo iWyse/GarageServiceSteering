@@ -3,3 +3,4 @@ autoservice.db
 autoservice.db-*
 .DS_Store
 *.log
+.env

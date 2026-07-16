@@ -5,6 +5,15 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import db from './db.js';
 
+// Логин и пароль владельца не хранятся в коде — читаются из .env (см.
+// .env.example), который в git не попадает (.gitignore). Так секреты не
+// оказываются в истории репозитория.
+try {
+  process.loadEnvFile();
+} catch {
+  // .env отсутствует — ошибку покажем ниже, при проверке самих переменных.
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PORT = process.env.PORT || 3000;
@@ -13,8 +22,14 @@ const PORT = process.env.PORT || 3000;
 // Единственный пользователь — владелец автосервиса. Сессии храним в памяти
 // процесса: перезапуск сервера разлогинивает всех, что для локального
 // однопользовательского инструмента приемлемо и не требует внешнего хранилища.
-const OWNER_PHONE = '+7XXXXXXXXXX';
-const OWNER_PASSWORD = 'REDACTED';
+const OWNER_PHONE = process.env.OWNER_PHONE;
+const OWNER_PASSWORD = process.env.OWNER_PASSWORD;
+if (!OWNER_PHONE || !OWNER_PASSWORD) {
+  console.error(
+    'Не заданы OWNER_PHONE/OWNER_PASSWORD. Скопируйте .env.example в .env и впишите туда логин и пароль владельца.'
+  );
+  process.exit(1);
+}
 const SESSION_COOKIE = 'session';
 const sessions = new Set();
 
