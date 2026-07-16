@@ -381,6 +381,7 @@ function getClientProfile(vin) {
     vin,
     known: matched.length > 0,
     car: {
+      name: profile?.name ?? fallback.name ?? '',
       phone: profile?.phone ?? fallback.phone ?? '',
       car_make: profile?.car_make ?? fallback.car_make ?? '',
       car_model: profile?.car_model ?? fallback.car_model ?? '',
@@ -392,6 +393,7 @@ function getClientProfile(vin) {
 }
 
 function saveClientCarProfile(vin, data) {
+  const name = (data.name || '').trim();
   const phone = (data.phone || '').trim();
   const car_make = (data.car_make || '').trim();
   const car_model = (data.car_model || '').trim();
@@ -399,7 +401,8 @@ function saveClientCarProfile(vin, data) {
   const notes = (data.notes || '').trim();
   const existing = db.prepare('SELECT vin FROM client_car_profiles WHERE vin = ?').get(vin);
   if (existing) {
-    db.prepare(`UPDATE client_car_profiles SET phone=?, car_make=?, car_model=?, plate=?, notes=?, updated_at=datetime('now') WHERE vin=?`).run(
+    db.prepare(`UPDATE client_car_profiles SET name=?, phone=?, car_make=?, car_model=?, plate=?, notes=?, updated_at=datetime('now') WHERE vin=?`).run(
+      name,
       phone,
       car_make,
       car_model,
@@ -408,8 +411,9 @@ function saveClientCarProfile(vin, data) {
       vin
     );
   } else {
-    db.prepare('INSERT INTO client_car_profiles (vin, phone, car_make, car_model, plate, notes) VALUES (?, ?, ?, ?, ?, ?)').run(
+    db.prepare('INSERT INTO client_car_profiles (vin, name, phone, car_make, car_model, plate, notes) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
       vin,
+      name,
       phone,
       car_make,
       car_model,
@@ -440,7 +444,7 @@ function listClientRequestsForAdmin() {
       // Если клиента ещё нет в базе, но он сам успел заполнить анкету в своём
       // кабинете (машина/телефон) — отдаём её, чтобы админ мог подтянуть эти
       // данные в диалог "Добавить клиента", а не вбивать их заново вручную.
-      const profile = client ? null : db.prepare('SELECT phone, car_make, car_model, plate, notes FROM client_car_profiles WHERE vin = ?').get(r.vin);
+      const profile = client ? null : db.prepare('SELECT name, phone, car_make, car_model, plate, notes FROM client_car_profiles WHERE vin = ?').get(r.vin);
       return {
         ...r,
         client_name: client ? client.name : null,

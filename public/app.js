@@ -2371,8 +2371,16 @@ async function loadRequests() {
   items.forEach((r) => {
     const item = document.createElement('div');
     item.className = 'request-item' + (r.is_read ? '' : ' unread');
-    const senderName = r.client_name ? escapeHtml(r.client_name) : 'Клиент не найден в базе';
-    const telHref = r.client_phone ? r.client_phone.replace(/[^\d+]/g, '') : '';
+    const senderName = r.client_name
+      ? escapeHtml(r.client_name)
+      : r.client_profile?.name
+      ? `${escapeHtml(r.client_profile.name)} (не в базе)`
+      : 'Клиент не найден в базе';
+    const telHref = r.client_phone
+      ? r.client_phone.replace(/[^\d+]/g, '')
+      : r.client_profile?.phone
+      ? r.client_profile.phone.replace(/[^\d+]/g, '')
+      : '';
     item.innerHTML = `
       <div class="request-item-head">
         <span><span class="request-item-name">${senderName}</span> <span class="request-item-vin">VIN: ${escapeHtml(r.vin)}</span></span>
@@ -2400,6 +2408,7 @@ async function loadRequests() {
         // машина) — подтягиваем её, чтобы админ не вбивал всё заново.
         const p = r.client_profile;
         if (p) {
+          if (p.name) clientForm.elements.name.value = p.name;
           if (p.phone) clientForm.elements.phone.value = p.phone;
           if (p.car_make) clientForm.elements.car_make.value = p.car_make;
           if (p.car_model) clientForm.elements.car_model.value = p.car_model;
@@ -2445,6 +2454,7 @@ let clientRequestPhotoData = null;
 async function loadClientProfile() {
   const profile = await api('/api/client/me');
   document.getElementById('clientVinBadge').textContent = profile.vin;
+  clientCarForm.elements.name.value = profile.car.name || '';
   clientCarForm.elements.phone.value = profile.car.phone || '';
   clientCarForm.elements.car_make.value = profile.car.car_make || '';
   clientCarForm.elements.car_model.value = profile.car.car_model || '';
@@ -2558,6 +2568,17 @@ clientRequestForm.addEventListener('submit', async (e) => {
     return;
   }
   try {
+    // Клиент может заполнить машину/телефон выше, но не нажать отдельную
+    // кнопку "Сохранить" в той форме — отправляя заявку, на всякий случай
+    // сохраняем анкету заодно, иначе админ не увидит эти данные в заявке.
+    const carData = Object.fromEntries(new FormData(clientCarForm).entries());
+    if (Object.values(carData).some((v) => (v || '').trim())) {
+      try {
+        await api('/api/client/car', { method: 'PUT', body: JSON.stringify(carData) });
+      } catch (err) {
+        // Не блокируем отправку заявки, если сохранение анкеты не удалось.
+      }
+    }
     await api('/api/client/requests', { method: 'POST', body: JSON.stringify({ message, photo: clientRequestPhotoData }) });
     clientRequestForm.reset();
     clientRequestPhotoData = null;
