@@ -215,11 +215,10 @@ attachPhoneMask(document.getElementById('clientCarPhoneInput'));
 
 // ---------- Маска марки/модели авто ----------
 // Только английские буквы (плюс пробел/дефис для составных названий вроде
-// "Land Rover", "Mercedes-Benz"), первая буква слова — заглавная, остальные
-// строчные; всё остальное (кириллица, цифры, прочие символы) отбрасывается.
+// "Land Rover", "Mercedes-Benz") — всё целиком в верхнем регистре, как во
+// всей остальной базе; кириллица, цифры, прочие символы отбрасываются.
 function formatCarWordMask(raw) {
-  const cleaned = raw.replace(/[^a-zA-Z\s-]/g, '').toLowerCase();
-  return cleaned.replace(/(^|[\s-])([a-z])/g, (m, sep, ch) => sep + ch.toUpperCase());
+  return raw.replace(/[^a-zA-Z\s-]/g, '').toUpperCase();
 }
 
 function attachCarWordMask(input) {
