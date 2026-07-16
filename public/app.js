@@ -484,8 +484,13 @@ function fmtMileage(n) {
   return `${Number(n).toLocaleString('ru-RU')} км`;
 }
 
+// Аналоги (несколько вариантов запчасти на выбор) не считаются в сумме, пока
+// не отмечены основным — иначе сумма задваивалась бы на альтернативы клиента.
 function sumItems(items) {
-  return items.reduce((sum, it) => sum + (Number(it.price) || 0), 0);
+  return items.reduce((sum, it) => {
+    if (it.analogGroup && !it.analogSelected) return sum;
+    return sum + (Number(it.price) || 0);
+  }, 0);
 }
 
 // Артикул/фирма/количество показываем только если заполнены — пустые поля
@@ -620,6 +625,7 @@ let advanceEnabled = false;
 
 function sumRowInputs(container) {
   return Array.from(container.querySelectorAll('.repair-row')).reduce((sum, row) => {
+    if (row.dataset.analogGroup && row.dataset.analogSelected !== '1') return sum;
     const price = Number(row.querySelector('.row-price')?.value) || 0;
     return sum + price;
   }, 0);
@@ -636,14 +642,84 @@ function recomputeRepairSums() {
   document.getElementById('repairTotal').textContent = fmtMoney(Math.max(0, worksSum + partsSum - advance));
 }
 
+// Аналоги запчасти (несколько вариантов на выбор — например 3 амортизатора
+// разных фирм) — только в заказах (withReceived). Строки одной группы делят
+// dataset.analogGroup; ровно одна из них — dataset.analogSelected="1" —
+// считается в сумме заказа, остальные показаны для сравнения, но не в счёте.
+function refreshAnalogRow(row) {
+  const groupId = row.dataset.analogGroup;
+  let bar = row.querySelector('.repair-row-analog-bar');
+  if (!groupId) {
+    row.classList.remove('repair-row-analog');
+    if (bar) bar.remove();
+    return;
+  }
+  row.classList.add('repair-row-analog');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'repair-row-analog-bar';
+    const mainBtn = document.createElement('button');
+    mainBtn.type = 'button';
+    mainBtn.className = 'row-analog-main-btn';
+    const ungroupBtn = document.createElement('button');
+    ungroupBtn.type = 'button';
+    ungroupBtn.className = 'row-analog-ungroup-btn';
+    ungroupBtn.textContent = 'Убрать из аналогов';
+    bar.append(mainBtn, ungroupBtn);
+    row.appendChild(bar);
+  }
+  const mainBtn = bar.querySelector('.row-analog-main-btn');
+  const selected = row.dataset.analogSelected === '1';
+  mainBtn.classList.toggle('active', selected);
+  mainBtn.textContent = selected ? 'Основной вариант ✓' : 'Сделать основным';
+}
+
+// После удаления строки или "разгруппировки" в группе может остаться одна
+// строка — тогда группа теряет смысл, снимаем её (строка снова считается
+// в сумме сама по себе), и если основной была именно удалённая строка,
+// отмечаем основной первую оставшуюся.
+function cleanupAnalogGroup(container, groupId, onChange) {
+  if (!groupId) return;
+  const members = Array.from(container.querySelectorAll(`.repair-row[data-analog-group="${groupId}"]`));
+  if (members.length === 0) return;
+  if (members.length === 1) {
+    delete members[0].dataset.analogGroup;
+    delete members[0].dataset.analogSelected;
+    refreshAnalogRow(members[0]);
+  } else if (!members.some((m) => m.dataset.analogSelected === '1')) {
+    members[0].dataset.analogSelected = '1';
+    members.forEach(refreshAnalogRow);
+  }
+  onChange();
+}
+
+function addAnalogToRow(row, onChange) {
+  if (!row.dataset.analogGroup) {
+    row.dataset.analogGroup = `ag-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    row.dataset.analogSelected = '1';
+    refreshAnalogRow(row);
+  }
+  const newRow = createRepairRow(null, true, onChange, true);
+  newRow.dataset.analogGroup = row.dataset.analogGroup;
+  newRow.dataset.analogSelected = '';
+  refreshAnalogRow(newRow);
+  row.insertAdjacentElement('afterend', newRow);
+  newRow.querySelector('.row-name').focus();
+  onChange();
+}
+
 // isPart добавляет поля "Артикул"/"Фирма"/"Кол-во" — они нужны только для запчастей,
 // выполненные работы остаются простой парой название/цена. onChange даёт переиспользовать
 // строки в другом диалоге (очередь) со своим пересчётом сумм. withReceived добавляет
-// переключатель "пришла"/"нет" — нужен только в заказе (очередь на запчасти), чтобы
-// отслеживать, что из заказа уже привезли, а что ещё в пути.
+// переключатель "пришла"/"нет" и аналоги — нужны только в заказе (очередь на
+// запчасти): там же отслеживают, что из заказа уже привезли, а что ещё в пути.
 function createRepairRow(item, isPart, onChange = recomputeRepairSums, withReceived = false) {
   const row = document.createElement('div');
   row.className = 'repair-row' + (isPart ? ' repair-row-part' : '');
+  if (withReceived && item?.analogGroup) {
+    row.dataset.analogGroup = item.analogGroup;
+    row.dataset.analogSelected = item.analogSelected ? '1' : '';
+  }
 
   const nameInput = document.createElement('input');
   nameInput.type = 'text';
@@ -667,7 +743,13 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
   removeBtn.textContent = '×';
 
   priceInput.addEventListener('input', onChange);
-  removeBtn.addEventListener('click', () => { row.remove(); onChange(); });
+  removeBtn.addEventListener('click', () => {
+    const groupId = row.dataset.analogGroup;
+    const container = row.parentElement;
+    row.remove();
+    if (groupId && container) cleanupAnalogGroup(container, groupId, onChange);
+    onChange();
+  });
 
   if (isPart) {
     const articleInput = document.createElement('input');
@@ -706,7 +788,16 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
       };
       setReceivedState(!!item?.received);
       receivedBtn.addEventListener('click', () => setReceivedState(!receivedBtn.classList.contains('active')));
-      line1.append(nameInput, receivedBtn, removeBtn);
+
+      const analogBtn = document.createElement('button');
+      analogBtn.type = 'button';
+      analogBtn.className = 'row-analog-add-btn';
+      analogBtn.title = 'Добавить аналог — ещё один вариант этой запчасти на выбор';
+      analogBtn.textContent = '+ аналог';
+      analogBtn.addEventListener('click', () => addAnalogToRow(row, onChange));
+
+      line1.classList.add('has-analog');
+      line1.append(nameInput, receivedBtn, analogBtn, removeBtn);
     } else {
       line1.append(nameInput, removeBtn);
     }
@@ -733,6 +824,28 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
     }
 
     row.append(line1, line2);
+
+    if (withReceived && row.dataset.analogGroup) refreshAnalogRow(row);
+    if (withReceived) {
+      row.addEventListener('click', (e) => {
+        if (e.target.classList.contains('row-analog-main-btn')) {
+          const groupId = row.dataset.analogGroup;
+          if (!groupId) return;
+          row.parentElement.querySelectorAll(`.repair-row[data-analog-group="${groupId}"]`).forEach((m) => {
+            m.dataset.analogSelected = m === row ? '1' : '';
+            refreshAnalogRow(m);
+          });
+          onChange();
+        } else if (e.target.classList.contains('row-analog-ungroup-btn')) {
+          const groupId = row.dataset.analogGroup;
+          delete row.dataset.analogGroup;
+          delete row.dataset.analogSelected;
+          refreshAnalogRow(row);
+          cleanupAnalogGroup(row.parentElement, groupId, onChange);
+          onChange();
+        }
+      });
+    }
   } else {
     row.append(nameInput, priceInput, removeBtn);
   }
@@ -760,6 +873,10 @@ function collectRepairRows(container) {
       if (brandInput) out.brand = brandInput.value.trim();
       if (qtyInput) out.qty = Number(qtyInput.value) || 0;
       if (receivedBtn) out.received = receivedBtn.classList.contains('active');
+      if (row.dataset.analogGroup) {
+        out.analogGroup = row.dataset.analogGroup;
+        out.analogSelected = row.dataset.analogSelected === '1';
+      }
       if (supplierSelect) out.supplier = supplierSelect.value;
       return out;
     })
@@ -1574,7 +1691,11 @@ document.getElementById('promoteQueueBtn').addEventListener('click', async () =>
     });
 
     const works = collectRepairRows(queueWorksRowsEl);
-    const parts = collectRepairRows(queuePartsRowsEl);
+    // В постоянную историю ремонта аналоги, которые клиент не выбрал, не
+    // переносим — решение уже принято, лишние варианты там не нужны.
+    const parts = collectRepairRows(queuePartsRowsEl)
+      .filter((p) => !p.analogGroup || p.analogSelected)
+      .map(({ analogGroup, analogSelected, ...rest }) => rest);
     const title = queueForm.elements.title.value;
     if (works.length || parts.length || title.trim()) {
       await api(`/api/clients/${newClient.id}/repairs`, {

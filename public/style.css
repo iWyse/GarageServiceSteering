@@ -711,6 +711,7 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--surface-2);
 }
 .repair-row-line1 { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; align-items: center; }
+.repair-row-line1.has-analog { grid-template-columns: 1fr auto auto auto; }
 .row-received-btn {
   flex-shrink: 0;
   white-space: nowrap;
@@ -724,6 +725,47 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .row-received-btn:hover { border-color: var(--accent); color: var(--accent); }
 .row-received-btn.active { background: var(--status-done); border-color: var(--status-done); color: #fff; font-weight: 600; }
+
+/* Аналоги запчасти — несколько вариантов одной позиции на выбор клиента,
+   только "основной" считается в сумме заказа (см. sumRowInputs/sumItems). */
+.row-analog-add-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 7px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.row-analog-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+.repair-row-part.repair-row-analog { border-left: 3px solid var(--accent-dim); }
+.repair-row-analog-bar { display: flex; gap: 8px; align-items: center; }
+.row-analog-main-btn {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+}
+.row-analog-main-btn:hover { border-color: var(--accent); color: var(--accent); }
+.row-analog-main-btn.active { background: var(--accent); border-color: var(--accent); color: #1b1a17; font-weight: 600; }
+.row-analog-ungroup-btn {
+  flex-shrink: 0;
+  padding: 7px 10px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.row-analog-ungroup-btn:hover { color: var(--status-cancelled); }
 .repair-row-line2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 6px; }
 .row-remove {
   width: 30px;

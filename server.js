@@ -180,6 +180,10 @@ function normalizeRepairItems(items) {
       if (it?.qty !== undefined) out.qty = Number(it.qty) || 0;
       if (it?.received !== undefined) out.received = !!it.received;
       if (it?.supplier !== undefined) out.supplier = String(it.supplier || '').trim();
+      // Аналоги запчастей (несколько вариантов на выбор в заказе) — group
+      // объединяет строки, selected отмечает, какая считается в итоге.
+      if (it?.analogGroup) out.analogGroup = String(it.analogGroup).trim();
+      if (it?.analogSelected !== undefined) out.analogSelected = !!it.analogSelected;
       return out;
     })
     .filter((it) => it.name || it.price);
