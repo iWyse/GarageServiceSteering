@@ -2632,9 +2632,29 @@ const clientRequestPhotoImg = document.getElementById('clientRequestPhotoImg');
 const clientRequestError = document.getElementById('clientRequestError');
 let clientRequestPhotoData = null;
 
+// Плейсхолдер поля сообщения — случайный из набора примеров при каждом
+// заходе в кабинет, чтобы подсказать разные поводы написать в сервис.
+const CLIENT_REQUEST_PLACEHOLDERS = [
+  'Например: хочу прислать другой VIN, вопрос по ремонту…',
+  'Например: когда будут готовы запчасти?',
+  'Например: можно перенести запись на другой день?',
+  'Например: сколько будет стоить замена масла?',
+  'Например: подскажите статус моего ремонта',
+  'Например: хочу уточнить итоговую сумму',
+  'Например: можно приехать раньше записи?',
+  'Например: пришлите, пожалуйста, фото повреждения',
+  'Например: нужна консультация по шуму в подвеске',
+  'Например: уточните, работаете ли вы в субботу',
+];
+function setRandomClientRequestPlaceholder() {
+  const pick = CLIENT_REQUEST_PLACEHOLDERS[Math.floor(Math.random() * CLIENT_REQUEST_PLACEHOLDERS.length)];
+  clientRequestForm.elements.message.placeholder = pick;
+}
+
 async function loadClientProfile() {
   const profile = await api('/api/client/me');
   document.getElementById('clientVinBadge').textContent = profile.vin;
+  clientCarForm.elements.vin.value = profile.vin;
   clientCarForm.elements.name.value = profile.car.name || '';
   clientCarForm.elements.phone.value = profile.car.phone || '';
   clientCarForm.elements.car_make.value = profile.car.car_make || '';
@@ -2687,6 +2707,9 @@ clientCarForm.addEventListener('submit', async (e) => {
   try {
     await api('/api/client/car', { method: 'PUT', body: JSON.stringify(data) });
     showToast('Сохранено');
+    // VIN мог измениться (клиент исправил опечатку) — перезагружаем анкету
+    // целиком, чтобы бейдж и история ремонта обновились под новый VIN.
+    await loadClientProfile();
   } catch (err) {
     showToast(err.message, true);
   }
@@ -2795,6 +2818,7 @@ async function loadClientRequests() {
 
 async function bootClientApp() {
   try {
+    setRandomClientRequestPlaceholder();
     await loadClientProfile();
     await loadClientRequests();
   } catch (err) {

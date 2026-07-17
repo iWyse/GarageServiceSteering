@@ -218,6 +218,9 @@
   <section class="client-card">
     <h2>Мой автомобиль <span id="clientVinBadge" class="mono-input client-vin-badge"></span></h2>
     <form id="clientCarForm">
+      <label>VIN<input name="vin" id="clientCarVinInput" type="text" class="mono-input" maxlength="17" style="text-transform:uppercase" autocomplete="off" autocapitalize="characters">
+        <span class="field-hint">Ошиблись при входе? Исправьте здесь — заново вводить пароль не понадобится.</span>
+      </label>
       <label>Имя<input name="name" type="text"></label>
       <label>Телефон<input name="phone" id="clientCarPhoneInput" type="tel" class="mono-input" placeholder="+7"></label>
       <div class="row-2">
@@ -239,7 +242,7 @@
   <section class="client-card">
     <h2>Написать в сервис</h2>
     <form id="clientRequestForm">
-      <label>Сообщение<textarea name="message" rows="3" class="notes-textarea" placeholder="Например: хочу прислать другой VIN, вопрос по ремонту…"></textarea></label>
+      <label>Сообщение<textarea name="message" rows="3" class="notes-textarea"></textarea></label>
       <label>Фото (необязательно)<input type="file" accept="image/*" id="clientRequestPhotoInput"></label>
       <div id="clientRequestPhotoPreview" class="client-photo-preview hidden">
         <img id="clientRequestPhotoImg" alt="Фото к заявке">

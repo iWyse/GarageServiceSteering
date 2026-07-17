@@ -399,13 +399,15 @@ function getClientProfile(vin) {
   return {
     vin,
     known: matched.length > 0,
+    // || а не ?? — пустая строка (клиент отправил форму, не тронув поле)
+    // должна уступать место реальным данным админа, а не затирать их пустотой.
     car: {
-      name: profile?.name ?? fallback.name ?? '',
-      phone: profile?.phone ?? fallback.phone ?? '',
-      car_make: profile?.car_make ?? fallback.car_make ?? '',
-      car_model: profile?.car_model ?? fallback.car_model ?? '',
-      plate: profile?.plate ?? fallback.plate ?? '',
-      notes: profile?.notes ?? '',
+      name: profile?.name || fallback.name || '',
+      phone: profile?.phone || fallback.phone || '',
+      car_make: profile?.car_make || fallback.car_make || '',
+      car_model: profile?.car_model || fallback.car_model || '',
+      plate: profile?.plate || fallback.plate || '',
+      notes: profile?.notes || '',
     },
     repairs,
   };
@@ -681,10 +683,19 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, getClientProfile(vin));
     }
     if (pathname === '/api/client/car' && req.method === 'PUT') {
-      const vin = getClientVin(req);
-      if (!vin) return sendJSON(res, 401, { error: 'Требуется авторизация' });
+      const currentVin = getClientVin(req);
+      if (!currentVin) return sendJSON(res, 401, { error: 'Требуется авторизация' });
       const body = await readBody(req);
-      return sendJSON(res, 200, saveClientCarProfile(vin, body));
+      const newVin = normalizeVin(body.vin) || currentVin;
+      if (!newVin) return sendJSON(res, 400, { error: 'Введите VIN' });
+      // Клиент мог ошибиться при входе и теперь исправляет VIN прямо в анкете —
+      // переносим сессию на исправленный VIN, старую анкету по опечатке чистим.
+      if (newVin !== currentVin) {
+        db.prepare('DELETE FROM client_car_profiles WHERE vin = ?').run(currentVin);
+        const token = parseCookies(req)[CLIENT_SESSION_COOKIE];
+        if (token) clientSessions.set(token, newVin);
+      }
+      return sendJSON(res, 200, saveClientCarProfile(newVin, body));
     }
     if (pathname === '/api/client/requests' && req.method === 'GET') {
       const vin = getClientVin(req);
