@@ -884,10 +884,12 @@ input[type="number"]::-webkit-inner-spin-button {
 .confirm-message { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text); }
 #confirmDialog { z-index: 60; }
 .login-brand { justify-content: center; margin-bottom: 20px; }
-/* min-height — под самую высокую форму (сейчас это вход клиента, с учётом
-   зарезервированного места под пароль и ошибку), чтобы окно не "прыгало"
-   по высоте при переключении вкладки владелец/клиент. */
-.login-mode-form { display: flex; flex-direction: column; gap: 14px; min-height: 223px; }
+/* Высота жёстко зафиксирована (не min-height) — по фактической высоте формы
+   входа клиента с зарезервированным местом под пароль и ошибку (223px).
+   Раньше min-height мог не сработать, если контент оказывался выше него;
+   height не даёт форме вырасти ни при каких обстоятельствах — окно входа
+   всегда одной и той же высоты на обеих вкладках. */
+.login-mode-form { display: flex; flex-direction: column; gap: 14px; height: 223px; overflow: hidden; }
 /* Клиентский вход: поле VIN по центру доступной высоты, кнопка "Войти"
    прижата к низу окна, а не сразу под полем. */
 .client-login-fields { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
