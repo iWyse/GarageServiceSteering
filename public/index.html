@@ -43,9 +43,11 @@
     </form>
 
     <form id="clientLoginForm" class="login-mode-form hidden">
-      <label>VIN автомобиля<input required name="vin" id="clientVinInput" type="text" class="mono-input" maxlength="17" style="text-transform:uppercase" placeholder="VIN номер" autocomplete="off" autocapitalize="characters"></label>
-      <label id="clientPasswordLabel" class="hidden">Пароль<input name="password" id="clientPasswordInput" type="password" placeholder="Пароль" class="mono-input" autocomplete="new-password"></label>
-      <p id="clientLoginError" class="login-error hidden"></p>
+      <div class="client-login-fields">
+        <label>VIN автомобиля<input required name="vin" id="clientVinInput" type="text" class="mono-input" maxlength="17" style="text-transform:uppercase" placeholder="VIN номер" autocomplete="off" autocapitalize="characters"></label>
+        <label id="clientPasswordLabel" class="hidden">Пароль<input name="password" id="clientPasswordInput" type="password" placeholder="Пароль" class="mono-input" autocomplete="new-password"></label>
+        <p id="clientLoginError" class="login-error hidden"></p>
+      </div>
       <button type="submit" class="btn-primary btn-block">Войти</button>
     </form>
   </div>
