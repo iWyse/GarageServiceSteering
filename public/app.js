@@ -387,7 +387,7 @@ function renderClients() {
   const body = document.getElementById('clientsBody');
   const filtered = state.clients.filter((c) => {
     if (!q) return true;
-    return [c.name, c.phone, c.plate, c.tag, c.car_make, c.car_model].join(' ').toLowerCase().includes(q);
+    return [c.name, c.phone, c.plate, c.tag, c.car_make, c.car_model, c.vin].join(' ').toLowerCase().includes(q);
   });
   body.innerHTML = '';
   document.getElementById('clientsEmpty').classList.toggle('hidden', state.clients.length !== 0);
@@ -661,9 +661,11 @@ function refreshAnalogRow(row) {
     const mainBtn = document.createElement('button');
     mainBtn.type = 'button';
     mainBtn.className = 'row-analog-main-btn';
+    mainBtn.tabIndex = -1;
     const ungroupBtn = document.createElement('button');
     ungroupBtn.type = 'button';
     ungroupBtn.className = 'row-analog-ungroup-btn';
+    ungroupBtn.tabIndex = -1;
     ungroupBtn.textContent = 'Убрать из аналогов';
     bar.append(mainBtn, ungroupBtn);
     row.appendChild(bar);
@@ -781,6 +783,7 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
       const receivedBtn = document.createElement('button');
       receivedBtn.type = 'button';
       receivedBtn.className = 'row-received-btn';
+      receivedBtn.tabIndex = -1;
       const setReceivedState = (received) => {
         receivedBtn.classList.toggle('active', received);
         receivedBtn.textContent = received ? 'На складе ✓' : 'На складе?';
@@ -792,6 +795,7 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
       const analogBtn = document.createElement('button');
       analogBtn.type = 'button';
       analogBtn.className = 'row-analog-add-btn';
+      analogBtn.tabIndex = -1;
       analogBtn.title = 'Добавить аналог — ещё один вариант этой запчасти на выбор';
       analogBtn.textContent = '+ аналог';
       analogBtn.addEventListener('click', () => addAnalogToRow(row, onChange));
@@ -1131,11 +1135,24 @@ function buildOrderHtml(order) {
   const workLines = order.works
     .map((w) => `<div class="order-line"><span>${escapeHtml(w.name)}</span><span>${fmtMoney(w.price)}</span></div>`)
     .join('');
+  // Аналоги (несколько вариантов одной запчасти на выбор) рисуем рамкой с
+  // отступом вокруг всей группы — не выбранный вариант приглушён и подписан
+  // "аналог", чтобы не спутать с отдельной позицией в счёте.
+  const renderPartLine = (p, isAlt) => {
+    const meta = itemMeta(p);
+    const lineTotal = Number(p.price) || 0;
+    return `<div class="order-line${isAlt ? ' order-line-alt' : ''}"><span>${escapeHtml(p.name)}${meta ? ` <span class="order-line-meta">(${escapeHtml(meta)})</span>` : ''}${isAlt ? ' <span class="order-line-alt-tag">аналог</span>' : ''}</span><span>${fmtMoney(lineTotal)}</span></div>`;
+  };
+  const seenParts = new Set();
   const partLines = order.parts
-    .map((p) => {
-      const meta = itemMeta(p);
-      const lineTotal = Number(p.price) || 0;
-      return `<div class="order-line"><span>${escapeHtml(p.name)}${meta ? ` <span class="order-line-meta">(${escapeHtml(meta)})</span>` : ''}</span><span>${fmtMoney(lineTotal)}</span></div>`;
+    .map((p, i) => {
+      if (seenParts.has(i)) return '';
+      if (p.analogGroup) {
+        const members = order.parts.map((m, mi) => ({ ...m, __i: mi })).filter((m) => m.analogGroup === p.analogGroup);
+        members.forEach((m) => seenParts.add(m.__i));
+        return `<div class="order-analog-group">${members.map((m) => renderPartLine(m, !m.analogSelected)).join('')}</div>`;
+      }
+      return renderPartLine(p, false);
     })
     .join('');
 
@@ -1319,59 +1336,98 @@ async function renderOrderToCanvas() {
     y += 26;
 
     let sum = 0;
-    items.forEach((it) => {
+
+    // indent сдвигает строку внутрь (для аналогов — рамка вокруг группы,
+    // muted приглушает не выбранный вариант, чтобы не путать со строкой,
+    // которая реально входит в счёт.
+    function drawItemLine(it, indent, muted) {
       const meta = itemMeta(it);
       const lineTotal = Number(it.price) || 0;
-      sum += lineTotal;
       const priceText = fmtMoney(lineTotal);
+      const leftX = pad + indent;
+      const rightX = width - pad - indent;
+      const lineW = contentW - indent * 2;
+      const nameColor = muted ? C.textMuted : C.text;
+      // Не выбранный вариант аналога подписываем прямо в строке — иначе на
+      // картинке, отправленной клиенту, приглушённый цвет мог остаться
+      // незамеченным и цену приняли бы за отдельную позицию в счёте.
+      const suffix = [meta, muted ? 'аналог' : ''].filter(Boolean).join(' · ');
+      const hasSuffix = !!suffix;
 
       ctx.font = `600 16px ${ORDER_IMG.fontBody}`;
       const priceW = ctx.measureText(priceText).width;
-      const availW = contentW - priceW - 12;
+      const availW = lineW - priceW - 12;
       const nameW = ctx.measureText(it.name).width;
-      const metaText = meta ? ` (${meta})` : '';
+      const metaText = hasSuffix ? ` (${suffix})` : '';
       ctx.font = `14px ${ORDER_IMG.fontBody}`;
-      const metaW = meta ? ctx.measureText(metaText).width : 0;
+      const metaW = hasSuffix ? ctx.measureText(metaText).width : 0;
 
-      if (!meta || nameW + metaW <= availW) {
+      if (!hasSuffix || nameW + metaW <= availW) {
         // Помещается в одну строку целиком — рисуем название и мету рядом
         // (как в HTML-версии наряда), а не отдельной строкой ниже.
         ctx.font = `600 16px ${ORDER_IMG.fontBody}`;
-        ctx.fillStyle = C.text;
+        ctx.fillStyle = nameColor;
         ctx.textAlign = 'left';
-        ctx.fillText(it.name, pad, y);
-        if (meta) {
+        ctx.fillText(it.name, leftX, y);
+        if (hasSuffix) {
           ctx.font = `14px ${ORDER_IMG.fontBody}`;
           ctx.fillStyle = C.textMuted;
-          ctx.fillText(metaText, pad + nameW, y);
+          ctx.fillText(metaText, leftX + nameW, y);
         }
         // Иначе цена наследует приглушённый цвет меты, нарисованной строчкой
         // выше, и запчасти с "(мета)" оказываются другого цвета, чем работы.
         ctx.font = `600 16px ${ORDER_IMG.fontBody}`;
-        ctx.fillStyle = C.text;
+        ctx.fillStyle = nameColor;
         ctx.textAlign = 'right';
-        ctx.fillText(priceText, width - pad, y);
+        ctx.fillText(priceText, rightX, y);
         ctx.textAlign = 'left';
         y += 20;
       } else {
         // Не влезает целиком — переносим название, мету оставляем отдельной строкой.
         ctx.font = `600 16px ${ORDER_IMG.fontBody}`;
         const nameLines = wrapCanvasText(ctx, it.name, availW);
-        ctx.fillStyle = C.text;
+        ctx.fillStyle = nameColor;
         ctx.textAlign = 'left';
-        ctx.fillText(nameLines[0], pad, y);
+        ctx.fillText(nameLines[0], leftX, y);
         ctx.textAlign = 'right';
-        ctx.fillText(priceText, width - pad, y);
+        ctx.fillText(priceText, rightX, y);
         ctx.textAlign = 'left';
         y += 20;
         for (let i = 1; i < nameLines.length; i++) {
-          ctx.fillText(nameLines[i], pad, y);
+          ctx.fillText(nameLines[i], leftX, y);
           y += 20;
         }
         ctx.font = `14px ${ORDER_IMG.fontBody}`;
         ctx.fillStyle = C.textMuted;
-        ctx.fillText(meta, pad, y);
+        ctx.fillText(suffix, leftX, y);
         y += 19;
+      }
+    }
+
+    // Аналоги (несколько вариантов одной запчасти на выбор) рисуем в общей
+    // рамке с отступом; в сумму блока идёт только отмеченный "основным" —
+    // остальные показаны для сравнения цены, но не задваивают итог.
+    const seenAnalog = new Set();
+    items.forEach((it, idx) => {
+      if (seenAnalog.has(idx)) return;
+      if (it.analogGroup) {
+        const members = items.map((m, mi) => ({ ...m, __i: mi })).filter((m) => m.analogGroup === it.analogGroup);
+        members.forEach((m) => seenAnalog.add(m.__i));
+        const boxTop = y - 16;
+        members.forEach((m) => {
+          drawItemLine(m, 10, !m.analogSelected);
+          if (m.analogSelected) sum += Number(m.price) || 0;
+        });
+        const boxBottom = y - 4;
+        ctx.strokeStyle = C.border;
+        ctx.setLineDash([3, 3]);
+        roundRectPath(ctx, pad - 4, boxTop, contentW + 8, boxBottom - boxTop, 4);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        y += 6;
+      } else {
+        drawItemLine(it, 0, false);
+        sum += Number(it.price) || 0;
       }
     });
 
