@@ -236,7 +236,7 @@
       </div>
       <label>Гос. номер<input name="plate" type="text" placeholder="А123ВС456" class="mono-input" maxlength="9"></label>
       <label>Заметки<textarea name="notes" rows="2" class="notes-textarea" placeholder="Особенности машины, на что обратить внимание…"></textarea></label>
-      <button type="submit" class="btn-primary btn-block">Сохранить</button>
+      <button type="submit" id="clientCarSaveBtn" class="btn-primary btn-block hidden">Сохранить</button>
     </form>
   </section>
 
@@ -250,7 +250,7 @@
     <h2>Написать в сервис</h2>
     <form id="clientRequestForm">
       <label>Сообщение<textarea name="message" rows="3" class="notes-textarea"></textarea></label>
-      <label>Фото (необязательно)<input type="file" accept="image/*" id="clientRequestPhotoInput"></label>
+      <label>Выбрать файл<input type="file" accept="image/*" id="clientRequestPhotoInput"></label>
       <div id="clientRequestPhotoPreview" class="client-photo-preview hidden">
         <img id="clientRequestPhotoImg" alt="Фото к заявке">
         <button type="button" id="clientRequestPhotoRemove" class="btn-ghost">Убрать фото</button>

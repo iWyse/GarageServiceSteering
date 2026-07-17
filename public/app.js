@@ -2652,6 +2652,7 @@ async function loadRequests() {
 
 // ---------- Кабинет клиента (вход по VIN) ----------
 const clientCarForm = document.getElementById('clientCarForm');
+let clientCarSnapshot = '';
 const clientRequestForm = document.getElementById('clientRequestForm');
 const clientRequestPhotoInput = document.getElementById('clientRequestPhotoInput');
 const clientRequestPhotoPreview = document.getElementById('clientRequestPhotoPreview');
@@ -2690,7 +2691,22 @@ async function loadClientProfile() {
   clientCarForm.elements.notes.value = profile.car.notes || '';
   autoResizeTextarea(clientCarForm.elements.notes);
   renderClientRepairs(profile.repairs);
+  // Кнопка "Сохранить" появляется только когда что-то реально поменялось —
+  // запоминаем состояние формы сразу после загрузки как точку отсчёта.
+  clientCarSnapshot = getClientCarFormSnapshot();
+  updateClientCarSaveVisibility();
 }
+
+function getClientCarFormSnapshot() {
+  return JSON.stringify(Object.fromEntries(new FormData(clientCarForm).entries()));
+}
+
+function updateClientCarSaveVisibility() {
+  const changed = getClientCarFormSnapshot() !== clientCarSnapshot;
+  document.getElementById('clientCarSaveBtn').classList.toggle('hidden', !changed);
+}
+
+clientCarForm.addEventListener('input', updateClientCarSaveVisibility);
 
 function renderClientRepairs(records) {
   const list = document.getElementById('clientRepairsList');

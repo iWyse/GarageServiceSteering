@@ -884,13 +884,22 @@ input[type="number"]::-webkit-inner-spin-button {
 .confirm-message { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text); }
 #confirmDialog { z-index: 60; }
 .login-brand { justify-content: center; margin-bottom: 20px; }
-/* min-height — под самую высокую форму (вход владельца), чтобы окно не
-   "прыгало" по высоте при переключении вкладки владелец/клиент. */
-.login-mode-form { display: flex; flex-direction: column; gap: 14px; min-height: 187px; }
+/* min-height — под самую высокую форму (сейчас это вход клиента, с учётом
+   зарезервированного места под пароль и ошибку), чтобы окно не "прыгало"
+   по высоте при переключении вкладки владелец/клиент. */
+.login-mode-form { display: flex; flex-direction: column; gap: 14px; min-height: 223px; }
 /* Клиентский вход: поле VIN по центру доступной высоты, кнопка "Войти"
    прижата к низу окна, а не сразу под полем. */
 .client-login-fields { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
-.login-error { margin: 0; font-size: 14px; color: var(--status-cancelled); }
+/* min-height — пустой <p> без текста схлопывается до 0, а с текстом
+   ошибки занимает ~17px; фиксируем высоту, чтобы место было зарезервировано
+   даже без текста (см. .hidden-переопределения ниже). */
+.login-error { margin: 0; font-size: 14px; line-height: 20px; min-height: 20px; color: var(--status-cancelled); }
+/* Ошибка входа и поле пароля клиента раньше были display:none, пока не
+   понадобятся — их появление сдвигало высоту окна. Держим место под них
+   всегда занятым (просто невидимым), чтобы окно не "прыгало". */
+#loginError.hidden, #clientLoginError.hidden { display: block !important; visibility: hidden; }
+#clientPasswordLabel.hidden { display: flex !important; visibility: hidden; }
 #logoutBtn { display: flex; align-items: center; gap: 6px; }
 .icon-btn { display: flex; align-items: center; justify-content: center; padding: 9px; }
 
@@ -967,7 +976,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 /* ---------- Кабинет клиента ---------- */
 .client-topbar { grid-template-columns: 1fr auto; }
-.client-main { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.client-main { max-width: 640px; margin: 0 auto; padding-top: 0; display: flex; flex-direction: column; gap: 20px; }
 .client-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -975,6 +984,9 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: var(--radius);
   padding: 24px;
 }
+/* Первая карточка идёт сразу под шапкой — там уже своя оранжевая полоска
+   (border-bottom у .topbar), вторая сверху карточки была бы лишней. */
+.client-main .client-card:first-child { border-top: none; border-radius: 0 0 var(--radius) var(--radius); }
 .client-card h2 {
   font-family: var(--font-display);
   text-transform: uppercase;
