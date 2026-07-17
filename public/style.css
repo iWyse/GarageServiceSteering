@@ -884,7 +884,9 @@ input[type="number"]::-webkit-inner-spin-button {
 .confirm-message { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text); }
 #confirmDialog { z-index: 60; }
 .login-brand { justify-content: center; margin-bottom: 20px; }
-.login-mode-form { display: flex; flex-direction: column; gap: 14px; }
+/* min-height — под самую высокую форму (вход владельца), чтобы окно не
+   "прыгало" по высоте при переключении вкладки владелец/клиент. */
+.login-mode-form { display: flex; flex-direction: column; gap: 14px; min-height: 187px; }
 .login-error { margin: 0; font-size: 14px; color: var(--status-cancelled); }
 #logoutBtn { display: flex; align-items: center; gap: 6px; }
 .icon-btn { display: flex; align-items: center; justify-content: center; padding: 9px; }
