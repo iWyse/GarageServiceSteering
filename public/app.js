@@ -273,14 +273,25 @@ document.querySelectorAll('input[name="plate"]').forEach(attachPlateMask);
 const tabsNav = document.querySelector('.tabs');
 const mobileMenuBtn = document.getElementById('mobileMenuBtn');
 
+// Блокирует скролл страницы под открытым диалогом ИЛИ мобильным меню вкладок
+// (при большом числе вкладок список сам скроллится внутри себя — см. CSS
+// .tabs { overflow-y: auto } в мобильной медиа-выборке, а не сайт под ним).
+function syncBodyScrollLock() {
+  const anyDialogOpen = !!document.querySelector('.dialog-overlay:not(.hidden)');
+  const menuOpen = tabsNav.classList.contains('mobile-open');
+  document.body.classList.toggle('dialog-open', anyDialogOpen || menuOpen);
+}
+
 function closeMobileMenu() {
   tabsNav.classList.remove('mobile-open');
   mobileMenuBtn.setAttribute('aria-expanded', 'false');
+  syncBodyScrollLock();
 }
 
 mobileMenuBtn.addEventListener('click', () => {
   const open = tabsNav.classList.toggle('mobile-open');
   mobileMenuBtn.setAttribute('aria-expanded', String(open));
+  syncBodyScrollLock();
 });
 
 // Клик мимо открытого мобильного меню закрывает его — иначе оно остаётся
@@ -312,13 +323,11 @@ document.querySelectorAll('.tab').forEach((btn) => {
 // разблокирует прокрутку фона.
 function openDialog(el) {
   el.classList.remove('hidden');
-  document.body.classList.add('dialog-open');
+  syncBodyScrollLock();
 }
 function closeDialog(el) {
   el.classList.add('hidden');
-  if (!document.querySelector('.dialog-overlay:not(.hidden)')) {
-    document.body.classList.remove('dialog-open');
-  }
+  syncBodyScrollLock();
 }
 document.querySelectorAll('[data-close-dialog]').forEach((btn) => {
   btn.addEventListener('click', () => closeDialog(btn.closest('.dialog-overlay')));
