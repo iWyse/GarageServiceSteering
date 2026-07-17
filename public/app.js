@@ -1563,6 +1563,10 @@ function renderQueue() {
   list.innerHTML = '';
   empty.classList.toggle('hidden', queueItems.length !== 0);
 
+  const queueBadge = document.getElementById('queueBadge');
+  queueBadge.textContent = String(queueItems.length);
+  queueBadge.classList.toggle('hidden', queueItems.length === 0);
+
   queueItems.forEach((q) => {
     const carLine = [q.car_make, q.car_model].filter(Boolean).join(' ');
     const partsWithName = (q.parts || []).filter((p) => p.name);
@@ -2873,6 +2877,11 @@ async function loadNotes() {
   }
   list.innerHTML = '';
   empty.classList.toggle('hidden', notes.length !== 0);
+
+  const notesBadge = document.getElementById('notesBadge');
+  notesBadge.textContent = String(notes.length);
+  notesBadge.classList.toggle('hidden', notes.length === 0);
+
   notes.forEach((n) => {
     const item = document.createElement('div');
     item.className = 'note-item' + (n.tag === 'urgent' ? ' note-item-urgent' : '');
@@ -2896,6 +2905,7 @@ async function bootApp() {
     await loadQueue();
     await loadConsumables();
     await loadRequests();
+    await loadNotes();
   } catch (err) {
     showToast('Не удалось загрузить данные: ' + err.message, true);
   }

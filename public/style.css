@@ -908,7 +908,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .login-mode-btn:hover { color: var(--text); }
 .login-mode-btn.active { background: var(--accent); color: #1b1a17; font-weight: 600; }
 
-/* ---------- Заявки: бейдж непрочитанных на вкладке ---------- */
+/* ---------- Бейджи-счётчики на вкладках ---------- */
 .tab-with-badge { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .tab-badge {
   display: inline-flex;
@@ -926,6 +926,10 @@ input[type="number"]::-webkit-inner-spin-button {
   text-transform: none;
   letter-spacing: normal;
 }
+/* Заказы/заметки — просто общее число, не сигнал "нужно внимание", поэтому
+   спокойнее по цвету, чем красный бейдж непрочитанных заявок. */
+.tab-badge-count { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); }
+.tab.active .tab-badge-count { background: rgba(27, 26, 23, 0.18); color: #1b1a17; border-color: rgba(27, 26, 23, 0.3); }
 
 /* ---------- Заявки: список во вкладке админа ---------- */
 .requests-list { display: flex; flex-direction: column; gap: 10px; }
