@@ -1002,26 +1002,49 @@ input[type="number"]::-webkit-inner-spin-button {
      кабинета клиента растягиваем на всю ширину, без бокового паддинга. */
   .client-main { max-width: none; padding-left: 0; padding-right: 0; }
   .client-card { border-radius: 0; border-left: none; border-right: none; }
+
+  /* Расходники — та же логика: боковые отступы main убираем, карточки
+     разделов/категорий сами дают внутренний отступ (см. .consumable-section
+     padding). Тулбар с кнопками "Раздел"/"Категория"/"Расходник" складываем
+     в столбец на всю ширину — в ряд они не помещались и переносились криво. */
+  #view-consumables.active {
+    margin-left: -28px;
+    margin-right: -28px;
+    width: calc(100% + 56px);
+  }
+  #view-consumables .clients-toolbar { padding: 0 12px; flex-direction: column; align-items: stretch; }
+  #view-consumables .clients-toolbar .spacer { display: none; }
+  #view-consumables .clients-toolbar > button { width: 100%; }
+  #view-consumables .consumables-list { padding: 0 12px; }
 }
+
+.mobile-menu-btn { display: none; }
 
 @media (max-width: 880px) {
   /* Бренд + меню + кнопка выхода в один ряд не помещаются без сжатия текста
-     (из-за которого раньше вкладки наезжали на бренд и на кнопку). Вместо
-     этого — 2 ряда: бренд и "Выйти" по краям первого ряда, меню на всю
-     ширину вторым рядом. */
-  .topbar {
-    grid-template-columns: 1fr 1fr;
-    grid-template-areas: "brand logout" "tabs tabs";
+     (из-за которого раньше вкладки наезжали на бренд и на кнопку). Прячем
+     вкладки за иконку-гамбургер: по тапу выпадает список поверх страницы,
+     вместо того чтобы занимать вторую строку шапки на весь экран. */
+  .topbar { grid-template-columns: 1fr auto; position: relative; }
+  .mobile-menu-btn { display: flex; }
+  .tabs {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    gap: 4px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 3px solid var(--accent);
+    border-radius: 0;
+    padding: 10px;
+    z-index: 40;
+    box-shadow: 0 12px 24px rgba(0,0,0,0.35);
   }
-  .brand { grid-area: brand; justify-self: start; }
-  .topbar-actions { grid-area: logout; justify-self: end; }
-  .tabs { grid-area: tabs; }
-}
-
-@media (max-width: 560px) {
-  /* Вкладки не помещаются в одну строку — вместо переноса в несколько
-     колонок или горизонтальной прокрутки складываем их в одну колонку. */
-  .tabs { flex-direction: column; width: 100%; justify-self: stretch; }
+  .tabs.mobile-open { display: flex; }
+  .tab { text-align: left; }
 }
 
 @media (max-width: 400px) {

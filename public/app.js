@@ -270,6 +270,27 @@ function attachPlateMask(input) {
 document.querySelectorAll('input[name="plate"]').forEach(attachPlateMask);
 
 // ---------- Tabs ----------
+const tabsNav = document.querySelector('.tabs');
+const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+
+function closeMobileMenu() {
+  tabsNav.classList.remove('mobile-open');
+  mobileMenuBtn.setAttribute('aria-expanded', 'false');
+}
+
+mobileMenuBtn.addEventListener('click', () => {
+  const open = tabsNav.classList.toggle('mobile-open');
+  mobileMenuBtn.setAttribute('aria-expanded', String(open));
+});
+
+// Клик мимо открытого мобильного меню закрывает его — иначе оно остаётся
+// висеть поверх страницы, пока не ткнёшь по вкладке.
+document.addEventListener('click', (e) => {
+  if (!tabsNav.classList.contains('mobile-open')) return;
+  if (tabsNav.contains(e.target) || mobileMenuBtn.contains(e.target)) return;
+  closeMobileMenu();
+});
+
 document.querySelectorAll('.tab').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach((b) => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
@@ -280,6 +301,7 @@ document.querySelectorAll('.tab').forEach((btn) => {
     document.getElementById(`view-${target}`).classList.add('active');
     if (target === 'requests') loadRequests();
     if (target === 'notes') loadNotes();
+    closeMobileMenu();
   });
 });
 
@@ -576,6 +598,11 @@ document.getElementById('newRepairBtn').addEventListener('click', () => openRepa
 
 document.getElementById('newClientBtn').addEventListener('click', () => openClientDialog(null));
 document.getElementById('clientSearch').addEventListener('input', renderClients);
+// На мобильных клавиатура иначе нечем закрыть: тапнуть "мимо" часто некуда —
+// под полем сразу кнопка и таблица. Клавиша "Готово"/Enter явно снимает фокус.
+document.getElementById('clientSearch').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') e.target.blur();
+});
 
 clientForm.addEventListener('submit', async (e) => {
   e.preventDefault();
