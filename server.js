@@ -481,6 +481,39 @@ function deleteClientRequest(id) {
   db.prepare('DELETE FROM client_requests WHERE id = ?').run(id);
 }
 
+// ---------- Заметки владельца ----------
+// Свободные личные заметки, tag отличает срочные от обычных — сортируем
+// срочные наверх, внутри группы новые сверху.
+function normalizeNoteTag(tag) {
+  return tag === 'urgent' ? 'urgent' : 'normal';
+}
+
+function listStaffNotes() {
+  return db
+    .prepare(`SELECT * FROM staff_notes ORDER BY (tag = 'urgent') DESC, created_at DESC, id DESC`)
+    .all();
+}
+
+function createStaffNote(data) {
+  const info = db
+    .prepare('INSERT INTO staff_notes (text, tag) VALUES (?, ?)')
+    .run((data.text || '').trim(), normalizeNoteTag(data.tag));
+  return db.prepare('SELECT * FROM staff_notes WHERE id = ?').get(info.lastInsertRowid);
+}
+
+function updateStaffNote(id, data) {
+  db.prepare(`UPDATE staff_notes SET text=?, tag=?, updated_at=datetime('now') WHERE id=?`).run(
+    (data.text || '').trim(),
+    normalizeNoteTag(data.tag),
+    id
+  );
+  return db.prepare('SELECT * FROM staff_notes WHERE id = ?').get(id);
+}
+
+function deleteStaffNote(id) {
+  db.prepare('DELETE FROM staff_notes WHERE id = ?').run(id);
+}
+
 // ---------- Appointments ----------
 function listAppointments(start, end) {
   return db
@@ -726,6 +759,26 @@ const server = http.createServer(async (req, res) => {
     m = pathname.match(/^\/api\/requests\/(\d+)$/);
     if (m && req.method === 'DELETE') {
       deleteClientRequest(Number(m[1]));
+      return sendJSON(res, 200, { ok: true });
+    }
+
+    // Заметки владельца
+    if (pathname === '/api/notes' && req.method === 'GET') {
+      return sendJSON(res, 200, listStaffNotes());
+    }
+    if (pathname === '/api/notes' && req.method === 'POST') {
+      const body = await readBody(req);
+      if (!body.text || !body.text.trim()) return sendJSON(res, 400, { error: 'Текст заметки обязателен' });
+      return sendJSON(res, 201, createStaffNote(body));
+    }
+    m = pathname.match(/^\/api\/notes\/(\d+)$/);
+    if (m && req.method === 'PUT') {
+      const body = await readBody(req);
+      if (!body.text || !body.text.trim()) return sendJSON(res, 400, { error: 'Текст заметки обязателен' });
+      return sendJSON(res, 200, updateStaffNote(Number(m[1]), body));
+    }
+    if (m && req.method === 'DELETE') {
+      deleteStaffNote(Number(m[1]));
       return sendJSON(res, 200, { ok: true });
     }
 

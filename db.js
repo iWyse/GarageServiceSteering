@@ -115,6 +115,15 @@ db.exec(`
     is_read INTEGER NOT NULL DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  -- Личные заметки владельца — вкладка «Заметки». tag: 'urgent' | 'normal'.
+  CREATE TABLE IF NOT EXISTS staff_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    text TEXT NOT NULL,
+    tag TEXT NOT NULL DEFAULT 'normal',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // ---------- Миграция старых баз (версия до "разовых визитов") ----------

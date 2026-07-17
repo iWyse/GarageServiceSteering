@@ -279,6 +279,7 @@ document.querySelectorAll('.tab').forEach((btn) => {
     document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
     document.getElementById(`view-${target}`).classList.add('active');
     if (target === 'requests') loadRequests();
+    if (target === 'notes') loadNotes();
   });
 });
 
@@ -2795,6 +2796,96 @@ async function bootClientApp() {
   } catch (err) {
     showToast('Не удалось загрузить данные: ' + err.message, true);
   }
+}
+
+// ---------- Заметки владельца ----------
+const noteDialog = document.getElementById('noteDialog');
+const noteForm = document.getElementById('noteForm');
+const deleteNoteBtn = document.getElementById('deleteNoteBtn');
+let editingNoteId = null;
+let currentNoteTag = 'normal';
+
+function setNoteTag(tag) {
+  currentNoteTag = tag === 'urgent' ? 'urgent' : 'normal';
+  document.querySelectorAll('#noteTagSwitch .note-tag-btn').forEach((b) => {
+    const active = b.dataset.noteTag === currentNoteTag;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-selected', String(active));
+  });
+}
+document.querySelectorAll('#noteTagSwitch .note-tag-btn').forEach((btn) => {
+  btn.addEventListener('click', () => setNoteTag(btn.dataset.noteTag));
+});
+
+function openNoteDialog(note) {
+  editingNoteId = note ? note.id : null;
+  document.getElementById('noteDialogTitle').textContent = note ? 'Заметка' : 'Новая заметка';
+  deleteNoteBtn.classList.toggle('hidden', !note);
+  noteForm.reset();
+  noteForm.elements.text.value = note ? note.text : '';
+  setNoteTag(note ? note.tag : 'normal');
+  autoResizeTextarea(noteForm.elements.text);
+  openDialog(noteDialog);
+}
+
+document.getElementById('newNoteBtn').addEventListener('click', () => openNoteDialog(null));
+
+noteForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = { text: noteForm.elements.text.value, tag: currentNoteTag };
+  try {
+    if (editingNoteId) {
+      await api(`/api/notes/${editingNoteId}`, { method: 'PUT', body: JSON.stringify(data) });
+      showToast('Заметка обновлена');
+    } else {
+      await api('/api/notes', { method: 'POST', body: JSON.stringify(data) });
+      showToast('Заметка добавлена');
+    }
+    closeDialog(noteDialog);
+    await loadNotes();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+deleteNoteBtn.addEventListener('click', async () => {
+  if (!editingNoteId) return;
+  if (!(await showConfirm('Удалить заметку?'))) return;
+  try {
+    await api(`/api/notes/${editingNoteId}`, { method: 'DELETE' });
+    showToast('Заметка удалена');
+    closeDialog(noteDialog);
+    await loadNotes();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+async function loadNotes() {
+  const list = document.getElementById('notesList');
+  const empty = document.getElementById('notesEmpty');
+  let notes;
+  try {
+    notes = await api('/api/notes');
+  } catch (err) {
+    showToast('Не удалось загрузить заметки: ' + err.message, true);
+    return;
+  }
+  list.innerHTML = '';
+  empty.classList.toggle('hidden', notes.length !== 0);
+  notes.forEach((n) => {
+    const item = document.createElement('div');
+    item.className = 'note-item' + (n.tag === 'urgent' ? ' note-item-urgent' : '');
+    item.innerHTML = `
+      <div class="note-item-head">
+        ${n.tag === 'urgent' ? '<span class="note-item-badge">Срочно</span>' : ''}
+        <span class="note-item-date">${fmtDateTime(n.updated_at || n.created_at)}</span>
+      </div>
+      <p class="note-item-text">${escapeHtml(n.text)}</p>
+    `;
+    item.addEventListener('click', () => openNoteDialog(n));
+    list.appendChild(item);
+  });
 }
 
 // ---------- Init ----------

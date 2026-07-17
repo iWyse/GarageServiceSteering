@@ -77,6 +77,7 @@
     <button class="tab" data-tab="queue" role="tab" aria-selected="false">Заказы</button>
     <button class="tab" data-tab="consumables" role="tab" aria-selected="false">Расходники</button>
     <button class="tab tab-with-badge" data-tab="requests" role="tab" aria-selected="false">Заявки<span id="requestsBadge" class="tab-badge hidden">0</span></button>
+    <button class="tab" data-tab="notes" role="tab" aria-selected="false">Заметки</button>
   </nav>
   <div class="topbar-actions">
     <button id="logoutBtn" class="btn-ghost" title="Выйти" aria-label="Выйти">
@@ -161,6 +162,16 @@
   <section id="view-requests" class="view">
     <div id="requestsList" class="requests-list"></div>
     <p id="requestsEmpty" class="empty-state hidden">Пока нет заявок от клиентов.</p>
+  </section>
+
+  <!-- ===== NOTES VIEW ===== -->
+  <section id="view-notes" class="view">
+    <div class="clients-toolbar">
+      <div class="spacer"></div>
+      <button id="newNoteBtn" class="btn-primary">+ Заметка</button>
+    </div>
+    <div id="notesList" class="notes-list"></div>
+    <p id="notesEmpty" class="empty-state hidden">Пока нет заметок. Добавьте первую — кнопка выше.</p>
   </section>
 
 </main>
@@ -416,6 +427,34 @@
         <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
         <button type="submit" class="btn-primary">Сохранить</button>
       </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Note dialog ===== -->
+<div id="noteDialog" class="dialog-overlay hidden">
+  <div class="dialog">
+    <div class="dialog-header">
+      <h2 id="noteDialogTitle">Новая заметка</h2>
+      <button type="button" class="btn-ghost icon-btn" data-close-dialog title="Закрыть" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <form id="noteForm">
+      <div id="noteTagSwitch" class="note-tag-switch" role="tablist">
+        <button type="button" class="note-tag-btn active" data-note-tag="normal" role="tab" aria-selected="true">Обычная</button>
+        <button type="button" class="note-tag-btn note-tag-urgent" data-note-tag="urgent" role="tab" aria-selected="false">Срочно</button>
+      </div>
+      <label>Текст<textarea required name="text" rows="5" class="notes-textarea" placeholder="Например: заказать масло у поставщика к среде…"></textarea></label>
+      <div class="dialog-actions">
+        <button type="button" id="deleteNoteBtn" class="btn-danger hidden">Удалить</button>
+        <div class="spacer"></div>
+      </div>
+      <button type="submit" class="btn-primary btn-block">Сохранить</button>
     </form>
   </div>
 </div>
