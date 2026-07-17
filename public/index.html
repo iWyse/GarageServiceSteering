@@ -30,26 +30,29 @@
         <p>учёт клиентов и&nbsp;записей</p>
       </div>
     </div>
-    <div class="login-mode-switch" role="tablist">
-      <button type="button" class="login-mode-btn active" data-login-mode="owner" role="tab" aria-selected="true">Я владелец</button>
-      <button type="button" class="login-mode-btn" data-login-mode="client" role="tab" aria-selected="false">Я клиент</button>
+    <div class="login-body">
+      <div class="login-mode-switch" role="tablist">
+        <button type="button" class="login-mode-btn active" data-login-mode="owner" role="tab" aria-selected="true">Я владелец</button>
+        <button type="button" class="login-mode-btn" data-login-mode="client" role="tab" aria-selected="false">Я клиент</button>
+      </div>
+
+      <form id="loginForm" class="login-mode-form">
+        <label>Телефон<input required name="phone" id="loginPhoneInput" type="tel" class="mono-input" autocomplete="username" inputmode="tel"></label>
+        <label>Пароль<input required name="password" type="password" placeholder="Пароль" class="mono-input" autocomplete="current-password"></label>
+        <p id="loginError" class="login-error hidden"></p>
+      </form>
+
+      <form id="clientLoginForm" class="login-mode-form hidden">
+        <div class="client-login-fields">
+          <label>VIN автомобиля<input required name="vin" id="clientVinInput" type="text" class="mono-input" maxlength="17" style="text-transform:uppercase" placeholder="VIN номер" autocomplete="off" autocapitalize="characters"></label>
+          <label id="clientPasswordLabel" class="hidden">Пароль<input name="password" id="clientPasswordInput" type="password" placeholder="Пароль" class="mono-input" autocomplete="new-password"></label>
+          <p id="clientLoginError" class="login-error hidden"></p>
+        </div>
+      </form>
     </div>
 
-    <form id="loginForm" class="login-mode-form">
-      <label>Телефон<input required name="phone" id="loginPhoneInput" type="tel" class="mono-input" autocomplete="username" inputmode="tel"></label>
-      <label>Пароль<input required name="password" type="password" placeholder="Пароль" class="mono-input" autocomplete="current-password"></label>
-      <p id="loginError" class="login-error hidden"></p>
-      <button type="submit" class="btn-primary btn-block">Войти</button>
-    </form>
-
-    <form id="clientLoginForm" class="login-mode-form hidden">
-      <div class="client-login-fields">
-        <label>VIN автомобиля<input required name="vin" id="clientVinInput" type="text" class="mono-input" maxlength="17" style="text-transform:uppercase" placeholder="VIN номер" autocomplete="off" autocapitalize="characters"></label>
-        <label id="clientPasswordLabel" class="hidden">Пароль<input name="password" id="clientPasswordInput" type="password" placeholder="Пароль" class="mono-input" autocomplete="new-password"></label>
-        <p id="clientLoginError" class="login-error hidden"></p>
-      </div>
-      <button type="submit" class="btn-primary btn-block">Войти</button>
-    </form>
+    <button type="submit" form="loginForm" class="btn-primary btn-block login-submit-btn" data-login-submit="owner">Войти</button>
+    <button type="submit" form="clientLoginForm" class="btn-primary btn-block login-submit-btn hidden" data-login-submit="client">Войти</button>
   </div>
 </div>
 

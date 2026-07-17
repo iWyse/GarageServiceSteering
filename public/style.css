@@ -841,7 +841,9 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 /* На мобильных диалоги открываются во весь экран, а не маленьким окном
    поверх сайта — форм слишком много, чтобы ужиматься в узкую карточку.
-   Confirm и логин — исключение: это компактные попапы, а не формы. */
+   Confirm — исключение: это компактный попап, а не форма. Логин теперь
+   тоже на весь экран (см. ниже, три зоны: шапка/контент/кнопка), но не
+   компактным попапом. */
 @media (max-width: 600px) {
   .dialog-overlay { padding: 0; }
   .dialog-overlay .dialog {
@@ -852,8 +854,8 @@ input[type="number"]::-webkit-inner-spin-button {
     border-radius: 0;
     overflow-y: auto;
   }
-  #confirmDialog, #loginOverlay { padding: 20px; }
-  #confirmDialog .dialog, #loginOverlay .dialog {
+  #confirmDialog { padding: 20px; }
+  #confirmDialog .dialog {
     width: 100%;
     height: auto;
     max-height: 90vh;
@@ -874,9 +876,13 @@ input[type="number"]::-webkit-inner-spin-button {
 #loginOverlay { background: var(--bg); background-image: none; }
 .login-dialog { max-width: 340px; }
 @media (max-width: 600px) {
-  /* На телефоне узкая карточка входа выглядит потерянной посреди экрана —
-     растягиваем на всю доступную ширину вместо фиксированных 340px. */
-  .login-dialog { max-width: none; }
+  /* На телефоне окно входа — на весь экран, три зоны сверху вниз: шапка
+     (лого), контент (переключатель владелец/клиент + поля формы —
+     по центру доступной высоты) и кнопка "Войти", прижатая к низу. */
+  .login-dialog { max-width: none; display: flex; flex-direction: column; padding: 32px 24px; }
+  .login-brand { flex-shrink: 0; margin-bottom: 0; }
+  .login-body { flex: 1; justify-content: center; min-height: 0; }
+  .login-submit-btn { flex-shrink: 0; margin-top: 24px; }
 }
 
 /* ---------- Confirm dialog ---------- */
@@ -884,15 +890,13 @@ input[type="number"]::-webkit-inner-spin-button {
 .confirm-message { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text); }
 #confirmDialog { z-index: 60; }
 .login-brand { justify-content: center; margin-bottom: 20px; }
-/* Высота жёстко зафиксирована (не min-height) — по фактической высоте формы
-   входа клиента с зарезервированным местом под пароль и ошибку (223px).
-   Раньше min-height мог не сработать, если контент оказывался выше него;
-   height не даёт форме вырасти ни при каких обстоятельствах — окно входа
-   всегда одной и той же высоты на обеих вкладках. */
-.login-mode-form { display: flex; flex-direction: column; gap: 14px; height: 223px; overflow: hidden; }
-/* Клиентский вход: поле VIN по центру доступной высоты, кнопка "Войти"
-   прижата к низу окна, а не сразу под полем. */
-.client-login-fields { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+/* "Контент" окна входа — переключатель владелец/клиент и поля формы:
+   на мобильных (см. ниже) центрируется по вертикали между шапкой и
+   кнопкой "Войти", которая вынесена из <form> наружу (form="...") и
+   всегда остаётся третьей, нижней частью окна. */
+.login-body { display: flex; flex-direction: column; gap: 20px; }
+.login-mode-form { display: flex; flex-direction: column; gap: 14px; }
+.client-login-fields { display: flex; flex-direction: column; gap: 14px; }
 /* min-height — пустой <p> без текста схлопывается до 0, а с текстом
    ошибки занимает ~17px; фиксируем высоту, чтобы место было зарезервировано
    даже без текста (см. .hidden-переопределения ниже). */
@@ -1053,10 +1057,12 @@ input[type="number"]::-webkit-inner-spin-button {
     justify-self: stretch;
     align-self: stretch;
     flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
     gap: 4px;
     background: var(--surface);
     border-radius: 0;
-    padding: 90px 16px 16px;
+    padding: 90px 24px 16px;
     z-index: 40;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;

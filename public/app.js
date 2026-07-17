@@ -99,6 +99,9 @@ function setLoginMode(mode) {
   });
   loginForm.classList.toggle('hidden', mode !== 'owner');
   clientLoginForm.classList.toggle('hidden', mode !== 'client');
+  document.querySelectorAll('.login-submit-btn').forEach((b) => {
+    b.classList.toggle('hidden', b.dataset.loginSubmit !== mode);
+  });
 }
 
 document.querySelectorAll('.login-mode-btn').forEach((btn) => {
