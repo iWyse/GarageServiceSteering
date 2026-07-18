@@ -222,22 +222,26 @@ attachPhoneMask(document.getElementById('clientCarPhoneInput'));
 // значения ведёт себя иначе, чем на десктопе.
 const loginPhoneInput = document.getElementById('loginPhoneInput');
 function prefillLoginPhone() {
-  if (!loginPhoneInput.value) {
-    loginPhoneInput.value = '+7';
-    // Браузер сам расставляет курсор по месту тапа/клика ПОСЛЕ этого
-    // события — если тапнуть у левого края поля, курсор переставляется
-    // в начало (перед "+7"), и цифры печатаются перед ним ("123+7" вместо
-    // "+7123"). Откладываем принудительную установку в конец на следующий
-    // тик, чтобы она сработала уже после нативной расстановки.
-    setTimeout(() => {
-      const len = loginPhoneInput.value.length;
-      try { loginPhoneInput.setSelectionRange(len, len); } catch { /* не поддерживается — не критично */ }
-    }, 0);
-  }
+  if (!loginPhoneInput.value) loginPhoneInput.value = '+7';
 }
 loginPhoneInput.addEventListener('touchstart', prefillLoginPhone, { passive: true });
 loginPhoneInput.addEventListener('mousedown', prefillLoginPhone);
 loginPhoneInput.addEventListener('focus', prefillLoginPhone);
+// Браузер сам расставляет курсор по месту тапа/клика — на мобильных это
+// происходит с непредсказуемой задержкой относительно touchstart/focus
+// (после анимации появления клавиатуры), поэтому фиксированный setTimeout
+// после этих событий срабатывал слишком рано и не помогал. Вместо этого
+// слушаем сам selectionchange: пока в поле ровно "+7" (пользователь ещё
+// ничего не напечатал), любая попытка браузера передвинуть курсор не в
+// конец тут же откатывается обратно — как только начат реальный ввод,
+// проверка перестаёт срабатывать и курсор ведёт себя как обычно.
+document.addEventListener('selectionchange', () => {
+  if (document.activeElement !== loginPhoneInput) return;
+  if (loginPhoneInput.value !== '+7') return;
+  if (loginPhoneInput.selectionStart !== 2 || loginPhoneInput.selectionEnd !== 2) {
+    loginPhoneInput.setSelectionRange(2, 2);
+  }
+});
 loginPhoneInput.addEventListener('blur', () => {
   if (loginPhoneInput.value === '+7') loginPhoneInput.value = '';
 });
