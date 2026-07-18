@@ -879,7 +879,17 @@ input[type="number"]::-webkit-inner-spin-button {
 @media (max-width: 600px) {
   /* На телефоне окно входа — компактная карточка, прижатая к верху экрана
      (не на весь экран), тёмный фон остаётся на весь экран под ней. */
-  #loginOverlay { align-items: flex-start; padding: 16px; }
+  /* width/height продублированы явно поверх inset:0 — на части мобильных
+     браузеров (сворачивающаяся адресная строка Safari/Chrome) fixed-элемент
+     без явных размеров подхватывает старую высоту вьюпорта и фон не
+     дотягивается до низа экрана; 100dvh перекрывает 100vh там, где поддерживается. */
+  #loginOverlay {
+    align-items: flex-start;
+    padding: 16px;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+  }
   #loginOverlay .dialog {
     width: 100%;
     height: auto;
