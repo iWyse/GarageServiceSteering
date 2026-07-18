@@ -19,9 +19,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const PORT = process.env.PORT || 3000;
 
 // ---------- Авторизация владельца ----------
-// Единственный пользователь — владелец автосервиса. Сессии храним в памяти
-// процесса: перезапуск сервера разлогинивает всех, что для локального
-// однопользовательского инструмента приемлемо и не требует внешнего хранилища.
+// Единственный пользователь — владелец автосервиса.
 const OWNER_PHONE = process.env.OWNER_PHONE;
 const OWNER_PASSWORD = process.env.OWNER_PASSWORD;
 if (!OWNER_PHONE || !OWNER_PASSWORD) {
@@ -39,6 +37,19 @@ const sessions = new Set();
 // но не мешать реальным новым клиентам, которых ещё нет в базе.
 const CLIENT_SESSION_COOKIE = 'client_session';
 const clientSessions = new Map(); // token -> vin
+
+// Сессии (владельца и клиентов) держим в памяти для быстрой проверки на
+// каждый запрос, но зеркалим в таблицу sessions — иначе перезапуск сервера
+// разлогинивал бы всех, хотя cookie в браузере (Max-Age 30 дней) ещё месяц
+// оставалась бы валидной, и телефон "забывал" бы вход при каждом деплое.
+function loadPersistedSessions() {
+  db.prepare(`DELETE FROM sessions WHERE created_at < datetime('now', '-30 days')`).run();
+  for (const row of db.prepare('SELECT token, kind, vin FROM sessions').all()) {
+    if (row.kind === 'owner') sessions.add(row.token);
+    else if (row.kind === 'client' && row.vin) clientSessions.set(row.token, row.vin);
+  }
+}
+loadPersistedSessions();
 
 function normalizeVin(v) {
   return (v || '').trim().toUpperCase().slice(0, 17);
@@ -635,12 +646,16 @@ const server = http.createServer(async (req, res) => {
       }
       const token = crypto.randomUUID();
       sessions.add(token);
+      db.prepare('INSERT INTO sessions (token, kind) VALUES (?, ?)').run(token, 'owner');
       res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`);
       return sendJSON(res, 200, { ok: true });
     }
     if (pathname === '/api/logout' && req.method === 'POST') {
       const token = parseCookies(req)[SESSION_COOKIE];
-      if (token) sessions.delete(token);
+      if (token) {
+        sessions.delete(token);
+        db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+      }
       res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0`);
       return sendJSON(res, 200, { ok: true });
     }
@@ -663,12 +678,16 @@ const server = http.createServer(async (req, res) => {
       }
       const token = crypto.randomUUID();
       clientSessions.set(token, vin);
+      db.prepare('INSERT INTO sessions (token, kind, vin) VALUES (?, ?, ?)').run(token, 'client', vin);
       res.setHeader('Set-Cookie', `${CLIENT_SESSION_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`);
       return sendJSON(res, 200, { ok: true });
     }
     if (pathname === '/api/client-logout' && req.method === 'POST') {
       const token = parseCookies(req)[CLIENT_SESSION_COOKIE];
-      if (token) clientSessions.delete(token);
+      if (token) {
+        clientSessions.delete(token);
+        db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+      }
       res.setHeader('Set-Cookie', `${CLIENT_SESSION_COOKIE}=; HttpOnly; Path=/; Max-Age=0`);
       return sendJSON(res, 200, { ok: true });
     }
@@ -693,7 +712,10 @@ const server = http.createServer(async (req, res) => {
       if (newVin !== currentVin) {
         db.prepare('DELETE FROM client_car_profiles WHERE vin = ?').run(currentVin);
         const token = parseCookies(req)[CLIENT_SESSION_COOKIE];
-        if (token) clientSessions.set(token, newVin);
+        if (token) {
+          clientSessions.set(token, newVin);
+          db.prepare('UPDATE sessions SET vin = ? WHERE token = ?').run(newVin, token);
+        }
       }
       return sendJSON(res, 200, saveClientCarProfile(newVin, body));
     }

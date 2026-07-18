@@ -124,6 +124,16 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   );
+
+  -- Сессии входа (владелец и клиенты по VIN), вынесены из памяти процесса в
+  -- базу — иначе перезапуск сервера разлогинивал всех, хотя cookie в
+  -- браузере (Max-Age 30 дней) оставалась валидной ещё месяц.
+  CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    kind TEXT NOT NULL, -- 'owner' | 'client'
+    vin TEXT,           -- только для kind='client'
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 // ---------- Миграция старых баз (версия до "разовых визитов") ----------
