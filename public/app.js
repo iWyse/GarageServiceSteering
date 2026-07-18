@@ -2103,6 +2103,14 @@ function openConsumableSectionDialog(section) {
 
 document.getElementById('newConsumableSectionBtn').addEventListener('click', () => openConsumableSectionDialog(null));
 
+// ---------- Аккордеон "Добавить расходник" (мобильная версия) ----------
+document.getElementById('consumablesToolbarToggleBtn').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  const open = document.getElementById('consumablesToolbarButtons').classList.toggle('mobile-open');
+  btn.setAttribute('aria-expanded', String(open));
+  btn.classList.toggle('accordion-open', open);
+});
+
 consumableSectionForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(consumableSectionForm).entries());

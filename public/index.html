@@ -160,10 +160,18 @@
   <!-- ===== CONSUMABLES VIEW ===== -->
   <section id="view-consumables" class="view">
     <div class="clients-toolbar">
-      <button id="newConsumableSectionBtn" class="btn-ghost">+ Раздел</button>
-      <button id="newConsumableCategoryBtn" class="btn-ghost">+ Категория</button>
-      <div class="spacer"></div>
-      <button id="newConsumableBtn" class="btn-ghost">+ Расходник</button>
+      <button type="button" id="consumablesToolbarToggleBtn" class="btn-ghost accordion-toggle-btn consumables-toolbar-toggle" aria-expanded="false">
+        Добавить расходник
+        <svg class="accordion-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div id="consumablesToolbarButtons" class="consumables-toolbar-buttons">
+        <button id="newConsumableSectionBtn" class="btn-ghost">+ Раздел</button>
+        <button id="newConsumableCategoryBtn" class="btn-ghost">+ Категория</button>
+        <div class="spacer"></div>
+        <button id="newConsumableBtn" class="btn-ghost">+ Расходник</button>
+      </div>
     </div>
 
     <div id="consumablesList" class="consumables-list"></div>

@@ -574,6 +574,12 @@ input[type="number"]::-webkit-inner-spin-button {
 .accordion-toggle-btn { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .accordion-chevron { transition: transform 0.15s; flex-shrink: 0; }
 .accordion-toggle-btn.accordion-open .accordion-chevron { transform: rotate(180deg); }
+/* На десктопе кнопки расходников идут обычным рядом в тулбаре — аккордеон
+   только для мобильной версии (см. медиа-выборку ниже). display:contents
+   пропускает обёртку сквозь флекс-раскладку .clients-toolbar, как будто
+   кнопки — прямые дети тулбара. */
+.consumables-toolbar-toggle { display: none; }
+.consumables-toolbar-buttons { display: contents; }
 
 .appt-summary {
   display: flex;
@@ -1090,6 +1096,20 @@ input[type="number"]::-webkit-inner-spin-button {
   #view-consumables .clients-toolbar .spacer { display: none; }
   #view-consumables .clients-toolbar > button { width: 100%; }
   #view-consumables .consumables-list { padding: 0 12px; }
+  /* Кнопки "Раздел"/"Категория"/"Расходник" на мобильной версии прячутся
+     в аккордеон "Добавить расходник" — на весь экран в ряд не помещались
+     и раньше складывались в столбец, съедая место над списком. */
+  .consumables-toolbar-toggle { display: flex; }
+  .consumables-toolbar-buttons {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+  }
+  .consumables-toolbar-buttons.mobile-open { display: flex; }
+  .consumables-toolbar-buttons .spacer { display: none; }
+  .consumables-toolbar-buttons > button { width: 100%; }
 }
 
 .mobile-menu-btn { display: none; }
