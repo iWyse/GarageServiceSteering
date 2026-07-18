@@ -874,19 +874,21 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 /* ---------- Login ---------- */
-#loginOverlay { background: var(--bg); background-image: none; align-items: flex-start; padding-top: 60px; }
-.login-dialog { max-width: 340px; }
+#loginOverlay { background: var(--bg); background-image: none; }
+.login-dialog { max-width: 420px; }
 @media (max-width: 600px) {
-  /* На телефоне окно входа — на весь экран, три зоны сверху вниз: шапка
-     (лого), контент (переключатель владелец/клиент + поля формы —
-     по центру доступной высоты) и кнопка "Войти", прижатая к низу. */
-  .login-dialog { max-width: none; display: flex; flex-direction: column; padding: 32px 24px; }
-  .login-brand { flex-shrink: 0; margin-bottom: 0; }
-  .login-body { flex: 1; justify-content: center; min-height: 0; }
-  .login-submit-btn { flex-shrink: 0; margin-top: 24px; }
-  /* На телефоне окно и так растянуто на весь экран (100vh) — сдвиг "к верху"
-     тут не нужен и обрежет нижнюю зону с кнопкой за экран. */
-  #loginOverlay { align-items: stretch; padding-top: 0; }
+  /* На телефоне окно входа — компактная карточка, прижатая к верху экрана
+     (не на весь экран), тёмный фон остаётся на весь экран под ней. */
+  #loginOverlay { align-items: flex-start; padding: 16px; }
+  #loginOverlay .dialog {
+    width: 100%;
+    height: auto;
+    max-width: none;
+    max-height: none;
+    border-radius: var(--radius);
+    margin-top: 24px;
+  }
+  .login-dialog { padding: 32px 24px; }
 }
 
 /* ---------- Confirm dialog ---------- */
