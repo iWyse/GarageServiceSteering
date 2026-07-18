@@ -215,15 +215,21 @@ attachPhoneMask(document.getElementById('queuePhoneInput'));
 attachPhoneMask(document.getElementById('clientCarPhoneInput'));
 // Логин — просто цифры без пробелов, без маски: так быстрее вводить и меньше шансов
 // промахнуться курсором при наборе на телефоне. "+7" только подставляется
-// при фокусе как заготовка, чтобы не печатать его вручную, и убирается
-// обратно при уходе с поля, если так и осталось не заполнено.
+// как заготовка, чтобы не печатать его вручную, и убирается обратно при
+// уходе с поля, если так и осталось не заполнено. Вешаем сразу на несколько
+// событий (touchstart/mousedown раньше focus, plus сам focus как фолбэк) —
+// на части мобильных браузеров событие focus после программной подстановки
+// значения ведёт себя иначе, чем на десктопе.
 const loginPhoneInput = document.getElementById('loginPhoneInput');
-loginPhoneInput.addEventListener('focus', () => {
+function prefillLoginPhone() {
   if (!loginPhoneInput.value) {
     loginPhoneInput.value = '+7';
-    loginPhoneInput.setSelectionRange(2, 2);
+    try { loginPhoneInput.setSelectionRange(2, 2); } catch { /* не поддерживается — не критично */ }
   }
-});
+}
+loginPhoneInput.addEventListener('touchstart', prefillLoginPhone, { passive: true });
+loginPhoneInput.addEventListener('mousedown', prefillLoginPhone);
+loginPhoneInput.addEventListener('focus', prefillLoginPhone);
 loginPhoneInput.addEventListener('blur', () => {
   if (loginPhoneInput.value === '+7') loginPhoneInput.value = '';
 });
