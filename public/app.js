@@ -224,7 +224,15 @@ const loginPhoneInput = document.getElementById('loginPhoneInput');
 function prefillLoginPhone() {
   if (!loginPhoneInput.value) {
     loginPhoneInput.value = '+7';
-    try { loginPhoneInput.setSelectionRange(2, 2); } catch { /* не поддерживается — не критично */ }
+    // Браузер сам расставляет курсор по месту тапа/клика ПОСЛЕ этого
+    // события — если тапнуть у левого края поля, курсор переставляется
+    // в начало (перед "+7"), и цифры печатаются перед ним ("123+7" вместо
+    // "+7123"). Откладываем принудительную установку в конец на следующий
+    // тик, чтобы она сработала уже после нативной расстановки.
+    setTimeout(() => {
+      const len = loginPhoneInput.value.length;
+      try { loginPhoneInput.setSelectionRange(len, len); } catch { /* не поддерживается — не критично */ }
+    }, 0);
   }
 }
 loginPhoneInput.addEventListener('touchstart', prefillLoginPhone, { passive: true });
