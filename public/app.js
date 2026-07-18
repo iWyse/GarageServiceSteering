@@ -635,8 +635,8 @@ async function loadClientHistory(clientId) {
       </div>
       ${r.title ? `<span class="history-date">${fmtFullDate(dateObj)}</span>` : ''}
       ${r.mileage ? `<div class="repair-list-sum"><span>Пробег</span><span>${fmtMileage(r.mileage)}</span></div>` : ''}
-      ${renderRepairBlock('Работы', r.works, worksSum, 'Сумма работ:')}
       ${renderRepairBlock('Запчасти', r.parts, partsSum, 'Сумма запчастей')}
+      ${renderRepairBlock('Работы', r.works, worksSum, 'Сумма работ:')}
       ${r.parts_eta ? `<div class="repair-list-sum"><span>Срок поставки запчастей</span><span>${escapeHtml(r.parts_eta)}</span></div>` : ''}
       ${advance > 0 ? `<div class="repair-list-sum"><span>Аванс</span><span>− ${fmtMoney(advance)}</span></div>` : ''}
       ${r.notes ? `<div class="history-notes">${escapeHtml(r.notes)}</div>` : ''}
@@ -1276,8 +1276,8 @@ function buildOrderHtml(order) {
     <div class="order-sep"></div>
     ${order.title ? `<h3 class="order-title">${escapeHtml(order.title)}</h3>` : ''}
     ${order.date ? `<div class="order-date">${fmtFullDate(new Date(order.date + 'T00:00:00'))}</div>` : ''}
-    ${order.works.length ? `<div class="order-block"><div class="order-block-title">Работы</div>${workLines}<div class="order-line order-line-sum"><span>Сумма работ</span><span>${fmtMoney(order.worksSum)}</span></div></div>` : ''}
     ${order.parts.length ? `<div class="order-block"><div class="order-block-title">Запчасти</div>${partLines}<div class="order-line order-line-sum"><span>Сумма запчастей</span><span>${fmtMoney(order.partsSum)}</span></div>${order.partsEta ? `<div class="order-meta-row"><span>Срок поставки запчастей</span><strong>${escapeHtml(order.partsEta)}</strong></div>` : ''}</div>` : ''}
+    ${order.works.length ? `<div class="order-block"><div class="order-block-title">Работы</div>${workLines}<div class="order-line order-line-sum"><span>Сумма работ</span><span>${fmtMoney(order.worksSum)}</span></div></div>` : ''}
     ${order.advance > 0 ? `<div class="order-line order-line-advance"><span>Аванс</span><span>− ${fmtMoney(order.advance)}</span></div>` : ''}
     <div class="order-total"><span>Итого к оплате</span><span>${fmtMoney(order.total)}</span></div>
     ${order.notes ? `<div class="order-block"><div class="order-block-title">Рекомендации</div>${order.notes
@@ -1549,9 +1549,9 @@ async function renderOrderToCanvas() {
     y += 24;
   }
 
-  block('Работы', order.works, 'Сумма работ:');
   block('Запчасти', order.parts, 'Сумма запчастей');
   if (order.partsEta && order.parts.length) row('Срок поставки запчастей', order.partsEta);
+  block('Работы', order.works, 'Сумма работ:');
 
   if (order.advance > 0) {
     ctx.font = `15px ${ORDER_IMG.fontBody}`;
@@ -2836,8 +2836,8 @@ function renderClientRepairs(records) {
       </div>
       ${r.title ? `<span class="history-date">${fmtFullDate(dateObj)}</span>` : ''}
       ${r.mileage ? `<div class="repair-list-sum"><span>Пробег</span><span>${fmtMileage(r.mileage)}</span></div>` : ''}
-      ${renderRepairBlock('Работы', r.works, worksSum, 'Сумма работ:')}
       ${renderRepairBlock('Запчасти', r.parts, partsSum, 'Сумма запчастей')}
+      ${renderRepairBlock('Работы', r.works, worksSum, 'Сумма работ:')}
       ${r.parts_eta ? `<div class="repair-list-sum"><span>Срок поставки запчастей</span><span>${escapeHtml(r.parts_eta)}</span></div>` : ''}
       ${advance > 0 ? `<div class="repair-list-sum"><span>Аванс</span><span>− ${fmtMoney(advance)}</span></div>` : ''}
       ${r.notes ? `<div class="history-notes">${escapeHtml(r.notes)}</div>` : ''}
