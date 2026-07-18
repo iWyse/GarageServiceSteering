@@ -444,6 +444,25 @@ document.querySelectorAll('.dialog-overlay').forEach((ov) => {
   });
 });
 
+// Escape — нажатие осознанное (в отличие от случайного клика мимо), поэтому
+// закрывает окно сразу, без подтверждения: сначала самое верхнее открытое
+// диалоговое окно (форму входа так не закрыть), иначе — мобильное меню.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (!confirmDialog.classList.contains('hidden')) {
+    confirmCancelBtn.click();
+    return;
+  }
+  const openDialogs = Array.from(document.querySelectorAll('.dialog-overlay:not(.hidden)'))
+    .filter((ov) => ov.id !== 'loginOverlay' && ov.id !== 'confirmDialog');
+  const topDialog = openDialogs[openDialogs.length - 1];
+  if (topDialog) {
+    closeDialog(topDialog);
+    return;
+  }
+  if (tabsNav.classList.contains('mobile-open')) closeMobileMenu();
+});
+
 // ================= CLIENTS =================
 const clientDialog = document.getElementById('clientDialog');
 const clientForm = document.getElementById('clientForm');
