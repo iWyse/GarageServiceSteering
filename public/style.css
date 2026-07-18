@@ -906,28 +906,33 @@ input[type="number"]::-webkit-inner-spin-button {
 #loginOverlay { background: var(--bg); background-image: none; }
 .login-dialog { max-width: 420px; }
 @media (max-width: 600px) {
-  /* На телефоне окно входа — компактная карточка, прижатая к верху экрана
-     (не на весь экран), тёмный фон остаётся на весь экран под ней. */
+  /* На телефоне окно входа — на весь экран, три зоны сверху вниз: шапка
+     (лого), контент (переключатель владелец/клиент + поля формы — по
+     центру доступной высоты) и кнопка "Войти", прижатая к низу. */
   /* width/height продублированы явно поверх inset:0 — на части мобильных
      браузеров (сворачивающаяся адресная строка Safari/Chrome) fixed-элемент
      без явных размеров подхватывает старую высоту вьюпорта и фон не
      дотягивается до низа экрана; 100dvh перекрывает 100vh там, где поддерживается. */
   #loginOverlay {
-    align-items: flex-start;
-    padding: 16px;
+    padding: 0;
     width: 100vw;
     height: 100vh;
     height: 100dvh;
   }
   #loginOverlay .dialog {
-    width: 100%;
-    height: auto;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
     max-width: none;
     max-height: none;
-    border-radius: var(--radius);
-    margin-top: 24px;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 32px 24px;
   }
-  .login-dialog { padding: 32px 24px; }
+  .login-brand { flex-shrink: 0; margin-bottom: 0; }
+  .login-body { flex: 1; justify-content: center; min-height: 0; }
+  .login-submit-btn { flex-shrink: 0; margin-top: 24px; }
 }
 
 /* ---------- Confirm dialog ---------- */
@@ -1123,11 +1128,10 @@ input[type="number"]::-webkit-inner-spin-button {
   .tab { text-align: center; font-size: 16px; padding: 14px 18px; }
 }
 
-@media (max-width: 400px) {
-  /* На самых узких экранах бренду и кнопке выхода вместе с текстом тесно
-     в одном ряду — прячем текст кнопки, оставляем только иконку. */
-  #logoutBtn .logout-text { display: none; }
-  #logoutBtn { padding: 8px; }
+@media (max-width: 600px) {
+  /* На мобильной версии кнопка "Выйти" — только иконка, без текста. */
+  #logoutBtn .logout-text, #clientLogoutBtn .logout-text { display: none; }
+  #logoutBtn, #clientLogoutBtn { padding: 8px; }
 }
 
 /* ---------- Заметки владельца ---------- */
