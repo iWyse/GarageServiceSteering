@@ -553,7 +553,16 @@
 <!-- ===== Repair record dialog ===== -->
 <div id="repairDialog" class="dialog-overlay hidden">
   <div class="dialog dialog-wide">
-    <h2 id="repairDialogTitle">Новая запись ремонта</h2>
+    <div class="dialog-header">
+      <h2 id="repairDialogTitle">Новая запись ремонта</h2>
+      <button type="button" class="btn-ghost icon-btn" data-close-dialog title="Закрыть" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
     <form id="repairForm">
       <button type="button" id="sendToClientBtn" class="btn-ghost">Заказ-наряд</button>
       <label>Заголовок<input name="title" type="text" placeholder="Например: ТО-1, ремонт рулевой рейки…"></label>
@@ -593,8 +602,6 @@
 
       <div class="dialog-actions">
         <button type="button" id="deleteRepairBtn" class="btn-danger hidden">Удалить</button>
-        <div class="spacer"></div>
-        <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
       </div>
       <button type="submit" class="btn-primary btn-block">Сохранить</button>
     </form>
