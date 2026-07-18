@@ -537,6 +537,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .dialog form { display: flex; flex-direction: column; gap: 12px; }
 .dialog label { font-size: 14px; color: var(--text-muted); display: flex; flex-direction: column; gap: 5px; }
 #apptForm label { gap: 10px; }
+#apptDetailsFields { display: flex; flex-direction: column; gap: 16px; }
 .field-hint { font-size: 14px; line-height: 1.4; color: var(--text-muted); }
 
 /* Смета (запись ремонта / очередь) — полей много, текст слипался при плотных
@@ -1042,12 +1043,12 @@ input[type="number"]::-webkit-inner-spin-button {
   /* Бренд + меню + кнопка выхода в один ряд не помещаются без сжатия текста
      (из-за которого раньше вкладки наезжали на бренд и на кнопку). Прячем
      вкладки за иконку-гамбургер: по тапу открывается на весь экран поверх
-     страницы, а не второй строкой в шапке. topbar-actions выше по z-index,
-     чтобы кнопка-гамбургер оставалась кликабельной поверх меню (закрыть
-     тем же тапом) — сама шапка при этом не перекрывается. */
+     страницы — и ничего кроме самого меню при этом не видно (кнопка
+     "Выйти" на время открытого меню скрыта, иконка гамбургера меняется на
+     крестик и остаётся единственным элементом поверх меню, чтобы его
+     закрыть). */
   .topbar { grid-template-columns: 1fr auto; position: relative; }
-  .topbar-actions { position: relative; z-index: 41; }
-  .mobile-menu-btn { display: flex; }
+  .mobile-menu-btn { display: flex; position: relative; z-index: 45; }
   .tabs {
     display: none;
     position: fixed;
@@ -1058,17 +1059,18 @@ input[type="number"]::-webkit-inner-spin-button {
     align-self: stretch;
     flex-direction: column;
     justify-content: center;
-    align-items: flex-start;
+    align-items: center;
     gap: 4px;
     background: var(--surface);
     border-radius: 0;
-    padding: 90px 24px 16px;
+    padding: 24px;
     z-index: 40;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
   .tabs.mobile-open { display: flex; }
-  .tab { text-align: left; font-size: 16px; padding: 14px 18px; }
+  .tabs.mobile-open ~ .topbar-actions #logoutBtn { display: none; }
+  .tab { text-align: center; font-size: 16px; padding: 14px 18px; }
 }
 
 @media (max-width: 400px) {

@@ -285,16 +285,27 @@ function syncBodyScrollLock() {
   document.body.classList.toggle('dialog-open', anyDialogOpen || menuOpen);
 }
 
-function closeMobileMenu() {
-  tabsNav.classList.remove('mobile-open');
-  mobileMenuBtn.setAttribute('aria-expanded', 'false');
+// Пока меню открыто, кнопка — единственное, что остаётся поверх него, поэтому
+// иконка меняется с гамбургера на крестик: иначе непонятно, чем его закрыть.
+const MOBILE_MENU_ICON_OPEN = '<line x1="4" y1="7" x2="20" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="4" y1="17" x2="20" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+const MOBILE_MENU_ICON_CLOSE = '<line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+const mobileMenuBtnIcon = mobileMenuBtn.querySelector('svg');
+
+function setMobileMenuState(open) {
+  tabsNav.classList.toggle('mobile-open', open);
+  mobileMenuBtn.setAttribute('aria-expanded', String(open));
+  mobileMenuBtn.title = open ? 'Закрыть меню' : 'Меню';
+  mobileMenuBtn.setAttribute('aria-label', open ? 'Закрыть меню' : 'Меню');
+  mobileMenuBtnIcon.innerHTML = open ? MOBILE_MENU_ICON_CLOSE : MOBILE_MENU_ICON_OPEN;
   syncBodyScrollLock();
 }
 
+function closeMobileMenu() {
+  setMobileMenuState(false);
+}
+
 mobileMenuBtn.addEventListener('click', () => {
-  const open = tabsNav.classList.toggle('mobile-open');
-  mobileMenuBtn.setAttribute('aria-expanded', String(open));
-  syncBodyScrollLock();
+  setMobileMenuState(!tabsNav.classList.contains('mobile-open'));
 });
 
 // Клик мимо открытого мобильного меню закрывает его — иначе оно остаётся
@@ -2228,6 +2239,7 @@ function enhanceClientSelect(selectEl, emptyLabel) {
       selectEl.dispatchEvent(new Event('change', { bubbles: true }));
       input.value = '';
       closeList();
+      input.blur();
     });
     list.appendChild(emptyItem);
 
@@ -2247,6 +2259,7 @@ function enhanceClientSelect(selectEl, emptyLabel) {
         selectEl.dispatchEvent(new Event('change', { bubbles: true }));
         syncInputFromSelect();
         closeList();
+        input.blur();
       });
       list.appendChild(item);
     });
