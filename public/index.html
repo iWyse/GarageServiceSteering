@@ -323,6 +323,14 @@
       </button>
     </div>
     <form id="queueForm">
+      <button type="button" id="queueOrderBtn" class="btn-ghost">Заказ-наряд</button>
+      <button type="button" id="queueClientFieldsToggleBtn" class="btn-ghost accordion-toggle-btn" aria-expanded="false">
+        Данные клиента и автомобиля
+        <svg class="accordion-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div id="queueClientFields" class="hidden">
       <label>Клиент из базы
         <select id="queueClientSelect"><option value="">— новый клиент (не из базы) —</option></select>
       </label>
@@ -345,6 +353,7 @@
       <label>Заголовок<input name="title" type="text" placeholder="Например: ТО-1, ремонт рулевой рейки…"></label>
       <label><span>Дата <span class="req">*</span></span><input required name="date" type="date"></label>
       <label>Пробег, км<input name="mileage" type="number" min="0" step="1" placeholder="Например: 85000" class="mono-input"></label>
+      </div>
 
       <div class="repair-section">
         <div class="repair-section-head">
@@ -378,7 +387,6 @@
       <label>Рекомендации<textarea name="notes" rows="2" class="notes-textarea" placeholder="Например: заменить тормозную жидкость, проверить сальники…"></textarea></label>
 
       <div class="dialog-actions">
-        <button type="button" id="queueOrderBtn" class="btn-ghost">Заказ-наряд</button>
         <button type="button" id="deleteQueueBtn" class="btn-danger hidden">Удалить</button>
       </div>
       <button type="button" id="promoteQueueBtn" class="btn-ghost btn-block">Добавить в список клиентов</button>

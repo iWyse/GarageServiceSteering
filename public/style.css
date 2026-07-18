@@ -546,6 +546,14 @@ input[type="number"]::-webkit-inner-spin-button {
 #repairForm .repair-section, #queueForm .repair-section { gap: 16px; }
 #repairForm .repair-rows, #queueForm .repair-rows { gap: 14px; }
 #repairForm .repair-row-part, #queueForm .repair-row-part { gap: 10px; padding: 10px; }
+/* #queueClientFields — вложенный div, поэтому gap формы (24px) на его
+   собственных детей не действует — задаём отдельно, иначе лейблы слипаются. */
+#queueClientFields { display: flex; flex-direction: column; gap: 24px; }
+
+/* ---------- Аккордеон "Данные клиента и автомобиля" ---------- */
+.accordion-toggle-btn { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.accordion-chevron { transition: transform 0.15s; flex-shrink: 0; }
+.accordion-toggle-btn.accordion-open .accordion-chevron { transform: rotate(180deg); }
 
 .appt-summary {
   display: flex;

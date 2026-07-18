@@ -1718,6 +1718,24 @@ document.getElementById('queueAdvanceToggleBtn').addEventListener('click', () =>
 });
 document.getElementById('queueAdvanceAmountInput').addEventListener('input', recomputeQueueSums);
 
+// ---------- Аккордеон "Данные клиента и автомобиля" ----------
+const queueClientFields = document.getElementById('queueClientFields');
+const queueClientFieldsToggleBtn = document.getElementById('queueClientFieldsToggleBtn');
+function setQueueClientFieldsOpen(open) {
+  queueClientFields.classList.toggle('hidden', !open);
+  queueClientFieldsToggleBtn.setAttribute('aria-expanded', String(open));
+  queueClientFieldsToggleBtn.classList.toggle('accordion-open', open);
+}
+queueClientFieldsToggleBtn.addEventListener('click', () => {
+  setQueueClientFieldsOpen(queueClientFields.classList.contains('hidden'));
+});
+// Пока аккордеон свёрнут, обязательные поля внутри (Имя, Дата) невидимы и не
+// проходят браузерную валидацию при попытке отправить форму — раскрываем
+// аккордеон, чтобы пользователь увидел, что именно не заполнено.
+queueClientFields.querySelectorAll('[required]').forEach((el) => {
+  el.addEventListener('invalid', () => setQueueClientFieldsOpen(true));
+});
+
 // Позволяет подтянуть данные уже существующего клиента вместо ручного ввода —
 // заказ всё равно хранит свою копию полей (car_make/phone/...), клиент не привязывается по id.
 function fillQueueClientSelect() {
@@ -1749,6 +1767,7 @@ function openQueueDialog(entry) {
   deleteQueueBtn.classList.toggle('hidden', !entry);
   queueForm.reset();
   fillQueueClientSelect();
+  setQueueClientFieldsOpen(false);
 
   if (entry) {
     for (const [k, v] of Object.entries(entry)) {
