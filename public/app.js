@@ -272,6 +272,32 @@ function attachPlateMask(input) {
 
 document.querySelectorAll('input[name="plate"]').forEach(attachPlateMask);
 
+// ---------- Маска VIN (окно авторизации клиента) ----------
+// Только английские буквы и цифры, в верхнем регистре. Кириллические
+// "двойники" (А, В, Е, К, М, Н, О, Р, С, Т, У, Х), которые легко напечатать
+// по ошибке при русской раскладке, автоматически заменяются на латиницу.
+const VIN_CYRILLIC_TO_LATIN = { А: 'A', В: 'B', Е: 'E', К: 'K', М: 'M', Н: 'H', О: 'O', Р: 'P', С: 'C', Т: 'T', У: 'Y', Х: 'X' };
+
+function formatVinMask(raw) {
+  let out = '';
+  for (const ch of raw.toUpperCase()) {
+    const mapped = VIN_CYRILLIC_TO_LATIN[ch] || ch;
+    if (/[A-Z0-9]/.test(mapped)) out += mapped;
+  }
+  return out;
+}
+
+function attachVinMask(input) {
+  if (!input) return;
+  input.addEventListener('input', () => {
+    const formatted = formatVinMask(input.value);
+    input.value = formatted;
+    input.setSelectionRange(formatted.length, formatted.length);
+  });
+}
+
+attachVinMask(document.getElementById('clientVinInput'));
+
 // ---------- Tabs ----------
 const tabsNav = document.querySelector('.tabs');
 const mobileMenuBtn = document.getElementById('mobileMenuBtn');
