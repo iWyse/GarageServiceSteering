@@ -47,6 +47,25 @@ button, input, select, textarea { font-family: inherit; }
 .hidden { display: none !important; }
 body.dialog-open { overflow: hidden; }
 
+/* ---------- Анимации появления ---------- */
+/* Только "вход" — элементы скрываются через display:none (.hidden), а его
+   нельзя анимировать при исчезновении без JS-задержки; анимация на входе
+   уже даёт заметный эффект без переусложнения. Уважаем prefers-reduced-motion. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes dialog-in { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+  .view.active { animation: fade-in 0.18s ease; }
+  .dialog-overlay:not(.hidden) { animation: fade-in 0.15s ease; }
+  .dialog-overlay:not(.hidden) .dialog { animation: dialog-in 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+  .toast:not(.hidden) { animation: toast-in 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+  .tabs.mobile-open { animation: fade-in 0.2s ease; }
+  #queueClientFields:not(.hidden),
+  #advanceAmountWrap:not(.hidden),
+  #queueAdvanceAmountWrap:not(.hidden) { animation: fade-in 0.2s ease; }
+}
+
 /* ---------- Topbar ---------- */
 /* Грид вместо flex/space-between: у крайних колонок одинаковый 1fr, поэтому
    меню навигации в середине оказывается ровно по центру независимо от того,
@@ -128,8 +147,9 @@ main { max-width: none; margin: 0; padding: 24px 28px; }
   border-radius: var(--radius);
   font-size: 14px;
   font-weight: 500;
-  transition: filter 0.15s, background 0.15s;
+  transition: filter 0.15s, background 0.15s, transform 0.1s;
 }
+.btn-primary:active, .btn-ghost:active, .btn-danger:active { transform: scale(0.97); }
 .btn-primary {
   background: var(--accent);
   color: #1b1a17;
@@ -653,9 +673,10 @@ input[type="number"]::-webkit-inner-spin-button {
   flex-direction: column;
   gap: 10px;
   cursor: pointer;
-  transition: border-left-color 0.15s;
+  transition: border-left-color 0.15s, transform 0.15s;
 }
-.history-item:hover { border-left-color: var(--accent); }
+.history-item:hover { border-left-color: var(--accent); transform: translateY(-2px); }
+#clientRequestsList .history-item:hover { transform: none; }
 .history-item-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .history-date { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
 .history-title { font-size: 14px; font-weight: 600; }
@@ -1121,9 +1142,9 @@ input[type="number"]::-webkit-inner-spin-button {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, transform 0.15s;
 }
-.note-item:hover { border-color: var(--accent); }
+.note-item:hover { border-color: var(--accent); transform: translateY(-2px); }
 .note-item-urgent { border-left-color: var(--status-cancelled); }
 .note-item-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .note-item-badge {
