@@ -214,7 +214,19 @@ attachPhoneMask(document.getElementById('walkinPhoneInput'));
 attachPhoneMask(document.getElementById('queuePhoneInput'));
 attachPhoneMask(document.getElementById('clientCarPhoneInput'));
 // Логин — просто цифры без пробелов, без маски: так быстрее вводить и меньше шансов
-// промахнуться курсором при наборе на телефоне.
+// промахнуться курсором при наборе на телефоне. "+7" только подставляется
+// при фокусе как заготовка, чтобы не печатать его вручную, и убирается
+// обратно при уходе с поля, если так и осталось не заполнено.
+const loginPhoneInput = document.getElementById('loginPhoneInput');
+loginPhoneInput.addEventListener('focus', () => {
+  if (!loginPhoneInput.value) {
+    loginPhoneInput.value = '+7';
+    loginPhoneInput.setSelectionRange(2, 2);
+  }
+});
+loginPhoneInput.addEventListener('blur', () => {
+  if (loginPhoneInput.value === '+7') loginPhoneInput.value = '';
+});
 
 // ---------- Маска марки/модели авто ----------
 // Только английские буквы (плюс пробел/дефис для составных названий вроде
