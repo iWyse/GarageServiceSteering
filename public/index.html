@@ -555,6 +555,7 @@
   <div class="dialog dialog-wide">
     <h2 id="repairDialogTitle">Новая запись ремонта</h2>
     <form id="repairForm">
+      <button type="button" id="sendToClientBtn" class="btn-ghost">Заказ-наряд</button>
       <label>Заголовок<input name="title" type="text" placeholder="Например: ТО-1, ремонт рулевой рейки…"></label>
       <label><span>Дата <span class="req">*</span></span><input required name="date" type="date"></label>
       <label>Пробег, км<input name="mileage" type="number" min="0" step="1" placeholder="Например: 85000" class="mono-input"></label>
@@ -591,7 +592,6 @@
       <label>Рекомендации<textarea name="notes" rows="2" class="notes-textarea" placeholder="Например: заменить тормозную жидкость, проверить сальники…"></textarea></label>
 
       <div class="dialog-actions">
-        <button type="button" id="sendToClientBtn" class="btn-ghost">Заказ-наряд</button>
         <button type="button" id="deleteRepairBtn" class="btn-danger hidden">Удалить</button>
         <div class="spacer"></div>
         <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
