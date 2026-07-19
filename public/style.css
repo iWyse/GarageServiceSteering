@@ -508,8 +508,11 @@ input[type="number"]::-webkit-inner-spin-button {
   overflow-y: auto;
   overflow-x: hidden;
 }
-.dialog-wide { max-width: 600px; }
-#queueDialog .dialog { max-width: 880px; }
+/* Смета (запись ремонта) и заказ — самые "тяжёлые" по содержимому диалоги
+   (таблица запчастей с ценой/кол-вом/фирмой/артикулом/поставщиком) — на
+   десктопе им тесно в стандартной ширине попапа. */
+.dialog-wide { max-width: 1250px; }
+#queueDialog .dialog { max-width: 1250px; }
 .dialog h2 {
   font-family: var(--font-display);
   text-transform: uppercase;
