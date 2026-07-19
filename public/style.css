@@ -860,7 +860,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .order-date { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
 .order-block { display: flex; flex-direction: column; gap: 8px; }
 .order-block + .order-block { margin-top: 12px; }
-.order-block-title { font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px; text-align: center; }
+.order-block-title { font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px; }
 .order-line { display: flex; justify-content: space-between; gap: 12px; font-size: 16px; }
 .order-line-meta { color: var(--text-muted); font-size: 14px; }
 .order-line-sum { color: var(--accent); padding-top: 4px; border-top: 1px dashed var(--border); font-size: 18px; font-weight: 600; }
@@ -889,13 +889,14 @@ input[type="number"]::-webkit-inner-spin-button {
   body { background: #fff !important; }
   /* Компактные размеры и отступы — почти любой заказ-наряд (десяток строк
      работ/запчастей + рекомендации) должен уместиться на одну страницу A4,
-     а не расползаться на вторую ради пары строк. */
+     а не расползаться на вторую ради пары строк. Межстрочный интервал и
+     отступы между строками при этом не режем — иначе список сложно читать. */
   #printArea {
     display: flex;
     flex-direction: column;
     gap: 8px;
     font-size: 12px;
-    line-height: 1.3;
+    line-height: 1.55;
     color: #1b1a17;
     background: #fff;
   }
@@ -905,13 +906,12 @@ input[type="number"]::-webkit-inner-spin-button {
   #printArea .order-meta-row { font-size: 12px; }
   #printArea .order-title { font-size: 14px; }
   #printArea .order-date { font-size: 11px; }
-  #printArea .order-date::before { content: "Дата ремонта: "; }
-  #printArea .order-block { gap: 3px; }
+  #printArea .order-block { gap: 7px; }
   #printArea .order-block + .order-block { margin-top: 4px; }
   #printArea .order-block-title { font-size: 10px; margin-bottom: 0; font-weight: 700; }
-  #printArea .order-line { font-size: 12px; page-break-inside: avoid; }
+  #printArea .order-line { font-size: 12px; font-weight: 400; page-break-inside: avoid; }
   #printArea .order-line-sum { font-size: 13px; padding-top: 2px; }
-  #printArea .order-analog-group { gap: 3px; padding: 4px 6px; page-break-inside: avoid; }
+  #printArea .order-analog-group { gap: 7px; padding: 4px 6px; page-break-inside: avoid; }
   #printArea .order-total { padding: 6px 10px; font-size: 14px; page-break-inside: avoid; }
   #printArea .order-brand-address,
   #printArea .order-meta-row span,
