@@ -1378,7 +1378,7 @@ async function renderOrderToCanvas() {
 
   const { width, pad, colors: C } = ORDER_IMG;
   const contentW = width - pad * 2;
-  const scale = 2; // рисуем крупнее, чтобы текст не был мыльным при пересылке
+  const scale = 3; // рисуем крупнее, чтобы текст не был мыльным при пересылке
   const maxHeight = 4000;
 
   const draft = document.createElement('canvas');
