@@ -1665,6 +1665,26 @@ document.getElementById('orderDownloadBtn').addEventListener('click', async () =
   }
 });
 
+// В мессенджерах (WhatsApp/Telegram и т.п.) картинка, вставленная из буфера
+// обмена или отправленная как "фото", обычно пережимается — если отправить
+// тем же файлом как документ/файл, сжатия не будет. Кнопка ниже сразу
+// скачивает файл, без попытки скопировать в буфер.
+document.getElementById('orderDownloadFileBtn').addEventListener('click', async () => {
+  try {
+    const canvas = await renderOrderToCanvas();
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        showToast('Не удалось подготовить изображение', true);
+        return;
+      }
+      downloadOrderImage(blob);
+      showToast('Картинка сохранена файлом');
+    }, 'image/png');
+  } catch (err) {
+    showToast('Не удалось подготовить изображение', true);
+  }
+});
+
 // ---------- Печать заказ-наряда как A4 (PDF через системный диалог печати) ----------
 // Без внешних PDF-библиотек: копируем уже готовый HTML в отдельный блок —
 // прямой ребёнок body (см. #printArea) — и печатаем его через @media print
