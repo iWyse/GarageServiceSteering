@@ -1480,7 +1480,7 @@ async function renderOrderToCanvas() {
       const suffix = [meta, muted ? 'аналог' : ''].filter(Boolean).join(' · ');
       const hasSuffix = !!suffix;
 
-      ctx.font = `600 16px ${ORDER_IMG.fontBody}`;
+      ctx.font = `16px ${ORDER_IMG.fontBody}`;
       const priceW = ctx.measureText(priceText).width;
       const availW = lineW - priceW - 12;
       const nameW = ctx.measureText(it.name).width;
@@ -1491,7 +1491,7 @@ async function renderOrderToCanvas() {
       if (!hasSuffix || nameW + metaW <= availW) {
         // Помещается в одну строку целиком — рисуем название и мету рядом
         // (как в HTML-версии наряда), а не отдельной строкой ниже.
-        ctx.font = `600 16px ${ORDER_IMG.fontBody}`;
+        ctx.font = `16px ${ORDER_IMG.fontBody}`;
         ctx.fillStyle = nameColor;
         ctx.textAlign = 'left';
         ctx.fillText(it.name, leftX, y);
@@ -1502,7 +1502,7 @@ async function renderOrderToCanvas() {
         }
         // Иначе цена наследует приглушённый цвет меты, нарисованной строчкой
         // выше, и запчасти с "(мета)" оказываются другого цвета, чем работы.
-        ctx.font = `600 16px ${ORDER_IMG.fontBody}`;
+        ctx.font = `16px ${ORDER_IMG.fontBody}`;
         ctx.fillStyle = nameColor;
         ctx.textAlign = 'right';
         ctx.fillText(priceText, rightX, y);
@@ -1510,7 +1510,7 @@ async function renderOrderToCanvas() {
         y += 20;
       } else {
         // Не влезает целиком — переносим название, мету оставляем отдельной строкой.
-        ctx.font = `600 16px ${ORDER_IMG.fontBody}`;
+        ctx.font = `16px ${ORDER_IMG.fontBody}`;
         const nameLines = wrapCanvasText(ctx, it.name, availW);
         ctx.fillStyle = nameColor;
         ctx.textAlign = 'left';
