@@ -1674,7 +1674,14 @@ document.getElementById('orderPrintBtn').addEventListener('click', () => {
   const printArea = document.getElementById('printArea');
   printArea.className = 'order-doc';
   printArea.innerHTML = document.getElementById('orderContent').innerHTML;
+  // Заголовок вкладки — единственная часть браузерного колонтитула печати,
+  // которую можно убрать со страницы; адрес и дату печати браузер добавляет
+  // сам, веб-страница на это повлиять не может (убираются целиком галочкой
+  // "Верхние и нижние колонтитулы" в диалоге печати, в "Ещё настройках").
+  const originalTitle = document.title;
+  document.title = ' ';
   window.print();
+  document.title = originalTitle;
 });
 
 // ================= QUEUE (клиенты в очереди на запчасти) =================
