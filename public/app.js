@@ -1458,7 +1458,9 @@ async function renderOrderToCanvas() {
     y += 20;
     ctx.font = `13px ${ORDER_IMG.fontBody}`;
     ctx.fillStyle = C.textMuted;
-    ctx.fillText(title.toUpperCase(), pad, y);
+    ctx.textAlign = 'center';
+    ctx.fillText(title.toUpperCase(), width / 2, y);
+    ctx.textAlign = 'left';
     y += 26;
 
     let sum = 0;
