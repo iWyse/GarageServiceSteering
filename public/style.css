@@ -875,6 +875,39 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: var(--radius);
   background: var(--surface-2);
 }
+
+/* ---------- Печать заказ-наряда (A4/PDF) ---------- */
+#printArea { display: none; }
+@media print {
+  @page { size: A4; margin: 15mm; }
+  /* Прячем весь остальной сайт (шапки, диалоги, тёмный фон) — печатаем
+     только сам документ, в светлых печатных цветах вместо тёмной темы сайта. */
+  body > *:not(#printArea) { display: none !important; }
+  body { background: #fff !important; }
+  #printArea {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    font-size: 13px;
+    color: #1b1a17;
+    background: #fff;
+  }
+  #printArea .order-brand-name { color: #1b1a17; }
+  #printArea .order-brand-address,
+  #printArea .order-meta-row span,
+  #printArea .order-block-title,
+  #printArea .order-line-meta,
+  #printArea .order-line-alt-tag,
+  #printArea .order-date { color: #555; }
+  #printArea .order-sep,
+  #printArea .order-line-sum,
+  #printArea .order-analog-group,
+  #printArea .order-line-alt-tag,
+  #printArea .order-total { border-color: #ccc; }
+  #printArea .order-line-sum { color: #1b1a17; }
+  #printArea .order-line-advance { color: #b4483f; }
+  #printArea .order-total { background: #f2f2f2; color: #1b1a17; }
+}
 /* На мобильных диалоги открываются во весь экран, а не маленьким окном
    поверх сайта — форм слишком много, чтобы ужиматься в узкую карточку.
    Confirm — исключение: это компактный попап, а не форма. Логин теперь

@@ -640,6 +640,7 @@
     <div id="orderContent" class="order-doc"></div>
     <div class="dialog-actions">
       <button type="button" id="orderDownloadBtn" class="btn-primary btn-block">Копировать картинку</button>
+      <button type="button" id="orderPrintBtn" class="btn-ghost btn-block">Скачать A4 (PDF)</button>
     </div>
   </div>
 </div>
@@ -657,6 +658,11 @@
 </div>
 
 <div id="toast" class="toast hidden"></div>
+
+<!-- Печать заказ-наряда (A4/PDF) — прямой ребёнок body, без диалоговых
+     обёрток с overflow/position, которые могли бы обрезать контент при
+     печати. Наполняется тем же HTML, что и #orderContent, перед window.print(). -->
+<div id="printArea"></div>
 
 <script src="app.js"></script>
 </body>

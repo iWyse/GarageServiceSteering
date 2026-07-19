@@ -1665,6 +1665,18 @@ document.getElementById('orderDownloadBtn').addEventListener('click', async () =
   }
 });
 
+// ---------- Печать заказ-наряда как A4 (PDF через системный диалог печати) ----------
+// Без внешних PDF-библиотек: копируем уже готовый HTML в отдельный блок —
+// прямой ребёнок body (см. #printArea) — и печатаем его через @media print
+// в style.css. Пользователь сохраняет как PDF через "Сохранить как PDF" в
+// диалоге печати браузера — работает на любом устройстве без скачивания приложений.
+document.getElementById('orderPrintBtn').addEventListener('click', () => {
+  const printArea = document.getElementById('printArea');
+  printArea.className = 'order-doc';
+  printArea.innerHTML = document.getElementById('orderContent').innerHTML;
+  window.print();
+});
+
 // ================= QUEUE (клиенты в очереди на запчасти) =================
 // Отдельная от "Клиенты" сущность: те же поля клиента + смета (работы/запчасти),
 // пока запчасти не пришли и человек ещё не оформлен как настоящий клиент.
