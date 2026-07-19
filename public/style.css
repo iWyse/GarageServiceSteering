@@ -906,12 +906,12 @@ input[type="number"]::-webkit-inner-spin-button {
   #printArea .order-meta-row { font-size: 12px; }
   #printArea .order-title { font-size: 14px; }
   #printArea .order-date { font-size: 11px; }
-  #printArea .order-block { gap: 7px; }
+  #printArea .order-block { gap: 5px; }
   #printArea .order-block + .order-block { margin-top: 4px; }
   #printArea .order-block-title { font-size: 10px; margin-bottom: 0; font-weight: 700; }
   #printArea .order-line { font-size: 12px; font-weight: 400; page-break-inside: avoid; }
   #printArea .order-line-sum { font-size: 13px; padding-top: 2px; }
-  #printArea .order-analog-group { gap: 7px; padding: 4px 6px; page-break-inside: avoid; }
+  #printArea .order-analog-group { gap: 5px; padding: 4px 6px; page-break-inside: avoid; }
   #printArea .order-total { padding: 6px 10px; font-size: 14px; page-break-inside: avoid; }
   #printArea .order-brand-address,
   #printArea .order-meta-row span,
