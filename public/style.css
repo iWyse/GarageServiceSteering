@@ -696,6 +696,21 @@ input[type="number"]::-webkit-inner-spin-button {
 #clientHistoryPanel .empty-state { padding: 24px 0; }
 .repair-toolbar { margin-top: 0; margin-bottom: 12px; }
 
+/* Заметка "с другой стороны" — только для чтения: заметка админа в кабинете
+   клиента, и наоборот заметка клиента в карточке админа. Разные поля,
+   специально не смешиваются с собственной редактируемой заметкой рядом. */
+.added-notes {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 8px 12px;
+}
+.added-notes-label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 4px; }
+.added-notes p { margin: 0; font-size: 14px; white-space: pre-wrap; color: var(--text); }
+.added-notes-client { border-left-color: var(--accent); }
+.added-notes-client .added-notes-label { color: var(--accent); font-weight: 600; }
+
 .repair-list-block { display: flex; flex-direction: column; gap: 3px; }
 .repair-list-block + .repair-list-block { margin-top: 10px; }
 .repair-list-label { font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }

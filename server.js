@@ -133,7 +133,17 @@ function rowsToObjects(stmt, ...args) {
 
 // ---------- Clients ----------
 function listClients() {
-  return db.prepare('SELECT * FROM clients ORDER BY name COLLATE NOCASE').all();
+  // client_notes — заметка, которую сам клиент оставил в своём кабинете
+  // (client_car_profiles, по VIN) — показываем её в карточке клиента с
+  // пометкой "добавил клиент", не смешивая с заметкой самого админа.
+  return db
+    .prepare(
+      `SELECT c.*, p.notes AS client_notes
+       FROM clients c
+       LEFT JOIN client_car_profiles p ON c.vin != '' AND UPPER(c.vin) = p.vin
+       ORDER BY c.name COLLATE NOCASE`
+    )
+    .all();
 }
 
 function createClient(data) {
@@ -414,15 +424,20 @@ function getClientProfile(vin) {
   return {
     vin,
     known: matched.length > 0,
-    // || а не ?? — пустая строка (клиент отправил форму, не тронув поле)
-    // должна уступать место реальным данным админа, а не затирать их пустотой.
+    // Данные, которые ведёт админ, теперь в приоритете — правки в админке
+    // (например, марку/модель) клиент сразу видит у себя в кабинете. Если
+    // админ ещё не завёл карточку (клиент новый, known=false), используются
+    // данные, которые клиент успел ввести сам. Заметки — отдельная история:
+    // у клиента и у админа свои поля, каждое видно другой стороне отдельно
+    // (car.notes/car.admin_notes), без слияния в одну строку.
     car: {
-      name: profile?.name || fallback.name || '',
-      phone: profile?.phone || fallback.phone || '',
-      car_make: profile?.car_make || fallback.car_make || '',
-      car_model: profile?.car_model || fallback.car_model || '',
-      plate: profile?.plate || fallback.plate || '',
+      name: fallback.name || profile?.name || '',
+      phone: fallback.phone || profile?.phone || '',
+      car_make: fallback.car_make || profile?.car_make || '',
+      car_model: fallback.car_model || profile?.car_model || '',
+      plate: fallback.plate || profile?.plate || '',
       notes: profile?.notes || '',
+      admin_notes: fallback.notes || '',
     },
     repairs,
   };

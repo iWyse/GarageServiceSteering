@@ -251,6 +251,10 @@
       </div>
       <label>Гос. номер<input name="plate" type="text" placeholder="А123ВС456" class="mono-input" maxlength="9"></label>
       <label>Заметки<textarea name="notes" rows="2" class="notes-textarea" placeholder="Особенности машины, на что обратить внимание…"></textarea></label>
+      <div id="clientCarAdminNotes" class="added-notes hidden">
+        <span class="added-notes-label">Заметка сервиса</span>
+        <p id="clientCarAdminNotesText"></p>
+      </div>
       <button type="submit" id="clientCarSaveBtn" class="btn-primary btn-block hidden">Сохранить</button>
     </form>
   </section>
@@ -302,6 +306,10 @@
       <label>Тег<input name="tag" type="text" placeholder="Например: постоянный, такси, VIP…"></label>
       <label>VIN<input name="vin" type="text" placeholder="17 символов, напр. JHMFA16586S000000" class="mono-input" maxlength="17" style="text-transform:uppercase"></label>
       <label>Заметки<textarea name="notes" rows="2" class="notes-textarea" placeholder="Особенности, история обращений…"></textarea></label>
+      <div id="clientAddedNotes" class="added-notes added-notes-client hidden">
+        <span class="added-notes-label">Добавил клиент</span>
+        <p id="clientAddedNotesText"></p>
+      </div>
       <div class="dialog-actions">
         <button type="button" id="deleteClientBtn" class="btn-danger hidden">Удалить</button>
         <div class="spacer"></div>

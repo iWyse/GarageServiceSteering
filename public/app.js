@@ -595,6 +595,12 @@ function openClientDialog(client) {
   }
   autoResizeTextarea(clientForm.elements.notes);
 
+  // Заметка, которую клиент сам оставил в своём кабинете (не смешана с
+  // заметкой админа выше — это отдельное поле, только для чтения здесь).
+  const clientNotesText = client?.client_notes || '';
+  document.getElementById('clientAddedNotes').classList.toggle('hidden', !clientNotesText);
+  document.getElementById('clientAddedNotesText').textContent = clientNotesText;
+
   // Вкладка с историей ремонта имеет смысл только для клиента, который уже есть в базе —
   // у нового клиента (ещё не сохранён) истории по определению нет.
   setClientTab('info');
@@ -2926,6 +2932,10 @@ async function loadClientProfile() {
   clientCarForm.elements.plate.value = profile.car.plate || '';
   clientCarForm.elements.notes.value = profile.car.notes || '';
   autoResizeTextarea(clientCarForm.elements.notes);
+  // Заметка, которую оставил админ — только для чтения, отдельно от своей.
+  const adminNotesText = profile.car.admin_notes || '';
+  document.getElementById('clientCarAdminNotes').classList.toggle('hidden', !adminNotesText);
+  document.getElementById('clientCarAdminNotesText').textContent = adminNotesText;
   renderClientRepairs(profile.repairs);
   // Кнопка "Сохранить" появляется только когда что-то реально поменялось —
   // запоминаем состояние формы сразу после загрузки как точку отсчёта.
