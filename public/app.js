@@ -517,8 +517,10 @@ function sortClients(list, sortBy) {
       if (!carB) return -1;
       return carA.localeCompare(carB, 'ru');
     });
-  } else if (sortBy === 'updated') {
+  } else if (sortBy === 'updated_desc') {
     arr.sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''));
+  } else if (sortBy === 'updated_asc') {
+    arr.sort((a, b) => (a.updated_at || '').localeCompare(b.updated_at || ''));
   } else {
     arr.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
   }
