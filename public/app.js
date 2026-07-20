@@ -503,13 +503,39 @@ async function copyArticleToClipboard(article) {
   }
 }
 
+// По имени/по алфавиту машин — обычная сортировка A-Я, без даты — новее сверху
+// (первым видно, что правили недавно). Пустые значения уходят в конец списка,
+// а не перемешиваются с заполненными по правилам localeCompare.
+function sortClients(list, sortBy) {
+  const arr = list.slice();
+  if (sortBy === 'car') {
+    arr.sort((a, b) => {
+      const carA = [a.car_make, a.car_model].filter(Boolean).join(' ');
+      const carB = [b.car_make, b.car_model].filter(Boolean).join(' ');
+      if (!carA && !carB) return 0;
+      if (!carA) return 1;
+      if (!carB) return -1;
+      return carA.localeCompare(carB, 'ru');
+    });
+  } else if (sortBy === 'updated') {
+    arr.sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''));
+  } else {
+    arr.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru'));
+  }
+  return arr;
+}
+
 function renderClients() {
   const q = document.getElementById('clientSearch').value.trim().toLowerCase();
+  const sortBy = document.getElementById('clientSortSelect').value;
   const body = document.getElementById('clientsBody');
-  const filtered = state.clients.filter((c) => {
-    if (!q) return true;
-    return [c.name, c.phone, c.plate, c.tag, c.car_make, c.car_model, c.vin].join(' ').toLowerCase().includes(q);
-  });
+  const filtered = sortClients(
+    state.clients.filter((c) => {
+      if (!q) return true;
+      return [c.name, c.phone, c.plate, c.tag, c.car_make, c.car_model, c.vin].join(' ').toLowerCase().includes(q);
+    }),
+    sortBy
+  );
   body.innerHTML = '';
   document.getElementById('clientsEmpty').classList.toggle('hidden', state.clients.length !== 0);
 
@@ -524,6 +550,7 @@ function renderClients() {
       <td class="cell-tag">${escapeHtml(c.tag || '—')}</td>
       <td class="cell-plate">${c.vin ? `<span class="cell-vin">${escapeHtml(c.vin)}<button type="button" class="vin-copy-btn" title="Копировать VIN">${COPY_ICON_SVG}</button></span>` : '—'}</td>
       <td class="cell-notes">${escapeHtml(c.notes || '')}</td>
+      <td class="cell-updated">${c.updated_at ? fmtFullDate(new Date(c.updated_at.replace(' ', 'T') + 'Z')) : '—'}</td>
       <td class="edit-hint">${EDIT_ICON_SVG}</td>
     `;
     const phoneLink = tr.querySelector('.cell-phone');
@@ -610,6 +637,7 @@ function fmtMileage(n) {
 function sumItems(items) {
   return items.reduce((sum, it) => {
     if (it.analogGroup && !it.analogSelected) return sum;
+    if (it.included === false) return sum;
     return sum + (Number(it.price) || 0);
   }, 0);
 }
@@ -672,8 +700,11 @@ async function loadClientHistory(clientId) {
 }
 
 function renderRepairBlock(label, items, sum, sumLabel) {
-  if (!items.length) return '';
-  const lines = items
+  // Позиции, которые клиент решил не делать, в истории (как и в
+  // заказ-наряде) не показываем — они остаются только в редакторе сметы.
+  const visibleItems = items.filter((it) => it.included !== false);
+  if (!visibleItems.length) return '';
+  const lines = visibleItems
     .map((it) => {
       const meta = itemMeta(it, false);
       const lineTotal = Number(it.price) || 0;
@@ -696,6 +727,7 @@ document.getElementById('newRepairBtn').addEventListener('click', () => openRepa
 
 document.getElementById('newClientBtn').addEventListener('click', () => openClientDialog(null));
 document.getElementById('clientSearch').addEventListener('input', renderClients);
+document.getElementById('clientSortSelect').addEventListener('change', renderClients);
 // На мобильных клавиатура иначе нечем закрыть: тапнуть "мимо" часто некуда —
 // под полем сразу кнопка и таблица. Клавиша "Готово"/Enter явно снимает фокус.
 document.getElementById('clientSearch').addEventListener('keydown', (e) => {
@@ -752,6 +784,8 @@ let advanceEnabled = false;
 function sumRowInputs(container) {
   return Array.from(container.querySelectorAll('.repair-row')).reduce((sum, row) => {
     if (row.dataset.analogGroup && row.dataset.analogSelected !== '1') return sum;
+    const includeInput = row.querySelector('.row-include');
+    if (includeInput && !includeInput.checked) return sum;
     const price = Number(row.querySelector('.row-price')?.value) || 0;
     return sum + price;
   }, 0);
@@ -849,6 +883,19 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
     row.dataset.analogSelected = item.analogSelected ? '1' : '';
   }
 
+  // Позицию можно исключить из заказ-наряда и суммы, не удаляя её из записи —
+  // например, клиент из всего списка решил отремонтировать не всё. По
+  // умолчанию включена; отсутствие item.included в сохранённых данных тоже
+  // считается "включено" (см. normalizeRepairItems на сервере).
+  const includeInput = document.createElement('input');
+  includeInput.type = 'checkbox';
+  includeInput.className = 'row-include';
+  includeInput.title = 'Включить в заказ-наряд и сумму';
+  includeInput.checked = item?.included !== false;
+  const syncExcludedState = () => row.classList.toggle('repair-row-excluded', !includeInput.checked);
+  syncExcludedState();
+  includeInput.addEventListener('change', () => { syncExcludedState(); onChange(); });
+
   const nameInput = document.createElement('input');
   nameInput.type = 'text';
   nameInput.className = 'row-name';
@@ -927,9 +974,9 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
       analogBtn.addEventListener('click', () => addAnalogToRow(row, onChange));
 
       line1.classList.add('has-analog');
-      line1.append(nameInput, receivedBtn, analogBtn, removeBtn);
+      line1.append(includeInput, nameInput, receivedBtn, analogBtn, removeBtn);
     } else {
-      line1.append(nameInput, removeBtn);
+      line1.append(includeInput, nameInput, removeBtn);
     }
 
     const line2 = document.createElement('div');
@@ -977,7 +1024,7 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
       });
     }
   } else {
-    row.append(nameInput, priceInput, removeBtn);
+    row.append(includeInput, nameInput, priceInput, removeBtn);
   }
 
   return row;
@@ -1008,6 +1055,8 @@ function collectRepairRows(container) {
         out.analogSelected = row.dataset.analogSelected === '1';
       }
       if (supplierSelect) out.supplier = supplierSelect.value;
+      const includeInput = row.querySelector('.row-include');
+      if (includeInput && !includeInput.checked) out.included = false;
       return out;
     })
     .filter((it) => it.name || it.price);
@@ -1235,8 +1284,10 @@ function getRepairOrderContext() {
 
 function buildOrderData() {
   const ctx = getRepairOrderContext();
-  const works = collectRepairRows(worksRowsEl);
-  const parts = collectRepairRows(partsRowsEl);
+  // Позиции, снятые галочкой "включить", в заказ-наряд не попадают вовсе —
+  // они остаются в сохранённой смете, но клиент их в документе не увидит.
+  const works = collectRepairRows(worksRowsEl).filter((it) => it.included !== false);
+  const parts = collectRepairRows(partsRowsEl).filter((it) => it.included !== false);
   const worksSum = sumItems(works);
   const partsSum = sumItems(parts);
   const advance = advanceEnabled ? (Number(document.getElementById('advanceAmountInput').value) || 0) : 0;
@@ -1934,10 +1985,12 @@ document.getElementById('promoteQueueBtn').addEventListener('click', async () =>
       }),
     });
 
-    const works = collectRepairRows(queueWorksRowsEl);
-    // В постоянную историю ремонта аналоги, которые клиент не выбрал, не
-    // переносим — решение уже принято, лишние варианты там не нужны.
+    // В постоянную историю ремонта аналоги, которые клиент не выбрал, и
+    // позиции, которые клиент решил не делать (не включены), не переносим —
+    // решение уже принято, лишнее там не нужно.
+    const works = collectRepairRows(queueWorksRowsEl).filter((w) => w.included !== false);
     const parts = collectRepairRows(queuePartsRowsEl)
+      .filter((p) => p.included !== false)
       .filter((p) => !p.analogGroup || p.analogSelected)
       .map(({ analogGroup, analogSelected, ...rest }) => rest);
     const title = queueForm.elements.title.value;
@@ -1966,8 +2019,10 @@ document.getElementById('promoteQueueBtn').addEventListener('click', async () =>
 });
 
 function buildQueueOrderData() {
-  const works = collectRepairRows(queueWorksRowsEl);
-  const parts = collectRepairRows(queuePartsRowsEl);
+  // Позиции, снятые галочкой "включить", в заказ-наряд не попадают вовсе —
+  // они остаются в сохранённом заказе, но клиент их в документе не увидит.
+  const works = collectRepairRows(queueWorksRowsEl).filter((it) => it.included !== false);
+  const parts = collectRepairRows(queuePartsRowsEl).filter((it) => it.included !== false);
   const worksSum = sumItems(works);
   const partsSum = sumItems(parts);
   const advance = queueAdvanceEnabled ? (Number(document.getElementById('queueAdvanceAmountInput').value) || 0) : 0;

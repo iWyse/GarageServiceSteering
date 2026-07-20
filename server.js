@@ -138,8 +138,8 @@ function listClients() {
 
 function createClient(data) {
   const stmt = db.prepare(
-    `INSERT INTO clients (name, phone, car_make, car_model, plate, tag, vin, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO clients (name, phone, car_make, car_model, plate, tag, vin, notes, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
   );
   const info = stmt.run(
     data.name?.trim() || '',
@@ -156,7 +156,7 @@ function createClient(data) {
 
 function updateClient(id, data) {
   db.prepare(
-    `UPDATE clients SET name=?, phone=?, car_make=?, car_model=?, plate=?, tag=?, vin=?, notes=? WHERE id=?`
+    `UPDATE clients SET name=?, phone=?, car_make=?, car_model=?, plate=?, tag=?, vin=?, notes=?, updated_at=datetime('now') WHERE id=?`
   ).run(
     data.name?.trim() || '',
     data.phone || '',
@@ -195,6 +195,10 @@ function normalizeRepairItems(items) {
       // объединяет строки, selected отмечает, какая считается в итоге.
       if (it?.analogGroup) out.analogGroup = String(it.analogGroup).trim();
       if (it?.analogSelected !== undefined) out.analogSelected = !!it.analogSelected;
+      // included=false — позиция, которую клиент решил не делать: остаётся
+      // в записи (чтобы не терять данные), но не в сумме и не в заказ-наряде.
+      // Отсутствие поля равносильно true — старые записи без него не ломаются.
+      if (it?.included === false) out.included = false;
       return out;
     })
     .filter((it) => it.name || it.price);

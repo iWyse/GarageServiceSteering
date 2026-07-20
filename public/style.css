@@ -344,6 +344,7 @@ input[type="number"]::-webkit-inner-spin-button {
   flex-wrap: wrap;
 }
 .search-input { max-width: 340px; }
+#clientSortSelect { max-width: 220px; }
 
 .table-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; }
 .clients-table { width: 100%; border-collapse: collapse; background: var(--surface); }
@@ -370,6 +371,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .cell-plate { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
 .cell-tag { font-size: 14px; color: var(--text-muted); }
 .cell-notes { color: var(--text-muted); font-size: 14px; max-width: 220px; }
+.cell-updated { color: var(--text-muted); font-size: 14px; white-space: nowrap; }
 .cell-phone {
   font-family: var(--font-mono);
   font-size: 14px;
@@ -727,7 +729,9 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .repair-section-head { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--text-muted); }
 .repair-rows { display: flex; flex-direction: column; gap: 6px; }
-.repair-row { display: grid; grid-template-columns: 1fr 100px auto; gap: 6px; align-items: center; }
+.repair-row { display: grid; grid-template-columns: auto 1fr 100px auto; gap: 6px; align-items: center; }
+.repair-row.repair-row-excluded { opacity: 0.5; }
+.row-include { flex-shrink: 0; width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
 .repair-row .row-name, .repair-row .row-price, .repair-row .row-brand, .repair-row .row-qty, .repair-row .row-article, .repair-row .row-supplier {
   padding: 8px 10px;
   border: 1px solid var(--border);
@@ -749,8 +753,8 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: var(--radius);
   background: var(--surface-2);
 }
-.repair-row-line1 { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; align-items: center; }
-.repair-row-line1.has-analog { grid-template-columns: 1fr auto auto auto; }
+.repair-row-line1 { display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px; align-items: center; }
+.repair-row-line1.has-analog { grid-template-columns: auto 1fr auto auto auto; }
 .row-received-btn {
   flex-shrink: 0;
   white-space: nowrap;
@@ -847,7 +851,7 @@ input[type="number"]::-webkit-inner-spin-button {
 #advanceRow strong { color: var(--status-cancelled); }
 
 /* ---------- Заказ-наряд ---------- */
-.order-dialog { max-width: 600px; }
+.order-dialog { max-width: 720px; }
 .order-doc { display: flex; flex-direction: column; gap: 14px; font-size: 15px; }
 .order-brand { text-align: center; }
 .order-brand-name { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; font-size: 21px; }

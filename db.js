@@ -16,7 +16,8 @@ db.exec(`
     tag TEXT,
     vin TEXT,
     notes TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
   );
 
   CREATE TABLE IF NOT EXISTS appointments (
@@ -274,5 +275,18 @@ function migrateClientCarProfileNameColumn() {
   }
 }
 migrateClientCarProfileNameColumn();
+
+// ---------- Миграция: дата редактирования клиента (для сортировки списка) ----------
+function migrateClientUpdatedAtColumn() {
+  const columns = db.prepare(`PRAGMA table_info(clients)`).all().map((c) => c.name);
+  if (columns.length && !columns.includes('updated_at')) {
+    db.exec(`ALTER TABLE clients ADD COLUMN updated_at TEXT`);
+    // У существующих клиентов своей даты правки ещё нет — берём дату создания
+    // как разумное начальное приближение вместо NULL.
+    db.exec(`UPDATE clients SET updated_at = created_at WHERE updated_at IS NULL`);
+    console.log('База данных обновлена: добавлена дата редактирования клиента.');
+  }
+}
+migrateClientUpdatedAtColumn();
 
 export default db;
