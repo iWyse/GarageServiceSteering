@@ -2399,6 +2399,7 @@ document.querySelectorAll('.notes-textarea').forEach((el) => {
   el.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
     e.preventDefault();
+    el.blur();
     el.closest('form')?.requestSubmit();
   });
 });
