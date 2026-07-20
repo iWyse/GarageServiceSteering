@@ -247,11 +247,12 @@ loginPhoneInput.addEventListener('blur', () => {
 });
 
 // ---------- Маска марки/модели авто ----------
-// Только английские буквы (плюс пробел/дефис для составных названий вроде
-// "Land Rover", "Mercedes-Benz") — всё целиком в верхнем регистре, как во
-// всей остальной базе; кириллица, цифры, прочие символы отбрасываются.
+// Английские буквы и цифры (плюс пробел/дефис для составных названий вроде
+// "Land Rover", "Mercedes-Benz", и моделей вроде "CX-5", "X5", "308") — всё
+// целиком в верхнем регистре, как во всей остальной базе; кириллица и
+// прочие символы отбрасываются.
 function formatCarWordMask(raw) {
-  return raw.replace(/[^a-zA-Z\s-]/g, '').toUpperCase();
+  return raw.replace(/[^a-zA-Z0-9\s-]/g, '').toUpperCase();
 }
 
 function attachCarWordMask(input) {
@@ -2899,6 +2900,12 @@ let clientCarSnapshot = '';
 // обязательны, а кнопка "Добавить в базу" видна всегда, а не только при
 // реальных правках (см. loadClientProfile/updateClientCarSaveVisibility).
 let clientIsNewRegistration = false;
+// true после того, как в этой сессии клиент уже нажал "Добавить в базу" и
+// сохранение прошло успешно — админ мог ещё не успеть завести карточку
+// (known всё ещё false), но повторно показывать форму регистрации клиенту,
+// который её только что заполнил, не нужно: дальше форма ведёт себя как
+// обычная, с кнопкой "Сохранить" только при правках.
+let clientRegistrationSubmitted = false;
 const clientRequestForm = document.getElementById('clientRequestForm');
 const clientRequestPhotoInput = document.getElementById('clientRequestPhotoInput');
 const clientRequestPhotoPreview = document.getElementById('clientRequestPhotoPreview');
@@ -2946,7 +2953,7 @@ async function loadClientProfile() {
   // поля обязательны, а кнопка называется "Добавить в базу" и видна всегда,
   // а не только при правках. Как только карточка появится в базе (known
   // станет true при следующей загрузке), форма ведёт себя как обычно.
-  clientIsNewRegistration = !profile.known;
+  clientIsNewRegistration = !profile.known && !clientRegistrationSubmitted;
   const saveBtn = document.getElementById('clientCarSaveBtn');
   ['name', 'phone', 'car_make', 'car_model'].forEach((field) => {
     clientCarForm.elements[field].required = clientIsNewRegistration;
@@ -3013,9 +3020,14 @@ function renderClientRepairs(records) {
 clientCarForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(clientCarForm).entries());
+  const wasNewRegistration = clientIsNewRegistration;
   try {
     await api('/api/client/car', { method: 'PUT', body: JSON.stringify(data) });
-    showToast('Сохранено');
+    showToast(wasNewRegistration ? 'Данные отправлены в сервис' : 'Сохранено');
+    // Успешная регистрация — дальше форма не должна снова требовать
+    // обязательные поля и показывать "Добавить в базу", даже если админ
+    // ещё не успел завести карточку (см. clientRegistrationSubmitted).
+    if (wasNewRegistration) clientRegistrationSubmitted = true;
     // VIN мог измениться (клиент исправил опечатку) — перезагружаем анкету
     // целиком, чтобы бейдж и история ремонта обновились под новый VIN.
     await loadClientProfile();
