@@ -2393,6 +2393,14 @@ function autoResizeTextarea(el) {
 }
 document.querySelectorAll('.notes-textarea').forEach((el) => {
   el.addEventListener('input', () => autoResizeTextarea(el));
+  // Enter сохраняет форму (как в мессенджерах), Shift+Enter — перенос строки.
+  // isComposing — иначе Enter, подтверждающий ввод иероглифа/слова в IME
+  // (китайская/японская/корейская раскладка), тоже отправлял бы форму.
+  el.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+    e.preventDefault();
+    el.closest('form')?.requestSubmit();
+  });
 });
 
 // Обычный <select> с 1000+ клиентами на телефоне неюзабелен — нет поиска,
