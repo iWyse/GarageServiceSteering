@@ -736,7 +736,18 @@ const server = http.createServer(async (req, res) => {
           db.prepare('UPDATE sessions SET vin = ? WHERE token = ?').run(newVin, token);
         }
       }
-      return sendJSON(res, 200, saveClientCarProfile(newVin, body));
+      // Если этого VIN ещё нет в базе клиентов — это регистрация нового
+      // клиента (на фронтенде кнопка в этом случае так и называется:
+      // "Добавить в базу"), а не правка существующей анкеты — заводим
+      // заявку, чтобы админ увидел во вкладке «Заявки» и добавил карточку.
+      const isNewClient = !db.prepare('SELECT 1 FROM clients WHERE UPPER(vin) = ? LIMIT 1').get(newVin);
+      const savedProfile = saveClientCarProfile(newVin, body);
+      if (isNewClient) {
+        createClientRequest(newVin, {
+          message: 'Новый клиент зарегистрировался в кабинете и указал свои данные — нужно завести карточку в базе.',
+        });
+      }
+      return sendJSON(res, 200, savedProfile);
     }
     if (pathname === '/api/client/requests' && req.method === 'GET') {
       const vin = getClientVin(req);

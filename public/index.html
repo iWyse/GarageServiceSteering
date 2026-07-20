@@ -243,11 +243,11 @@
     <h2>Мой автомобиль <span id="clientVinBadge" class="mono-input client-vin-badge"></span></h2>
     <form id="clientCarForm">
       <label>VIN<input name="vin" id="clientCarVinInput" type="text" class="mono-input" maxlength="17" style="text-transform:uppercase" autocomplete="off" autocapitalize="characters"></label>
-      <label>Имя<input name="name" type="text"></label>
-      <label>Телефон<input name="phone" id="clientCarPhoneInput" type="tel" class="mono-input" placeholder="+7"></label>
+      <label>Имя <span class="req client-car-required-mark hidden">*</span><input name="name" type="text"></label>
+      <label>Телефон <span class="req client-car-required-mark hidden">*</span><input name="phone" id="clientCarPhoneInput" type="tel" class="mono-input" placeholder="+7"></label>
       <div class="row-2">
-        <label>Марка<input name="car_make" type="text"></label>
-        <label>Модель<input name="car_model" type="text"></label>
+        <label>Марка <span class="req client-car-required-mark hidden">*</span><input name="car_make" type="text"></label>
+        <label>Модель <span class="req client-car-required-mark hidden">*</span><input name="car_model" type="text"></label>
       </div>
       <label>Гос. номер<input name="plate" type="text" placeholder="А123ВС456" class="mono-input" maxlength="9"></label>
       <label>Заметки<textarea name="notes" rows="2" class="notes-textarea" placeholder="Особенности машины, на что обратить внимание…"></textarea></label>

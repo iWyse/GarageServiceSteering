@@ -2895,6 +2895,10 @@ async function loadRequests() {
 // ---------- Кабинет клиента (вход по VIN) ----------
 const clientCarForm = document.getElementById('clientCarForm');
 let clientCarSnapshot = '';
+// true, пока VIN не заведён в базе админом — тогда имя/телефон/марка/модель
+// обязательны, а кнопка "Добавить в базу" видна всегда, а не только при
+// реальных правках (см. loadClientProfile/updateClientCarSaveVisibility).
+let clientIsNewRegistration = false;
 const clientRequestForm = document.getElementById('clientRequestForm');
 const clientRequestPhotoInput = document.getElementById('clientRequestPhotoInput');
 const clientRequestPhotoPreview = document.getElementById('clientRequestPhotoPreview');
@@ -2937,8 +2941,24 @@ async function loadClientProfile() {
   document.getElementById('clientCarAdminNotes').classList.toggle('hidden', !adminNotesText);
   document.getElementById('clientCarAdminNotesText').textContent = adminNotesText;
   renderClientRepairs(profile.repairs);
-  // Кнопка "Сохранить" появляется только когда что-то реально поменялось —
-  // запоминаем состояние формы сразу после загрузки как точку отсчёта.
+
+  // Пока такого VIN нет в базе (админ ещё не завёл карточку) — основные
+  // поля обязательны, а кнопка называется "Добавить в базу" и видна всегда,
+  // а не только при правках. Как только карточка появится в базе (known
+  // станет true при следующей загрузке), форма ведёт себя как обычно.
+  clientIsNewRegistration = !profile.known;
+  const saveBtn = document.getElementById('clientCarSaveBtn');
+  ['name', 'phone', 'car_make', 'car_model'].forEach((field) => {
+    clientCarForm.elements[field].required = clientIsNewRegistration;
+  });
+  document.querySelectorAll('.client-car-required-mark').forEach((el) => {
+    el.classList.toggle('hidden', !clientIsNewRegistration);
+  });
+  saveBtn.textContent = clientIsNewRegistration ? 'Добавить в базу' : 'Сохранить';
+
+  // Кнопка появляется только когда что-то реально поменялось (кроме нового
+  // клиента — там она видна всегда) — запоминаем состояние формы сразу
+  // после загрузки как точку отсчёта.
   clientCarSnapshot = getClientCarFormSnapshot();
   updateClientCarSaveVisibility();
 }
@@ -2949,7 +2969,7 @@ function getClientCarFormSnapshot() {
 
 function updateClientCarSaveVisibility() {
   const changed = getClientCarFormSnapshot() !== clientCarSnapshot;
-  document.getElementById('clientCarSaveBtn').classList.toggle('hidden', !changed);
+  document.getElementById('clientCarSaveBtn').classList.toggle('hidden', !changed && !clientIsNewRegistration);
 }
 
 clientCarForm.addEventListener('input', updateClientCarSaveVisibility);
