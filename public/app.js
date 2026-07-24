@@ -15,6 +15,7 @@ const state = {
   clients: [],
   weekStart: startOfWeek(new Date()),
   appointments: [],
+  reportWeekStart: startOfWeek(new Date()),
 };
 
 // ---------- Utils ----------
@@ -387,6 +388,7 @@ document.querySelectorAll('.tab').forEach((btn) => {
     document.getElementById(`view-${target}`).classList.add('active');
     if (target === 'requests') loadRequests();
     if (target === 'notes') loadNotes();
+    if (target === 'report') loadReportWeek();
     closeMobileMenu();
   });
 });
@@ -685,15 +687,15 @@ async function loadClientHistory(clientId) {
     const partsSum = sumItems(r.parts);
     const advance = Number(r.advance) || 0;
     const total = Math.max(0, worksSum + partsSum - advance);
-    const dateObj = new Date(r.date + 'T00:00:00');
+    const dateObj = r.date ? new Date(r.date + 'T00:00:00') : null;
     const item = document.createElement('div');
     item.className = 'history-item';
     item.innerHTML = `
       <div class="history-item-head">
-        <span class="${r.title ? 'history-title' : 'history-date'}">${r.title ? escapeHtml(r.title) : fmtFullDate(dateObj)}</span>
+        <span class="${r.title ? 'history-title' : 'history-date'}">${r.title ? escapeHtml(r.title) : (dateObj ? fmtFullDate(dateObj) : 'Без даты')}</span>
         <strong class="history-total">${fmtMoney(total)}</strong>
       </div>
-      ${r.title ? `<span class="history-date">${fmtFullDate(dateObj)}</span>` : ''}
+      ${r.title && dateObj ? `<span class="history-date">${fmtFullDate(dateObj)}</span>` : ''}
       ${r.mileage ? `<div class="repair-list-sum"><span>Пробег</span><span>${fmtMileage(r.mileage)}</span></div>` : ''}
       ${renderRepairBlock('Запчасти', r.parts, partsSum, 'Сумма запчастей')}
       ${renderRepairBlock('Работы', r.works, worksSum, 'Сумма работ:')}
@@ -962,10 +964,21 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
     qtyInput.value = item?.qty ?? '';
     qtyInput.addEventListener('input', onChange);
 
+    // Всё основное — в одну строку-таблицу: галочка, название, цена, кол-во,
+    // фирма, артикул, крестик (порядок колонок задаёт .repair-row-line1 в CSS,
+    // одинаковый для каждой строки, поэтому колонки выравниваются как в таблице).
     const line1 = document.createElement('div');
     line1.className = 'repair-row-line1';
+    line1.append(includeInput, nameInput, priceInput, qtyInput, brandInput, articleInput, removeBtn);
+    row.append(line1);
 
+    // "На складе"/"+ аналог"/поставщик — только для запчастей в заказе (см.
+    // withReceived), отдельной строкой ниже основной: это данные снабжения,
+    // а не идентификация позиции, в общий ряд их мешать не стали.
     if (withReceived) {
+      const line2 = document.createElement('div');
+      line2.className = 'repair-row-line2';
+
       const receivedBtn = document.createElement('button');
       receivedBtn.type = 'button';
       receivedBtn.className = 'row-received-btn';
@@ -986,20 +999,6 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
       analogBtn.textContent = '+ аналог';
       analogBtn.addEventListener('click', () => addAnalogToRow(row, onChange));
 
-      line1.classList.add('has-analog');
-      line1.append(includeInput, nameInput, receivedBtn, analogBtn, removeBtn);
-    } else {
-      line1.append(includeInput, nameInput, removeBtn);
-    }
-
-    const line2 = document.createElement('div');
-    line2.className = 'repair-row-line2';
-    // Название уже в line1, дальше по порядку: цена, кол-во, фирма, артикул.
-    line2.append(priceInput, qtyInput, brandInput, articleInput);
-
-    // Поставщик — только для запчастей в заказе (см. withReceived), в смете/истории
-    // ремонта эта информация не нужна и нигде больше не отображается.
-    if (withReceived) {
       const supplierSelect = document.createElement('select');
       supplierSelect.className = 'row-supplier mono-input';
       supplierSelect.innerHTML = `
@@ -1010,10 +1009,10 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
         <option value="Микадо">Микадо</option>
       `;
       supplierSelect.value = item?.supplier || '';
-      line2.append(supplierSelect);
-    }
 
-    row.append(line1, line2);
+      line2.append(receivedBtn, analogBtn, supplierSelect);
+      row.append(line2);
+    }
 
     if (withReceived && row.dataset.analogGroup) refreshAnalogRow(row);
     if (withReceived) {
@@ -1102,7 +1101,7 @@ function openRepairDialog(record) {
   parts.forEach((p) => addRepairRow(partsRowsEl, p, true));
 
   repairForm.elements.title.value = record ? (record.title || '') : '';
-  repairForm.elements.date.value = record ? record.date : toISODate(new Date());
+  repairForm.elements.date.value = record ? (record.date || '') : '';
   repairForm.elements.mileage.value = record && record.mileage ? record.mileage : '';
   repairForm.elements.parts_eta.value = record ? (record.parts_eta || '') : 'до 5 рабочих дней';
   repairForm.elements.notes.value = record ? (record.notes || '') : '';
@@ -1162,15 +1161,15 @@ async function openEstimatePicker(appt) {
   list.innerHTML = '';
   repairs.forEach((r) => {
     const total = sumItems(r.works) + sumItems(r.parts);
-    const dateObj = new Date(r.date + 'T00:00:00');
+    const dateObj = r.date ? new Date(r.date + 'T00:00:00') : null;
     const item = document.createElement('div');
     item.className = 'history-item';
     item.innerHTML = `
       <div class="history-item-head">
-        <span class="${r.title ? 'history-title' : 'history-date'}">${r.title ? escapeHtml(r.title) : fmtFullDate(dateObj)}</span>
+        <span class="${r.title ? 'history-title' : 'history-date'}">${r.title ? escapeHtml(r.title) : (dateObj ? fmtFullDate(dateObj) : 'Без даты')}</span>
         <strong class="history-total">${fmtMoney(total)}</strong>
       </div>
-      ${r.title ? `<span class="history-date">${fmtFullDate(dateObj)}</span>` : ''}
+      ${r.title && dateObj ? `<span class="history-date">${fmtFullDate(dateObj)}</span>` : ''}
     `;
     item.addEventListener('click', () => {
       closeDialog(estimatePickerDialog);
@@ -1914,7 +1913,6 @@ function openQueueDialog(entry) {
       if (queueForm.elements[k]) queueForm.elements[k].value = v || '';
     }
   } else {
-    queueForm.elements.date.value = toISODate(new Date());
     queueForm.elements.parts_eta.value = 'до 5 рабочих дней';
   }
   autoResizeTextarea(queueForm.elements.notes);
@@ -2801,6 +2799,64 @@ document.getElementById('prevWeek').addEventListener('click', () => { state.week
 document.getElementById('nextWeek').addEventListener('click', () => { state.weekStart = addDays(state.weekStart, 7); loadWeek(); });
 document.getElementById('todayBtn').addEventListener('click', () => { state.weekStart = startOfWeek(new Date()); loadWeek(); });
 
+// ---------- Отчёт (выполненные работы по автомобилям за неделю) ----------
+let reportRequestSeq = 0;
+
+async function loadReportWeek() {
+  const mySeq = ++reportRequestSeq;
+  const weekStart = state.reportWeekStart; // фиксируем неделю, на которую отправлен запрос
+  const start = toISODate(weekStart);
+  const end = toISODate(addDays(weekStart, DAYS_IN_WEEK - 1));
+
+  let records;
+  try {
+    records = await api(`/api/reports?start=${start}&end=${end}`);
+  } catch (err) {
+    if (mySeq === reportRequestSeq) showToast('Не удалось загрузить отчёт: ' + err.message, true);
+    return;
+  }
+  if (mySeq !== reportRequestSeq) return; // ответ на устаревший клик "вперёд/назад"
+
+  document.getElementById('reportWeekRange').textContent = fmtWeekRange(weekStart);
+  renderReport(records);
+}
+
+function renderReport(records) {
+  const body = document.getElementById('reportBody');
+  body.innerHTML = '';
+  document.getElementById('reportEmpty').classList.toggle('hidden', records.length !== 0);
+
+  let totalWorks = 0;
+  let totalParts = 0;
+
+  records.forEach((r) => {
+    const worksSum = sumItems(r.works);
+    const partsSum = sumItems(r.parts);
+    totalWorks += worksSum;
+    totalParts += partsSum;
+
+    const tr = document.createElement('tr');
+    const carLine = [r.car_make, r.car_model].filter(Boolean).join(' ');
+    const dateLabel = r.date ? fmtFullDate(new Date(r.date + 'T00:00:00')) : 'Без даты';
+    tr.innerHTML = `
+      <td>${escapeHtml(dateLabel)}</td>
+      <td class="cell-tag">${escapeHtml(r.client_tag || '—')}</td>
+      <td>${escapeHtml(carLine || '—')}</td>
+      <td>${fmtMoney(worksSum)}</td>
+      <td>${fmtMoney(partsSum)}</td>
+    `;
+    tr.addEventListener('click', () => openRepairDialog(r));
+    body.appendChild(tr);
+  });
+
+  document.getElementById('reportTotalWorks').textContent = fmtMoney(totalWorks);
+  document.getElementById('reportTotalParts').textContent = fmtMoney(totalParts);
+}
+
+document.getElementById('reportPrevWeek').addEventListener('click', () => { state.reportWeekStart = addDays(state.reportWeekStart, -7); loadReportWeek(); });
+document.getElementById('reportNextWeek').addEventListener('click', () => { state.reportWeekStart = addDays(state.reportWeekStart, 7); loadReportWeek(); });
+document.getElementById('reportTodayBtn').addEventListener('click', () => { state.reportWeekStart = startOfWeek(new Date()); loadReportWeek(); });
+
 // ---------- Заявки клиентов (вкладка админа) ----------
 async function loadRequests() {
   const list = document.getElementById('requestsList');
@@ -2991,15 +3047,15 @@ function renderClientRepairs(records) {
     const partsSum = sumItems(r.parts);
     const advance = Number(r.advance) || 0;
     const total = Math.max(0, worksSum + partsSum - advance);
-    const dateObj = new Date(r.date + 'T00:00:00');
+    const dateObj = r.date ? new Date(r.date + 'T00:00:00') : null;
     const item = document.createElement('div');
     item.className = 'history-item';
     item.innerHTML = `
       <div class="history-item-head">
-        <span class="${r.title ? 'history-title' : 'history-date'}">${r.title ? escapeHtml(r.title) : fmtFullDate(dateObj)}</span>
+        <span class="${r.title ? 'history-title' : 'history-date'}">${r.title ? escapeHtml(r.title) : (dateObj ? fmtFullDate(dateObj) : 'Без даты')}</span>
         <strong class="history-total">${fmtMoney(total)}</strong>
       </div>
-      ${r.title ? `<span class="history-date">${fmtFullDate(dateObj)}</span>` : ''}
+      ${r.title && dateObj ? `<span class="history-date">${fmtFullDate(dateObj)}</span>` : ''}
       ${r.mileage ? `<div class="repair-list-sum"><span>Пробег</span><span>${fmtMileage(r.mileage)}</span></div>` : ''}
       ${renderRepairBlock('Запчасти', r.parts, partsSum, 'Сумма запчастей')}
       ${renderRepairBlock('Работы', r.works, worksSum, 'Сумма работ:')}

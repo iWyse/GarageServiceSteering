@@ -367,6 +367,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .clients-table tr:last-child td { border-bottom: none; }
 .clients-table tr:hover { background: var(--surface-2); cursor: pointer; }
+.report-total-row td { font-weight: 600; color: var(--accent); background: var(--surface-2); cursor: default; }
+.report-total-row:hover { background: var(--surface-2); cursor: default; }
 .cell-name { font-weight: 600; }
 .cell-plate { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
 .cell-tag { font-size: 14px; color: var(--text-muted); }
@@ -513,7 +515,7 @@ input[type="number"]::-webkit-inner-spin-button {
 /* Смета (запись ремонта) и заказ — самые "тяжёлые" по содержимому диалоги
    (таблица запчастей с ценой/кол-вом/фирмой/артикулом/поставщиком) — на
    десктопе им тесно в стандартной ширине попапа. */
-.dialog-wide { max-width: 1250px; }
+.dialog-wide { max-width: 900px; }
 #queueDialog .dialog { max-width: 1250px; }
 .dialog h2 {
   font-family: var(--font-display);
@@ -768,8 +770,28 @@ input[type="number"]::-webkit-inner-spin-button {
   border-radius: var(--radius);
   background: var(--surface-2);
 }
-.repair-row-line1 { display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px; align-items: center; }
-.repair-row-line1.has-analog { grid-template-columns: auto 1fr auto auto auto; }
+/* Запчасть в одну строку-таблицу: галочка, название, цена, кол-во, фирма,
+   артикул, крестик — колонки одинаковые у каждой строки, поэтому visually
+   выравниваются друг под другом, как в настоящей таблице. */
+.repair-row-line1 {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) 90px 70px 110px 120px auto;
+  gap: 6px;
+  align-items: center;
+}
+/* Подписи колонок над списком запчастей — та же сетка, что у .repair-row-line1,
+   поэтому подписи точно встают над своими полями. */
+.repair-rows-header {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) 90px 70px 110px 120px auto;
+  gap: 6px;
+  padding: 0 2px;
+  margin-bottom: -2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
 .row-received-btn {
   flex-shrink: 0;
   white-space: nowrap;
@@ -824,7 +846,10 @@ input[type="number"]::-webkit-inner-spin-button {
   cursor: pointer;
 }
 .row-analog-ungroup-btn:hover { color: var(--status-cancelled); }
-.repair-row-line2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 6px; }
+/* Только для запчастей в заказе (withReceived) — "на складе"/"аналог"/поставщик,
+   данные снабжения отдельно от основной строки-таблицы выше. */
+.repair-row-line2 { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.repair-row-line2 .row-supplier { flex: 1; min-width: 135px; }
 .row-remove {
   width: 30px;
   height: 30px;
@@ -978,6 +1003,14 @@ input[type="number"]::-webkit-inner-spin-button {
      он утыкается в край рамки. Ставим Дата/Время друг под другом на всю
      ширину вместо деления пополам. */
   .row-2 { grid-template-columns: 1fr; }
+  /* Таблица запчастей (7 колонок с фиксированной шириной) не сжимается на
+     узком экране — даём прокрутку вбок вместо обрезки/переноса полей. */
+  .repair-row-line1, .repair-rows-header {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    min-width: 0;
+  }
+  .repair-row-line1 > *, .repair-rows-header > * { min-width: 0; }
 }
 
 /* ---------- Login ---------- */

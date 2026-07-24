@@ -83,6 +83,7 @@
     <button class="tab" data-tab="consumables" role="tab" aria-selected="false">Расходники</button>
     <button class="tab tab-with-badge" data-tab="requests" role="tab" aria-selected="false">Заявки<span id="requestsBadge" class="tab-badge hidden">0</span></button>
     <button class="tab tab-with-badge" data-tab="notes" role="tab" aria-selected="false">Заметки<span id="notesBadge" class="tab-badge tab-badge-count hidden">0</span></button>
+    <button class="tab" data-tab="report" role="tab" aria-selected="false">Отчёт</button>
   </nav>
   <div class="topbar-actions">
     <button id="mobileMenuBtn" class="btn-ghost icon-btn mobile-menu-btn" title="Меню" aria-label="Меню" aria-expanded="false">
@@ -198,6 +199,41 @@
     </div>
     <div id="notesList" class="notes-list"></div>
     <p id="notesEmpty" class="empty-state hidden">Пока нет заметок</p>
+  </section>
+
+  <!-- ===== REPORT VIEW ===== -->
+  <section id="view-report" class="view">
+    <div class="week-toolbar">
+      <button id="reportPrevWeek" class="btn-ghost" aria-label="Предыдущая неделя">←</button>
+      <div class="week-label">
+        <span id="reportWeekRange">—</span>
+        <button id="reportTodayBtn" class="btn-link">эта неделя</button>
+      </div>
+      <button id="reportNextWeek" class="btn-ghost" aria-label="Следующая неделя">→</button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="clients-table">
+        <thead>
+          <tr>
+            <th>Дата</th>
+            <th>Тег</th>
+            <th>Автомобиль</th>
+            <th>Сумма работ</th>
+            <th>Сумма запчастей</th>
+          </tr>
+        </thead>
+        <tbody id="reportBody"><!-- rows injected by JS --></tbody>
+        <tfoot>
+          <tr class="report-total-row">
+            <td colspan="3">Итого за неделю</td>
+            <td id="reportTotalWorks">0 ₽</td>
+            <td id="reportTotalParts">0 ₽</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <p id="reportEmpty" class="empty-state hidden">За эту неделю выполненных работ нет.</p>
   </section>
 
 </main>
@@ -374,7 +410,7 @@
       </label>
 
       <label>Заголовок<input name="title" type="text" placeholder="Например: ТО-1, ремонт рулевой рейки…"></label>
-      <label><span>Дата <span class="req">*</span></span><input required name="date" type="date"></label>
+      <label>Дата<input name="date" type="date"></label>
       <label>Пробег, км<input name="mileage" type="number" min="0" step="1" placeholder="Например: 85000" class="mono-input"></label>
       </div>
 
@@ -382,6 +418,9 @@
         <div class="repair-section-head">
           <span>Запчасти</span>
           <button type="button" class="btn-link" id="queueAddPartRowBtn">+ добавить</button>
+        </div>
+        <div class="repair-rows-header" aria-hidden="true">
+          <span></span><span>Название</span><span>Цена</span><span>Кол-во</span><span>Фирма</span><span>Артикул</span><span></span>
         </div>
         <div id="queuePartsRows" class="repair-rows"></div>
         <div class="repair-sum-row repair-sum-accent"><span>Сумма запчастей</span><strong id="queuePartsSum">0 ₽</strong></div>
@@ -597,13 +636,16 @@
     <form id="repairForm">
       <button type="button" id="sendToClientBtn" class="btn-ghost">Заказ-наряд</button>
       <label>Заголовок<input name="title" type="text" placeholder="Например: ТО-1, ремонт рулевой рейки…"></label>
-      <label><span>Дата <span class="req">*</span></span><input required name="date" type="date"></label>
+      <label>Дата<input name="date" type="date"></label>
       <label>Пробег, км<input name="mileage" type="number" min="0" step="1" placeholder="Например: 85000" class="mono-input"></label>
 
       <div class="repair-section">
         <div class="repair-section-head">
           <span>Запчасти</span>
           <button type="button" class="btn-link" id="addPartRowBtn">+ добавить</button>
+        </div>
+        <div class="repair-rows-header" aria-hidden="true">
+          <span></span><span>Название</span><span>Цена</span><span>Кол-во</span><span>Фирма</span><span>Артикул</span><span></span>
         </div>
         <div id="partsRows" class="repair-rows"></div>
         <div class="repair-sum-row repair-sum-accent"><span>Сумма запчастей</span><strong id="partsSum">0 ₽</strong></div>

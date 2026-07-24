@@ -221,6 +221,20 @@ function listRepairRecords(clientId) {
     .map(parseRepairRecord);
 }
 
+// ---------- Отчёт (выполненные работы за неделю, по автомобилям) ----------
+function listRepairRecordsByDateRange(start, end) {
+  return db
+    .prepare(
+      `SELECT r.*, c.tag AS client_tag, c.name AS client_name, c.car_make, c.car_model
+       FROM repair_records r
+       JOIN clients c ON c.id = r.client_id
+       WHERE r.date BETWEEN ? AND ?
+       ORDER BY r.date, r.id`
+    )
+    .all(start, end)
+    .map(parseRepairRecord);
+}
+
 function createRepairRecord(clientId, data) {
   const info = db
     .prepare(
@@ -229,7 +243,7 @@ function createRepairRecord(clientId, data) {
     .run(
       clientId,
       (data.title || '').trim(),
-      data.date,
+      data.date || '',
       data.mileage ? Number(data.mileage) : null,
       JSON.stringify(normalizeRepairItems(data.works)),
       JSON.stringify(normalizeRepairItems(data.parts)),
@@ -243,7 +257,7 @@ function createRepairRecord(clientId, data) {
 function updateRepairRecord(id, data) {
   db.prepare('UPDATE repair_records SET title=?, date=?, mileage=?, works=?, parts=?, parts_eta=?, advance=?, notes=? WHERE id=?').run(
     (data.title || '').trim(),
-    data.date,
+    data.date || '',
     data.mileage ? Number(data.mileage) : null,
     JSON.stringify(normalizeRepairItems(data.works)),
     JSON.stringify(normalizeRepairItems(data.parts)),
@@ -796,13 +810,11 @@ const server = http.createServer(async (req, res) => {
     }
     if (m && req.method === 'POST') {
       const body = await readBody(req);
-      if (!body.date) return sendJSON(res, 400, { error: 'Дата обязательна' });
       return sendJSON(res, 201, createRepairRecord(Number(m[1]), body));
     }
     m = pathname.match(/^\/api\/repairs\/(\d+)$/);
     if (m && req.method === 'PUT') {
       const body = await readBody(req);
-      if (!body.date) return sendJSON(res, 400, { error: 'Дата обязательна' });
       return sendJSON(res, 200, updateRepairRecord(Number(m[1]), body));
     }
     if (m && req.method === 'DELETE') {
@@ -918,6 +930,14 @@ const server = http.createServer(async (req, res) => {
     if (m && req.method === 'DELETE') {
       deleteConsumable(Number(m[1]));
       return sendJSON(res, 200, { ok: true });
+    }
+
+    // Отчёт — выполненные работы по автомобилям за диапазон дат (неделя)
+    if (pathname === '/api/reports' && req.method === 'GET') {
+      const start = url.searchParams.get('start');
+      const end = url.searchParams.get('end');
+      if (!start || !end) return sendJSON(res, 400, { error: 'Нужны параметры start и end' });
+      return sendJSON(res, 200, listRepairRecordsByDateRange(start, end));
     }
 
     // Appointments
