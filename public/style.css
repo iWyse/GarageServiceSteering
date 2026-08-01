@@ -50,7 +50,11 @@ body.dialog-open { overflow: hidden; }
 /* ---------- Анимации появления ---------- */
 /* Только "вход" — элементы скрываются через display:none (.hidden), а его
    нельзя анимировать при исчезновении без JS-задержки; анимация на входе
-   уже даёт заметный эффект без переусложнения. Уважаем prefers-reduced-motion. */
+   уже даёт заметный эффект без переусложнения. Уважаем prefers-reduced-motion.
+   Мобильное меню вкладок (.tabs.mobile-open) сюда сознательно не входит —
+   пробовали animate opacity на вход/закрытие через JS-задержку, но у
+   полноэкранного оверлея с плотным содержимым это иногда давало лишний кадр
+   без фона/скачок шапки; проще и надёжнее — мгновенно, без анимации. */
 @media (prefers-reduced-motion: no-preference) {
   @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
   @keyframes dialog-in { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -60,7 +64,6 @@ body.dialog-open { overflow: hidden; }
   .dialog-overlay:not(.hidden) { animation: fade-in 0.15s ease; }
   .dialog-overlay:not(.hidden) .dialog { animation: dialog-in 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
   .toast:not(.hidden) { animation: toast-in 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
-  .tabs.mobile-open { animation: fade-in 0.2s ease; }
   #queueClientFields:not(.hidden),
   #advanceAmountWrap:not(.hidden),
   #queueAdvanceAmountWrap:not(.hidden) { animation: fade-in 0.2s ease; }
@@ -205,6 +208,16 @@ input[type="date"], input[type="time"] { max-width: 100%; min-width: 0; }
    прокрутка тут только мешали бы. */
 .notes-textarea { resize: none; overflow: hidden; min-height: 60px; }
 .mono-input { font-family: var(--font-mono); letter-spacing: 0.05em; }
+/* Тег клиента/заказа — акцентный цвет, чтобы бросался в глаза: это не
+   произвольная заметка, а ключ сверки со статусом заказа в Профит-Лиге
+   (см. refreshProfitLigaStatuses в app.js) — текст должен совпадать с
+   комментарием, который мастер указал на их сайте при заказе. */
+.tag-input {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+  font-weight: 600;
+}
+.tag-input::placeholder { color: var(--text-muted); font-weight: 400; }
 
 /* Стрелочки инкремента у number-инпутов нигде в приложении не нужны — только мешают. */
 input[type="number"] { -moz-appearance: textfield; }
@@ -219,11 +232,22 @@ input[type="number"]::-webkit-inner-spin-button {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 20px;
   margin-bottom: 20px;
 }
 .week-label { text-align: center; font-family: var(--font-display); font-size: 17px; letter-spacing: 0.02em; text-transform: uppercase; }
 .week-label span { display: block; }
+/* Отчёт — у тулбара, кроме навигации по неделям, ещё фильтр по мастеру;
+   группируем навигацию (стрелки+диапазон) в свой ряд, иначе на узком экране
+   всё сжимается в одну нечитаемую строку. */
+.report-toolbar .week-nav { display: flex; align-items: center; gap: 20px; }
+@media (max-width: 600px) {
+  /* Навигация по неделям — на всю ширину своим рядом (как в расписании),
+     фильтр по мастеру — под ней. */
+  .report-toolbar { row-gap: 10px; }
+  .report-toolbar .week-nav { flex-basis: 100%; justify-content: center; }
+}
 
 .week-grid {
   display: grid;
@@ -344,7 +368,8 @@ input[type="number"]::-webkit-inner-spin-button {
   flex-wrap: wrap;
 }
 .search-input { max-width: 340px; }
-#clientSortSelect { max-width: 220px; }
+#clientSortSelect { max-width: 320px; }
+#reportMasterFilter { max-width: 200px; }
 
 .table-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; }
 .clients-table { width: 100%; border-collapse: collapse; background: var(--surface); }
@@ -369,6 +394,30 @@ input[type="number"]::-webkit-inner-spin-button {
 .clients-table tr:hover { background: var(--surface-2); cursor: pointer; }
 .report-total-row td { font-weight: 600; color: var(--accent); background: var(--surface-2); cursor: default; }
 .report-total-row:hover { background: var(--surface-2); cursor: default; }
+/* Фиксированные % -колонки — иначе на 440+ строках реальных данных рано или
+   поздно находится клиент с именем/тегом/маркой длиннее, чем помещается, и
+   таблица понемногу становится шире контейнера (у auto-layout table max-width
+   на <td> ненадёжно ограничивает ширину колонки, поэтому только fixed).
+   Полный текст всегда доступен через title (см. renderClients в app.js). */
+.clients-list-table { table-layout: fixed; }
+.clients-list-table th:nth-child(1), .clients-list-table td:nth-child(1) { width: 13%; }
+.clients-list-table th:nth-child(2), .clients-list-table td:nth-child(2) { width: 11%; }
+.clients-list-table th:nth-child(3), .clients-list-table td:nth-child(3) { width: 13%; }
+.clients-list-table th:nth-child(4), .clients-list-table td:nth-child(4) { width: 8%; }
+.clients-list-table th:nth-child(5), .clients-list-table td:nth-child(5) { width: 10%; }
+.clients-list-table th:nth-child(6), .clients-list-table td:nth-child(6) { width: 16%; }
+.clients-list-table th:nth-child(7), .clients-list-table td:nth-child(7) { width: 18%; }
+.clients-list-table th:nth-child(8), .clients-list-table td:nth-child(8) { width: 9%; }
+.clients-list-table th:nth-child(9), .clients-list-table td:nth-child(9) { width: 2%; }
+/* Заметки — многострочные по смыслу, VIN — своя строка с кнопкой копирования
+   (ellipsis у flex-контейнера работает не так, как у текста) — эти две
+   колонки не обрезаем, остальные в одну строку с многоточием. */
+.clients-list-table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.clients-list-table td.cell-notes, .clients-list-table td.cell-vin-td {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
 .cell-name { font-weight: 600; }
 .cell-plate { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
 .cell-tag { font-size: 14px; color: var(--text-muted); }
@@ -397,6 +446,19 @@ input[type="number"]::-webkit-inner-spin-button {
   line-height: 0;
 }
 .vin-copy-btn:hover, .article-copy-btn:hover { color: var(--accent); background: var(--surface-2); }
+.report-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  line-height: 0;
+}
+.report-delete-btn:hover { color: var(--status-cancelled); background: var(--surface-2); }
 
 .empty-state { text-align: center; color: var(--text-muted); padding: 40px 0; }
 
@@ -419,9 +481,10 @@ input[type="number"]::-webkit-inner-spin-button {
 .queue-item-name { font-weight: 600; font-size: 14px; }
 .queue-item-car { font-size: 14px; color: var(--text-muted); }
 .queue-item-title { font-size: 14px; color: var(--text-muted); }
-.queue-parts-received, .queue-parts-pending { font-size: 14px; }
+.queue-parts-received, .queue-parts-pending, .queue-parts-problem { font-size: 14px; }
 .queue-parts-received { color: var(--status-done); }
 .queue-parts-pending { color: var(--status-waiting); }
+.queue-parts-problem { color: var(--status-cancelled); }
 .queue-status-badge {
   flex-shrink: 0;
   border: none;
@@ -515,7 +578,7 @@ input[type="number"]::-webkit-inner-spin-button {
 /* Смета (запись ремонта) и заказ — самые "тяжёлые" по содержимому диалоги
    (таблица запчастей с ценой/кол-вом/фирмой/артикулом/поставщиком) — на
    десктопе им тесно в стандартной ширине попапа. */
-.dialog-wide { max-width: 900px; }
+.dialog-wide { max-width: 1200px; }
 #queueDialog .dialog { max-width: 1250px; }
 .dialog h2 {
   font-family: var(--font-display);
@@ -524,14 +587,26 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: 18px;
   margin: 0 0 16px;
 }
+/* Прилипает к верху окна при скролле — крестик закрытия всегда под рукой,
+   не нужно листать длинный список запчастей/историю обратно наверх, чтобы
+   закрыть окно. Отрицательные margin/увеличенный padding компенсируют
+   padding:24px самого .dialog — иначе sticky-планка не доходила бы до
+   истинного верхнего края скролл-контейнера (см. .dialog { overflow-y: auto }
+   выше — скроллится сам .dialog, отдельного контейнера контента нет). */
 .dialog-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+  margin: -24px -24px 16px;
+  padding: 24px 24px 16px;
+  position: sticky;
+  top: -24px;
+  background: var(--surface);
+  z-index: 2;
 }
 .dialog-header h2 { margin: 0; }
+.dialog-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .call-btn {
   display: flex;
   align-items: center;
@@ -745,10 +820,43 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--surface-2);
 }
 .repair-section-head { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--text-muted); }
+.repair-section-head > span:first-child { font-size: 16px; font-weight: 600; color: var(--accent); }
 .repair-rows { display: flex; flex-direction: column; gap: 6px; }
 .repair-row { display: grid; grid-template-columns: auto 1fr 100px auto; gap: 6px; align-items: center; }
 .repair-row.repair-row-excluded { opacity: 0.5; }
-.row-include { flex-shrink: 0; width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+/* margin — колонка под галочку в .repair-row-line1/.repair-rows-header шире
+   самого чекбокса (26px против 18px), иначе он утыкается в края ячейки.
+   padding:0 — иначе общий паддинг инпутов (9px 11px) на десктопе (см. ниже
+   appearance:none) браузер считает минимальным размером и чекбокс рендерится
+   растянутым и несимметричным (24×20px вместо 18×18px) — отсюда и "кривизна",
+   и несовпадающий отступ между запчастями и работами. */
+.row-include { flex-shrink: 0; width: 18px; height: 18px; margin: 0 4px; padding: 0; accent-color: var(--accent); cursor: pointer; }
+/* Нативный чекбокс игнорирует border-radius (appearance:auto рисует его как
+   OS-виджет мимо обычной модели рамок) — на десктопе рисуем его сами, чтобы
+   скругление реально было видно; на мобильном оставляем нативный как был. */
+@media (min-width: 601px) {
+  .row-include {
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    position: relative;
+  }
+  .row-include:hover { border-color: var(--accent); }
+  .row-include:checked { background: var(--accent); border-color: var(--accent); }
+  .row-include:checked::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 5px;
+    height: 9px;
+    border: solid #1b1a17;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+}
 .repair-row .row-name, .repair-row .row-price, .repair-row .row-brand, .repair-row .row-qty, .repair-row .row-article, .repair-row .row-supplier {
   padding: 8px 10px;
   border: 1px solid var(--border);
@@ -759,7 +867,33 @@ input[type="number"]::-webkit-inner-spin-button {
   width: 100%;
   min-width: 0; /* иначе инпут не сжимается уже своей "естественной" ширины в узкой grid-колонке и рвёт диалог по горизонтали */
 }
-.repair-row-line1, .repair-row-line2 { min-width: 0; }
+/* Цвет рамки тега — статус заказа из Профит-Лиги (см. refreshProfitLigaStatuses
+   в app.js): подтягивается по совпадению тега с комментарием заказа на их
+   сайте, ничего вручную считать не нужно. */
+.tag-input.pl-status-transit, .row-article.pl-status-transit { border-color: #4a90d9; box-shadow: 0 0 0 1px #4a90d9 inset; }
+.tag-input.pl-status-delivered, .row-article.pl-status-delivered { border-color: #3fae5c; box-shadow: 0 0 0 1px #3fae5c inset; }
+.tag-input.pl-status-problem, .row-article.pl-status-problem { border-color: #d9534f; box-shadow: 0 0 0 1px #d9534f inset; }
+/* Обёртка поля "Артикул" — только точка отсчёта для бейджа проблемного
+   статуса поверх поля (см. refreshProfitLigaStatuses в app.js), сама
+   визуально не участвует в раскладке. */
+.row-article-wrap { position: relative; min-width: 0; }
+.pl-status-badge {
+  position: absolute;
+  top: -9px;
+  right: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  line-height: 1.3;
+  pointer-events: none;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: #d9534f;
+  color: #fff;
+  white-space: nowrap;
+}
+.repair-row-line1 { min-width: 0; }
 .repair-row-part {
   display: flex;
   flex-direction: column;
@@ -771,26 +905,41 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--surface-2);
 }
 /* Запчасть в одну строку-таблицу: галочка, название, цена, кол-во, фирма,
-   артикул, крестик — колонки одинаковые у каждой строки, поэтому visually
-   выравниваются друг под другом, как в настоящей таблице. */
+   артикул, поставщик, крестик — колонки одинаковые у каждой строки, поэтому
+   visually выравниваются друг под другом, как в настоящей таблице.
+   Первая/последняя колонка — фикс. ширина под сам элемент (26px с отступами по бокам под галочку,
+   30px крестик), а не auto: пустой <span> в .repair-rows-header схлопывается
+   в 0 при auto, и подписи колонок съезжают относительно полей строки под ними. */
 .repair-row-line1 {
   display: grid;
-  grid-template-columns: auto minmax(120px, 1fr) 90px 70px 110px 120px auto;
+  grid-template-columns: 26px minmax(100px, 1fr) 76px 80px 110px 168px 112px 30px;
   gap: 6px;
   align-items: center;
+}
+/* В заказе (см. withReceived в app.js) галочка/название/цена/кол-во/фирма/
+   артикул/поставщик дополняются в этой же строке кнопками "на складе"/"аналог" —
+   без отдельной строки ниже. */
+.repair-row-line1.repair-row-line1-supply {
+  grid-template-columns: 26px minmax(100px, 1fr) 76px 80px 110px 168px 112px 122px 92px 30px;
 }
 /* Подписи колонок над списком запчастей — та же сетка, что у .repair-row-line1,
    поэтому подписи точно встают над своими полями. */
 .repair-rows-header {
   display: grid;
-  grid-template-columns: auto minmax(120px, 1fr) 90px 70px 110px 120px auto;
+  grid-template-columns: 26px minmax(100px, 1fr) 76px 80px 110px 168px 112px 30px;
   gap: 6px;
-  padding: 0 2px;
+  /* Паддинг совпадает с фактическим паддингом .repair-row-part (10px в
+     #repairForm/#queueForm — см. ниже), иначе подписи колонок съезжают
+     относительно полей строки на разницу паддингов. */
+  padding: 0 10px;
   margin-bottom: -2px;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
+}
+.repair-rows-header.repair-rows-header-supply {
+  grid-template-columns: 26px minmax(100px, 1fr) 76px 80px 110px 168px 112px 122px 92px 30px;
 }
 .row-received-btn {
   flex-shrink: 0;
@@ -823,7 +972,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .repair-row-part.repair-row-analog { border-left: 3px solid var(--accent-dim); }
 .repair-row-analog-bar { display: flex; gap: 8px; align-items: center; }
 .row-analog-main-btn {
-  flex: 1;
+  flex: 0 0 auto;
   padding: 7px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -846,10 +995,6 @@ input[type="number"]::-webkit-inner-spin-button {
   cursor: pointer;
 }
 .row-analog-ungroup-btn:hover { color: var(--status-cancelled); }
-/* Только для запчастей в заказе (withReceived) — "на складе"/"аналог"/поставщик,
-   данные снабжения отдельно от основной строки-таблицы выше. */
-.repair-row-line2 { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.repair-row-line2 .row-supplier { flex: 1; min-width: 135px; }
 .row-remove {
   width: 30px;
   height: 30px;
@@ -892,6 +1037,15 @@ input[type="number"]::-webkit-inner-spin-button {
 
 /* ---------- Заказ-наряд ---------- */
 .order-dialog { max-width: 720px; }
+/* Копировать/скачать картинку — компактные кнопки-иконки, "А4" и "Добавить
+   в отчёт" остаются текстовыми и делят оставшееся место; перенос строк —
+   подстраховка на совсем узких экранах. */
+.order-dialog-actions { flex-wrap: wrap; }
+/* flex-basis: 0 (не auto) — иначе .btn-block(width:100%) заставляет каждую
+   кнопку требовать всю ширину ряда самой по себе, и они не делят строку. */
+.order-dialog-actions .btn-block { flex: 1 1 0; min-width: 120px; }
+.order-add-to-report { display: flex; flex-direction: column; gap: 8px; }
+.order-add-to-report label { font-size: 14px; color: var(--text-muted); display: flex; flex-direction: column; gap: 5px; }
 .order-doc { display: flex; flex-direction: column; gap: 14px; font-size: 15px; }
 .order-brand { text-align: center; }
 .order-brand-name { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; font-size: 21px; }
@@ -907,6 +1061,9 @@ input[type="number"]::-webkit-inner-spin-button {
 .order-block-title { font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px; }
 .order-line { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
 .order-line-meta { color: var(--text-muted); font-size: 14px; }
+/* Поставщик — цвет задаётся инлайново (см. SUPPLIER_COLORS в app.js), тут только
+   насыщенность текста, чтобы он не терялся среди приглушённого арт./фирмы/кол-ва. */
+.order-line-supplier { font-weight: 600; }
 .order-line-sum { color: var(--accent); padding-top: 4px; border-top: 1px dashed var(--border); font-size: 18px; font-weight: 600; }
 .order-line-advance { color: var(--status-cancelled); font-size: 15px; }
 .order-analog-group { display: flex; flex-direction: column; gap: 8px; border: 1px dashed var(--border); border-radius: var(--radius); padding: 8px 10px; }
@@ -1072,7 +1229,7 @@ input[type="number"]::-webkit-inner-spin-button {
 
 /* ---------- Login: переключатель владелец/клиент ---------- */
 .login-mode-switch { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: var(--radius); margin-bottom: 16px; }
-.login-mode-btn {
+.login-mode-btn, .client-login-method-btn {
   flex: 1;
   background: transparent;
   border: none;
@@ -1084,8 +1241,11 @@ input[type="number"]::-webkit-inner-spin-button {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.login-mode-btn:hover { color: var(--text); }
-.login-mode-btn.active { background: var(--accent); color: #1b1a17; font-weight: 600; }
+.login-mode-btn:hover, .client-login-method-btn:hover { color: var(--text); }
+.login-mode-btn.active, .client-login-method-btn.active { background: var(--accent); color: #1b1a17; font-weight: 600; }
+/* Под-переключатель ВИН/телефон внутри формы клиента — чуть теснее к полям
+   ниже, чем основной владелец/клиент (у него margin-bottom больше). */
+.client-login-method-switch { margin-bottom: 12px; }
 
 /* ---------- Бейджи-счётчики на вкладках ---------- */
 .tab-with-badge { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
@@ -1249,7 +1409,13 @@ input[type="number"]::-webkit-inner-spin-button {
     -webkit-overflow-scrolling: touch;
   }
   .tabs.mobile-open { display: flex; }
-  .tabs.mobile-open ~ .topbar-actions #logoutBtn { display: none; }
+  /* visibility, не display:none — иначе кнопка исчезает из потока, колонка
+     .topbar-actions сужается, а колонка с лого (1fr) тут же занимает
+     освободившееся место: подпись бренда перескакивает на другую строку, и
+     вся шапка резко меняет высоту (это и выглядело как "прыгающий фон"). С
+     visibility место остаётся зарезервированным, кнопка просто невидима и
+     некликабельна, шапка не меняет размер. */
+  .tabs.mobile-open ~ .topbar-actions #logoutBtn { visibility: hidden; }
   .tab { text-align: center; font-size: 16px; padding: 14px 18px; }
 }
 

@@ -16,7 +16,28 @@ const state = {
   weekStart: startOfWeek(new Date()),
   appointments: [],
   reportWeekStart: startOfWeek(new Date()),
+  reportMasterFilter: '',
 };
+
+// Дата ремонта (смета/заказ) и дата переноса записи в отчёт — не раньше начала
+// текущего года: слишком старая дата почти всегда результат опечатки, а не
+// реальная историческая запись. Год не хардкодим — считаем от текущей даты,
+// иначе ограничение "сломается" с наступлением следующего года.
+const MIN_REPAIR_DATE = `${new Date().getFullYear()}-01-01`;
+document.getElementById('orderReportDateInput').min = MIN_REPAIR_DATE;
+
+// min на поле даты нельзя вешать одним и тем же значением раз и навсегда —
+// иначе открыть и сохранить СУЩЕСТВОВАВШУЮ запись за прошлый год (ничего не
+// меняя в самой дате) стало бы невозможно: браузер считает поле невалидным
+// и молча блокирует отправку формы целиком, даже если правится другое поле.
+// Поэтому порог считаем заново при каждом открытии диалога — раньше даты
+// самой записи (если она старше начала года) граница не поднимается.
+function setDateMin(input, existingDate) {
+  input.min = existingDate && existingDate < MIN_REPAIR_DATE ? existingDate : MIN_REPAIR_DATE;
+}
+setDateMin(document.getElementById('repairForm').elements.date, null);
+setDateMin(document.getElementById('queueForm').elements.date, null);
+setDateMin(document.getElementById('apptForm').elements.date, null);
 
 // ---------- Utils ----------
 function pad(n) { return String(n).padStart(2, '0'); }
@@ -114,6 +135,7 @@ function showLogin(mode) {
   clientRoot.classList.add('hidden');
   loginOverlay.classList.remove('hidden');
   if (mode) setLoginMode(mode);
+  if (mode === 'client') setClientLoginMethod('vin');
 }
 
 function showApp() {
@@ -143,6 +165,39 @@ loginForm.addEventListener('submit', async (e) => {
   }
 });
 
+// Вход клиента — по VIN или по телефону (переключатель над полями). Если
+// телефон найден среди клиентов — вход сразу, как и по известному VIN; если
+// не найден — тот же шаг с паролем-годом, что и для незнакомого VIN (см. server.js).
+let clientLoginMethod = 'vin';
+const clientVinFieldLabel = document.getElementById('clientVinFieldLabel');
+const clientPhoneFieldLabel = document.getElementById('clientPhoneFieldLabel');
+const clientPhoneLoginInput = document.getElementById('clientPhoneLoginInput');
+attachPhoneMask(clientPhoneLoginInput);
+
+function setClientLoginMethod(method) {
+  clientLoginMethod = method;
+  document.querySelectorAll('.client-login-method-btn').forEach((b) => {
+    const active = b.dataset.clientLoginMethod === method;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-selected', String(active));
+  });
+  clientVinFieldLabel.classList.toggle('hidden', method !== 'vin');
+  clientPhoneFieldLabel.classList.toggle('hidden', method !== 'phone');
+  // required переключаем явно, а не полагаемся на то, что скрытое поле само
+  // выпадает из валидации формы — так надёжнее независимо от браузера.
+  document.getElementById('clientVinInput').required = method === 'vin';
+  clientPhoneLoginInput.required = method === 'phone';
+  // Смена способа входа — как смена машины: шаг с паролем и его значение
+  // должны начаться заново, а не подхватить пароль от предыдущей попытки.
+  clientPasswordLabel.classList.add('hidden');
+  document.getElementById('clientPasswordInput').value = '';
+  clientLoginError.classList.add('hidden');
+}
+
+document.querySelectorAll('.client-login-method-btn').forEach((btn) => {
+  btn.addEventListener('click', () => setClientLoginMethod(btn.dataset.clientLoginMethod));
+});
+
 clientLoginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   clientLoginError.classList.add('hidden');
@@ -152,7 +207,8 @@ clientLoginForm.addEventListener('submit', async (e) => {
   // невидимый автозаполненный мусор ломает вход даже по известному VIN.
   const passwordShown = !clientPasswordLabel.classList.contains('hidden');
   const data = {
-    vin: document.getElementById('clientVinInput').value,
+    vin: clientLoginMethod === 'vin' ? document.getElementById('clientVinInput').value : '',
+    phone: clientLoginMethod === 'phone' ? clientPhoneLoginInput.value : '',
     password: passwordShown ? document.getElementById('clientPasswordInput').value : '',
   };
   try {
@@ -267,6 +323,22 @@ function attachCarWordMask(input) {
 
 document.querySelectorAll('input[name="car_make"], input[name="car_model"]').forEach(attachCarWordMask);
 
+// ---------- Маска "Фирмы" (бренда запчасти) ----------
+// В отличие от марки/модели авто выше — тут кириллица разрешена (и в любом
+// регистре, как набрал), а латиница всё равно приводится к верхнему регистру.
+function formatBrandMask(raw) {
+  return raw.replace(/[^a-zA-Zа-яА-ЯёЁ0-9\s-]/g, '').replace(/[a-z]/g, (c) => c.toUpperCase());
+}
+
+function attachBrandMask(input) {
+  if (!input) return;
+  input.addEventListener('input', () => {
+    const formatted = formatBrandMask(input.value);
+    input.value = formatted;
+    input.setSelectionRange(formatted.length, formatted.length);
+  });
+}
+
 // ---------- Маска гос. номера ----------
 // Формат: буква-цифра-цифра-цифра-буква-буква-цифра-цифра-цифра (Л ДДД ЛЛ ДДД).
 // Буквы — только из набора, разрешённого ГОСТом (визуально совпадают с
@@ -353,6 +425,9 @@ const MOBILE_MENU_ICON_OPEN = '<line x1="4" y1="7" x2="20" y2="7" stroke="curren
 const MOBILE_MENU_ICON_CLOSE = '<line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
 const mobileMenuBtnIcon = mobileMenuBtn.querySelector('svg');
 
+// Без анимации открытия/закрытия — пробовали (opacity + JS-задержка на
+// display:none), но у полноэкранного оверлея это иногда давало лишний кадр
+// без фона и воспринималось как "прыжок". Мгновенное переключение надёжнее.
 function setMobileMenuState(open) {
   tabsNav.classList.toggle('mobile-open', open);
   mobileMenuBtn.setAttribute('aria-expanded', String(open));
@@ -388,7 +463,7 @@ document.querySelectorAll('.tab').forEach((btn) => {
     document.getElementById(`view-${target}`).classList.add('active');
     if (target === 'requests') loadRequests();
     if (target === 'notes') loadNotes();
-    if (target === 'report') loadReportWeek();
+    if (target === 'report') { loadReportWeek(); loadReportMasters(); }
     closeMobileMenu();
   });
 });
@@ -441,15 +516,11 @@ function showConfirm(message, { confirmLabel = 'Удалить', danger = true }
   });
 }
 
-document.querySelectorAll('.dialog-overlay').forEach((ov) => {
-  if (ov.id === 'loginOverlay' || ov.id === 'confirmDialog') return; // форму входа нельзя закрыть кликом мимо, confirm управляет собой сам
-  // Клик мимо часто случается случайно, а окна теперь большие (заказ, смета) —
-  // подтверждаем, чтобы не терять несохранённые данные одним неловким кликом.
-  ov.addEventListener('click', async (e) => {
-    if (e.target !== ov) return;
-    if (await showConfirm('Закрыть окно? Несохранённые изменения будут потеряны.', { confirmLabel: 'Закрыть', danger: false })) closeDialog(ov);
-  });
-});
+// Клик мимо окна (по затемнённому фону) намеренно ничего не делает — раньше
+// он предлагал закрыть окно с подтверждением, но случайный клик мимо во
+// время работы с большой формой (заказ, смета) оказался слишком лёгким
+// способом случайно потерять фокус/начать закрывать её. Явное закрытие —
+// крестик, Отмена/Сохранить или Escape (см. ниже).
 
 // Escape — нажатие осознанное (в отличие от случайного клика мимо), поэтому
 // закрывает окно сразу, без подтверждения: сначала самое верхнее открытое
@@ -490,6 +561,12 @@ const EDIT_ICON_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" fill="non
 const COPY_ICON_SVG = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
   <rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
   <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>`;
+
+const REPORT_DELETE_ICON_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <path d="M4 7h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M9 7V4h6v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M6 7l1 13h10l1-13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
 async function copyVinToClipboard(vin) {
@@ -552,12 +629,12 @@ function renderClients() {
     const tr = document.createElement('tr');
     const telHref = (c.phone || '').replace(/[^\d+]/g, '');
     tr.innerHTML = `
-      <td class="cell-name">${escapeHtml(c.name)}</td>
+      <td class="cell-name" title="${escapeHtml(c.name)}">${escapeHtml(c.name)}</td>
       <td>${c.phone ? `<a class="cell-phone" href="tel:${escapeHtml(telHref)}">${escapeHtml(c.phone)}</a>` : '—'}</td>
-      <td>${escapeHtml([c.car_make, c.car_model].filter(Boolean).join(' ') || '—')}</td>
+      <td class="cell-car" title="${escapeHtml([c.car_make, c.car_model].filter(Boolean).join(' '))}">${escapeHtml([c.car_make, c.car_model].filter(Boolean).join(' ') || '—')}</td>
       <td class="cell-plate">${escapeHtml(c.plate || '—')}</td>
-      <td class="cell-tag">${escapeHtml(c.tag || '—')}</td>
-      <td class="cell-plate">${c.vin ? `<span class="cell-vin">${escapeHtml(c.vin)}<button type="button" class="vin-copy-btn" title="Копировать VIN">${COPY_ICON_SVG}</button></span>` : '—'}</td>
+      <td class="cell-tag" title="${escapeHtml(c.tag || '')}">${escapeHtml(c.tag || '—')}</td>
+      <td class="cell-plate cell-vin-td">${c.vin ? `<span class="cell-vin">${escapeHtml(c.vin)}<button type="button" class="vin-copy-btn" title="Копировать VIN">${COPY_ICON_SVG}</button></span>` : '—'}</td>
       <td class="cell-notes">${escapeHtml(c.notes || '')}</td>
       <td class="cell-updated">${c.updated_at ? fmtFullDate(new Date(c.updated_at.replace(' ', 'T') + 'Z')) : '—'}</td>
       <td class="edit-hint">${EDIT_ICON_SVG}</td>
@@ -660,7 +737,8 @@ function sumItems(items) {
 // Артикул/фирма/количество показываем только если заполнены — пустые поля
 // не должны засорять ни карточку истории, ни заказ-наряд. includeArticle
 // выключается в истории ремонта, где артикул выводится отдельно, со своей
-// кнопкой копирования (см. renderRepairBlock).
+// кнопкой копирования (см. renderRepairBlock). Поставщик сюда не входит —
+// он рендерится отдельно, цветным span-ом (см. renderPartLine в buildOrderHtml).
 function itemMeta(it, includeArticle = true) {
   const parts = [];
   if (includeArticle && it.article) parts.push(`арт. ${it.article}`);
@@ -795,6 +873,11 @@ let editingRepairId = null;
 let historyClientId = null;
 let pendingApptForRepair = null; // смета создаётся из записи расписания, а не из карточки клиента
 let advanceEnabled = false;
+// Сырая запись, как её вернул сервер, — repairForm не показывает поле
+// "поставщик" у запчасти (оно есть только в заказе, см. withReceived), поэтому
+// collectRepairRows() не может его вернуть. Храним оригинал, чтобы "Добавить
+// в отчёт" не стирало это поле при пересборке данных из формы.
+let currentEditingRepairRecord = null;
 
 function sumRowInputs(container) {
   return Array.from(container.querySelectorAll('.repair-row')).reduce((sum, row) => {
@@ -906,6 +989,7 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
   includeInput.type = 'checkbox';
   includeInput.className = 'row-include';
   includeInput.title = 'Включить в заказ-наряд и сумму';
+  includeInput.tabIndex = -1; // как и артикул/поставщик/крестик — отмечается кликом, не по Tab
   includeInput.checked = item?.included !== false;
   const syncExcludedState = () => row.classList.toggle('repair-row-excluded', !includeInput.checked);
   syncExcludedState();
@@ -924,6 +1008,12 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
   priceInput.min = '0';
   priceInput.step = '0.01';
   priceInput.value = item?.price ?? '';
+  // Сохранённая позиция без цены хранится как 0 (см. normalizeRepairItems на
+  // сервере) — при заходе в поле его проще сразу очистить, чем каждый раз
+  // стирать "0" вручную перед вводом настоящей цены.
+  priceInput.addEventListener('focus', () => {
+    if (priceInput.value === '0') priceInput.value = '';
+  });
 
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
@@ -948,12 +1038,23 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
     articleInput.placeholder = 'Артикул';
     articleInput.tabIndex = -1;
     articleInput.value = item?.article || '';
+    attachCarWordMask(articleInput);
+
+    // Обёртка нужна только чтобы поверх поля показать бейдж статуса из
+    // Профит-Лиги (см. refreshProfitLigaStatuses) — сама не участвует в
+    // раскладке колонок, просто задаёт точку отсчёта для position:absolute.
+    const articleWrap = document.createElement('div');
+    articleWrap.className = 'row-article-wrap';
+    const plBadge = document.createElement('span');
+    plBadge.className = 'pl-status-badge hidden';
+    articleWrap.append(articleInput, plBadge);
 
     const brandInput = document.createElement('input');
     brandInput.type = 'text';
     brandInput.className = 'row-brand';
     brandInput.placeholder = 'Фирма';
     brandInput.value = item?.brand || '';
+    attachBrandMask(brandInput);
 
     const qtyInput = document.createElement('input');
     qtyInput.type = 'number';
@@ -963,22 +1064,38 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
     qtyInput.step = '1';
     qtyInput.value = item?.qty ?? '';
     qtyInput.addEventListener('input', onChange);
+    // Как и цена ниже — сохранённая позиция без кол-ва хранится как 0.
+    qtyInput.addEventListener('focus', () => {
+      if (qtyInput.value === '0') qtyInput.value = '';
+    });
 
-    // Всё основное — в одну строку-таблицу: галочка, название, цена, кол-во,
-    // фирма, артикул, крестик (порядок колонок задаёт .repair-row-line1 в CSS,
-    // одинаковый для каждой строки, поэтому колонки выравниваются как в таблице).
+    // Поставщик — есть у любой запчасти (и в смете, и в заказе), сразу после
+    // артикула. Не участвует в табуляции (Tab) — выбирается кликом/тапом,
+    // как и сам артикул выше, а не последовательным набором по Tab. Пустой
+    // плейсхолдер без текста — колонка уже подписана "Поставщик" в шапке
+    // таблицы (см. .repair-rows-header в index.html).
+    const supplierSelect = document.createElement('select');
+    supplierSelect.className = 'row-supplier mono-input';
+    supplierSelect.tabIndex = -1;
+    supplierSelect.innerHTML = `
+      <option value=""></option>
+      <option value="АТС">АТС</option>
+      <option value="ПЛ">ПЛ</option>
+      <option value="emex">emex</option>
+      <option value="Микадо">Микадо</option>
+    `;
+    supplierSelect.value = item?.supplier || '';
+
+    // Всё — в одну строку-таблицу: галочка, название, цена, кол-во, фирма,
+    // артикул, поставщик, (в заказе — ещё на складе/аналог), крестик (порядок
+    // колонок задаёт .repair-row-line1 в CSS, одинаковый для каждой строки,
+    // поэтому колонки выравниваются как в таблице).
     const line1 = document.createElement('div');
-    line1.className = 'repair-row-line1';
-    line1.append(includeInput, nameInput, priceInput, qtyInput, brandInput, articleInput, removeBtn);
-    row.append(line1);
+    line1.className = 'repair-row-line1' + (withReceived ? ' repair-row-line1-supply' : '');
+    line1.append(includeInput, nameInput, priceInput, qtyInput, brandInput, articleWrap, supplierSelect);
 
-    // "На складе"/"+ аналог"/поставщик — только для запчастей в заказе (см.
-    // withReceived), отдельной строкой ниже основной: это данные снабжения,
-    // а не идентификация позиции, в общий ряд их мешать не стали.
+    // "На складе"/"+ аналог" — только для запчастей в заказе (см. withReceived).
     if (withReceived) {
-      const line2 = document.createElement('div');
-      line2.className = 'repair-row-line2';
-
       const receivedBtn = document.createElement('button');
       receivedBtn.type = 'button';
       receivedBtn.className = 'row-received-btn';
@@ -999,20 +1116,11 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
       analogBtn.textContent = '+ аналог';
       analogBtn.addEventListener('click', () => addAnalogToRow(row, onChange));
 
-      const supplierSelect = document.createElement('select');
-      supplierSelect.className = 'row-supplier mono-input';
-      supplierSelect.innerHTML = `
-        <option value="">Поставщик</option>
-        <option value="АТС">АТС</option>
-        <option value="ПЛ">ПЛ</option>
-        <option value="emex">emex</option>
-        <option value="Микадо">Микадо</option>
-      `;
-      supplierSelect.value = item?.supplier || '';
-
-      line2.append(receivedBtn, analogBtn, supplierSelect);
-      row.append(line2);
+      line1.append(receivedBtn, analogBtn);
     }
+
+    line1.append(removeBtn);
+    row.append(line1);
 
     if (withReceived && row.dataset.analogGroup) refreshAnalogRow(row);
     if (withReceived) {
@@ -1074,6 +1182,25 @@ function collectRepairRows(container) {
     .filter((it) => it.name || it.price);
 }
 
+// repairForm рендерит строки запчастей без поля "поставщик" (оно есть только
+// в заказе — см. withReceived в createRepairRow), поэтому collectRepairRows()
+// не может его вернуть, даже если оно было сохранено раньше (например, запись
+// пришла из заказа через "Добавить в список клиентов"). Восстанавливаем
+// supplier/received из исходной записи по индексу строки — упорядочение и
+// количество строк совпадают, пока позиции не добавляли/не удаляли в этом
+// открытии диалога.
+function restoreUnexposedPartFields(parts, rawParts) {
+  if (!Array.isArray(rawParts) || rawParts.length !== parts.length) return parts;
+  return parts.map((p, i) => {
+    const raw = rawParts[i];
+    if (!raw) return p;
+    const merged = { ...p };
+    if (raw.supplier && merged.supplier === undefined) merged.supplier = raw.supplier;
+    if (raw.received !== undefined && merged.received === undefined) merged.received = raw.received;
+    return merged;
+  });
+}
+
 document.getElementById('addWorkRowBtn').addEventListener('click', () => addRepairRow(worksRowsEl, null));
 document.getElementById('addPartRowBtn').addEventListener('click', () => addRepairRow(partsRowsEl, null, true));
 
@@ -1088,9 +1215,11 @@ document.getElementById('advanceAmountInput').addEventListener('input', recomput
 
 function openRepairDialog(record) {
   editingRepairId = record ? record.id : null;
+  currentEditingRepairRecord = record || null;
   pendingApptForRepair = null; // по умолчанию — обычный поток из карточки клиента
   document.getElementById('repairDialogTitle').textContent = record ? 'Запись ремонта' : 'Новая запись ремонта';
   deleteRepairBtn.classList.toggle('hidden', !record);
+  document.getElementById('moveRepairToQueueBtn').classList.toggle('hidden', !record);
   repairForm.reset();
 
   worksRowsEl.innerHTML = '';
@@ -1102,9 +1231,10 @@ function openRepairDialog(record) {
 
   repairForm.elements.title.value = record ? (record.title || '') : '';
   repairForm.elements.date.value = record ? (record.date || '') : '';
+  setDateMin(repairForm.elements.date, record?.date);
   repairForm.elements.mileage.value = record && record.mileage ? record.mileage : '';
-  repairForm.elements.parts_eta.value = record ? (record.parts_eta || '') : 'до 5 рабочих дней';
   repairForm.elements.notes.value = record ? (record.notes || '') : '';
+  repairForm.elements.master.value = record ? (record.master || '') : '';
   autoResizeTextarea(repairForm.elements.notes);
 
   advanceEnabled = !!(record && Number(record.advance) > 0);
@@ -1226,10 +1356,13 @@ repairForm.addEventListener('submit', async (e) => {
     date: repairForm.elements.date.value,
     mileage: repairForm.elements.mileage.value,
     notes: repairForm.elements.notes.value,
-    parts_eta: repairForm.elements.parts_eta.value,
+    // Поля в форме нет (срок поставки актуален только для заказов, см. queueForm) —
+    // сохраняем как было в записи, а не затираем пустым, если запись пришла из заказа.
+    parts_eta: currentEditingRepairRecord?.parts_eta || '',
     advance: advanceEnabled ? (Number(document.getElementById('advanceAmountInput').value) || 0) : 0,
     works: collectRepairRows(worksRowsEl),
     parts: collectRepairRows(partsRowsEl),
+    master: repairForm.elements.master.value,
   };
   try {
     if (editingRepairId) {
@@ -1276,6 +1409,48 @@ deleteRepairBtn.addEventListener('click', async () => {
   }
 });
 
+// Перенос записи ремонта в «Заказы» — обратное действие к "Добавить в список
+// клиентов" у заказа. Заводит заказ с теми же позициями; сама запись в
+// истории ремонта остаётся как была (это копия, не перемещение) — так
+// удобнее, если позиции нужно и дальше отслеживать как заказ (на складе/
+// поставщик), и не терять сам факт ремонта в истории клиента. Мастер не
+// переносится — у заказов нет такого поля (см. миграцию master в
+// repair_records — она только там).
+document.getElementById('moveRepairToQueueBtn').addEventListener('click', async () => {
+  if (!editingRepairId || !currentEditingRepairRecord) return;
+  const client = state.clients.find((c) => c.id === currentEditingRepairRecord.client_id);
+  if (!client) {
+    showToast('Не удалось определить клиента записи', true);
+    return;
+  }
+  if (!(await showConfirm('Перенести запись в «Заказы»? В истории ремонта она тоже останется.', { confirmLabel: 'Перенести', danger: false }))) return;
+  try {
+    await api('/api/queue', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: client.name,
+        phone: client.phone,
+        car_make: client.car_make,
+        car_model: client.car_model,
+        plate: client.plate,
+        vin: client.vin,
+        title: repairForm.elements.title.value,
+        date: repairForm.elements.date.value,
+        mileage: repairForm.elements.mileage.value,
+        notes: repairForm.elements.notes.value,
+        advance: advanceEnabled ? (Number(document.getElementById('advanceAmountInput').value) || 0) : 0,
+        works: collectRepairRows(worksRowsEl),
+        parts: collectRepairRows(partsRowsEl),
+      }),
+    });
+    showToast('Запись перенесена в «Заказы»');
+    closeDialog(repairDialog);
+    await loadQueue();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
 // ---------- Заказ-наряд (предпросмотр и отправка клиенту) ----------
 // pendingApptForRepair приоритетнее historyClientId: если смета открыта из
 // расписания, historyClientId может остаться от предыдущего открытия карточки клиента.
@@ -1307,7 +1482,9 @@ function buildOrderData() {
     clientName: ctx.clientName,
     carLine: ctx.carLine,
     mileage: repairForm.elements.mileage.value,
-    partsEta: repairForm.elements.parts_eta.value,
+    // Поля в форме нет (см. removed parts_eta input) — если запись пришла
+    // из заказа, там уже мог быть указан срок, показываем как есть.
+    partsEta: currentEditingRepairRecord?.parts_eta || '',
     title: repairForm.elements.title.value,
     date: repairForm.elements.date.value,
     notes: repairForm.elements.notes.value,
@@ -1320,7 +1497,19 @@ function buildOrderData() {
   };
 }
 
-function buildOrderHtml(order) {
+// Фирменные цвета поставщиков — берутся с их официальных сайтов (логотип/акцентный
+// цвет), чтобы поставщика можно было узнать по цвету с одного взгляда в отчёте.
+// Только для заказ-наряда, открытого из вкладки «Отчёт» (см. showSupplier ниже).
+const SUPPLIER_COLORS = {
+  'ПЛ': '#009747', // pr-lg.ru — зелёный из SVG-логотипа
+  emex: '#FBAF33', // emex.ru — оранжевый из логотипа (сам сайт блокирует автозапросы)
+  'АТС': '#FF111A', // ats-auto.ru — красный из их логотипа
+  'Микадо': '#32A5EB', // mikado-parts.ru — акцентный синий (кнопки/ссылки на сайте)
+};
+
+// showSupplier — включается только для заказ-наряда, открытого из вкладки
+// «Отчёт» (см. renderReport); в обычной смете/заказе поставщик клиенту не показывается.
+function buildOrderHtml(order, { showSupplier = false } = {}) {
   const workLines = order.works
     .map((w) => `<div class="order-line"><span>${escapeHtml(w.name)}</span><span>${fmtMoney(w.price)}</span></div>`)
     .join('');
@@ -1328,9 +1517,18 @@ function buildOrderHtml(order) {
   // отступом вокруг всей группы — не выбранный вариант приглушён и подписан
   // "аналог", чтобы не спутать с отдельной позицией в счёте.
   const renderPartLine = (p, isAlt) => {
+    // Артикул/фирма/кол-во — обычный экранированный текст; поставщик — отдельный
+    // цветной span поверх, поэтому собираем HTML-фрагменты, а не одну строку.
     const meta = itemMeta(p);
+    const metaHtml = meta ? escapeHtml(meta) : '';
+    const supplierColor = p.supplier && SUPPLIER_COLORS[p.supplier];
+    const supplierHtml = showSupplier && p.supplier
+      ? `<span class="order-line-supplier"${supplierColor ? ` style="color:${supplierColor}"` : ''}>${escapeHtml(p.supplier)}</span>`
+      : '';
+    const metaFragments = [metaHtml, supplierHtml].filter(Boolean);
+    const metaBlock = metaFragments.length ? ` <span class="order-line-meta">(${metaFragments.join(', ')})</span>` : '';
     const lineTotal = Number(p.price) || 0;
-    return `<div class="order-line${isAlt ? ' order-line-alt' : ''}"><span>${escapeHtml(p.name)}${meta ? ` <span class="order-line-meta">(${escapeHtml(meta)})</span>` : ''}${isAlt ? ' <span class="order-line-alt-tag">аналог</span>' : ''}</span><span>${fmtMoney(lineTotal)}</span></div>`;
+    return `<div class="order-line${isAlt ? ' order-line-alt' : ''}"><span>${escapeHtml(p.name)}${metaBlock}${isAlt ? ' <span class="order-line-alt-tag">аналог</span>' : ''}</span><span>${fmtMoney(lineTotal)}</span></div>`;
   };
   const seenParts = new Set();
   const partLines = order.parts
@@ -1358,7 +1556,7 @@ function buildOrderHtml(order) {
     <div class="order-sep"></div>
     ${order.title ? `<h3 class="order-title">${escapeHtml(order.title)}</h3>` : ''}
     ${order.date ? `<div class="order-date">Дата ремонта: ${fmtFullDate(new Date(order.date + 'T00:00:00'))}</div>` : ''}
-    ${order.parts.length ? `<div class="order-block"><div class="order-block-title">Стоимость запчастей</div>${partLines}<div class="order-line order-line-sum"><span>Сумма запчастей</span><span>${fmtMoney(order.partsSum)}</span></div>${order.partsEta ? `<div class="order-meta-row"><span>Срок поставки запчастей</span><strong>${escapeHtml(order.partsEta)}</strong></div>` : ''}</div>` : ''}
+    ${order.parts.length ? `<div class="order-block"><div class="order-block-title">Стоимость запчастей</div>${partLines}<div class="order-line order-line-sum"><span>Сумма запчастей</span><span>${fmtMoney(order.partsSum)}</span></div>${order.partsEta && !showSupplier ? `<div class="order-meta-row"><span>Срок поставки запчастей</span><strong>${escapeHtml(order.partsEta)}</strong></div>` : ''}</div>` : ''}
     ${order.works.length ? `<div class="order-block"><div class="order-block-title">Стоимость работ</div>${workLines}<div class="order-line order-line-sum"><span>Сумма работ</span><span>${fmtMoney(order.worksSum)}</span></div></div>` : ''}
     ${order.advance > 0 ? `<div class="order-line order-line-advance"><span>Аванс</span><span>− ${fmtMoney(order.advance)}</span></div>` : ''}
     <div class="order-total"><span>Итого к оплате</span><span>${fmtMoney(order.total)}</span></div>
@@ -1376,10 +1574,37 @@ function buildOrderHtml(order) {
 // "Копировать картинку" ниже — рисует то же самое в PNG и кладёт в буфер
 // обмена, чтобы сразу вставить в мессенджер, не полагаясь на системный скриншот.
 let currentOrderData = null;
+// Откуда открыт текущий заказ-наряд — 'repair' (смета клиента/отчёт) или
+// 'queue' (заказ в очереди); нужно кнопке "Добавить в отчёт" ниже, чтобы
+// понять, куда и как сохранять запись.
+let currentOrderContext = null;
+// true — заказ-наряд открыт из вкладки «Отчёт» (см. renderReport и
+// buildOrderHtml/showSupplier). renderOrderToCanvas ниже не получает опций,
+// поэтому дублируем флаг сюда — иначе картинка (Копировать/Скачать) не знала
+// бы, что срок поставки запчастей в этом случае показывать не нужно.
+let currentOrderIsReportView = false;
+// Полные (нефильтрованные) данные текущего заказ-наряда — то, что реально
+// уйдёт в repair_records при "Добавить в отчёт". В отличие от currentOrderData
+// (который для показа клиенту прячет невыбранные аналоги и снятые галочкой
+// позиции), здесь сохраняем всё как есть, чтобы такие позиции не терялись
+// из истории при перезаписи даты.
+let currentOrderRecordData = null;
 
 document.getElementById('sendToClientBtn').addEventListener('click', () => {
   const order = buildOrderData();
   currentOrderData = order;
+  currentOrderContext = 'repair';
+  currentOrderIsReportView = false;
+  currentOrderRecordData = {
+    title: repairForm.elements.title.value,
+    mileage: repairForm.elements.mileage.value,
+    notes: repairForm.elements.notes.value,
+    parts_eta: currentEditingRepairRecord?.parts_eta || '',
+    advance: advanceEnabled ? (Number(document.getElementById('advanceAmountInput').value) || 0) : 0,
+    works: collectRepairRows(worksRowsEl),
+    parts: restoreUnexposedPartFields(collectRepairRows(partsRowsEl), currentEditingRepairRecord?.parts),
+    master: repairForm.elements.master.value,
+  };
   document.getElementById('orderContent').innerHTML = buildOrderHtml(order);
   openDialog(orderDialog);
 });
@@ -1632,7 +1857,7 @@ async function renderOrderToCanvas() {
   }
 
   block('Стоимость запчастей', order.parts, 'Сумма запчастей');
-  if (order.partsEta && order.parts.length) row('Срок поставки запчастей', order.partsEta);
+  if (order.partsEta && order.parts.length && !currentOrderIsReportView) row('Срок поставки запчастей', order.partsEta);
   block('Стоимость работ', order.works, 'Сумма работ:');
 
   if (order.advance > 0) {
@@ -1778,10 +2003,17 @@ const queuePartsRowsEl = document.getElementById('queuePartsRows');
 let queueItems = [];
 let editingQueueId = null;
 let queueAdvanceEnabled = false;
+// Тег(в нижнем регистре) → список позиций у Профит-Лиги (см. /api/profitliga/status).
+// Заполняется в фоне отдельно от loadQueue, чтобы список заказов не ждал их API —
+// после загрузки список перерисовывается уже со статусом "Отказ" по артикулу.
+let plStatusMap = {};
 
 async function loadQueue() {
   queueItems = await api('/api/queue');
   renderQueue();
+  api('/api/profitliga/status')
+    .then((map) => { plStatusMap = map; renderQueue(); })
+    .catch(() => {});
 }
 
 function renderQueue() {
@@ -1803,8 +2035,21 @@ function renderQueue() {
     const allReceived = autoStatus && partsWithName.every((p) => p.received);
     const status = autoStatus ? (allReceived ? 'arrived' : 'waiting') : (q.status === 'arrived' ? 'arrived' : 'waiting');
     const formatPart = (p) => (p.supplier ? `${p.name} (${p.supplier})` : p.name);
+    // "Отказ" — по совпадению артикула с проблемной позицией у ПЛ под тегом
+    // заказа (та же логика, что и бейдж в открытом заказе, см.
+    // refreshProfitLigaStatuses) — считается только для ещё не полученных.
+    const tag = (q.tag || '').trim().toLowerCase();
+    const plProducts = tag ? plStatusMap[tag] : null;
+    const isProblem = (p) => {
+      if (!plProducts || !p.article) return false;
+      const key = normalizePlArticle(p.article);
+      if (!key) return false;
+      const match = plProducts.find((prod) => normalizePlArticle(prod.article) === key);
+      return match?.category === 'problem';
+    };
     const receivedNames = partsWithName.filter((p) => p.received).map(formatPart);
-    const pendingNames = partsWithName.filter((p) => !p.received).map(formatPart);
+    const problemNames = partsWithName.filter((p) => !p.received && isProblem(p)).map(formatPart);
+    const pendingNames = partsWithName.filter((p) => !p.received && !isProblem(p)).map(formatPart);
     const item = document.createElement('div');
     item.className = 'queue-item';
     item.innerHTML = `
@@ -1815,6 +2060,7 @@ function renderQueue() {
       ${carLine ? `<div class="queue-item-car">${escapeHtml(carLine)}</div>` : ''}
       ${q.title ? `<div class="queue-item-title">${escapeHtml(q.title)}</div>` : ''}
       ${receivedNames.length ? `<div class="queue-parts-received">На складе: ${escapeHtml(receivedNames.join(', '))}</div>` : ''}
+      ${problemNames.length ? `<div class="queue-parts-problem">Отказ: ${escapeHtml(problemNames.join(', '))}</div>` : ''}
       ${pendingNames.length ? `<div class="queue-parts-pending">Ожидаем: ${escapeHtml(pendingNames.join(', '))}</div>` : ''}
     `;
     if (!autoStatus) {
@@ -1882,7 +2128,9 @@ function fillQueueClientSelect() {
   const options = state.clients
     .map((c) => {
       const car = [c.car_make, c.car_model].filter(Boolean).join(' ');
-      return `<option value="${c.id}">${escapeHtml(c.name)}${car ? ' — ' + escapeHtml(car) : ''}</option>`;
+      // data-tag — тег не показываем в самом пункте списка (не захламляем),
+      // но поиск в client-picker (см. enhanceClientSelect) должен его находить.
+      return `<option value="${c.id}" data-tag="${escapeHtml(c.tag || '')}">${escapeHtml(c.name)}${car ? ' — ' + escapeHtml(car) : ''}</option>`;
     })
     .join('');
   sel.innerHTML = `<option value="">— новый клиент (не из базы) —</option>${options}`;
@@ -1896,9 +2144,87 @@ document.getElementById('queueClientSelect').addEventListener('change', (e) => {
   queueForm.elements.car_make.value = client.car_make || '';
   queueForm.elements.car_model.value = client.car_model || '';
   queueForm.elements.plate.value = client.plate || '';
+  queueForm.elements.tag.value = client.tag || '';
   queueForm.elements.vin.value = client.vin || '';
 });
 enhanceClientSelect(document.getElementById('queueClientSelect'), '— новый клиент (не из базы) —');
+
+// Артикул сравнивается без пробелов/дефисов и без учёта регистра — см.
+// normalizeArticle в server.js (та же логика, продублирована здесь: фронт и
+// бэк — разные рантаймы, общего модуля нет).
+function normalizePlArticle(s) {
+  return String(s || '').toUpperCase().replace(/[^A-ZА-Я0-9]/g, '');
+}
+
+const PL_STATUS_CLASSES = ['pl-status-transit', 'pl-status-delivered', 'pl-status-problem'];
+
+// Подсвечивает поле "Тег" открытого заказа (общая сводка по всем позициям ПЛ
+// под этим тегом) и поля "Артикул" каждой запчасти — по факту совпадения
+// артикула с конкретной позицией у Профит-Лиги (см. /api/profitliga/status).
+// Само совпадение тега недостаточно для конкретной запчасти: у одного тега
+// может быть несколько позиций, и только артикул однозначно определяет,
+// какая именно пришла. Это справочная подсветка, на сохранённые данные не
+// влияет — авто-отмечание "на складе" делает кнопка "Проверить приход (ПЛ)"
+// (см. ниже, /api/profitliga/sync), которая сверяет так же, по артикулу.
+async function refreshProfitLigaStatuses() {
+  const tagInput = queueForm.elements.tag;
+  const articleInputs = Array.from(document.querySelectorAll('#queuePartsRows .row-article'));
+  tagInput?.classList.remove(...PL_STATUS_CLASSES);
+  if (tagInput) tagInput.title = '';
+  articleInputs.forEach((el) => {
+    el.classList.remove(...PL_STATUS_CLASSES);
+    el.title = '';
+    el.parentElement?.querySelector('.pl-status-badge')?.classList.add('hidden');
+  });
+
+  const tag = tagInput?.value.trim().toLowerCase();
+  if (!tag) return;
+  try {
+    const map = await api('/api/profitliga/status');
+    const products = map[tag];
+    if (!products || !products.length) return;
+
+    const overall = products.every((p) => p.category === 'delivered')
+      ? 'delivered'
+      : products.some((p) => p.category === 'problem')
+        ? 'problem'
+        : 'transit';
+    tagInput.classList.add(`pl-status-${overall}`);
+    tagInput.title = `Позиций у Профит-Лиги по этому тегу: ${products.length}`;
+
+    articleInputs.forEach((articleInput) => {
+      const key = normalizePlArticle(articleInput.value);
+      if (!key) return;
+      const match = products.find((p) => normalizePlArticle(p.article) === key);
+      if (match) {
+        articleInput.classList.add(`pl-status-${match.category}`);
+        articleInput.title = `${match.status} (обновлено ${match.status_update})`;
+        // Просто цветной рамки мало для проблемного статуса (отменён,
+        // возврат, рекламация и т.п.) — это нужно заметить сразу, без
+        // наведения мыши, поэтому дублируем явной подписью на поле.
+        if (match.category === 'problem') {
+          const badge = articleInput.parentElement?.querySelector('.pl-status-badge');
+          if (badge) {
+            badge.textContent = 'Отказ';
+            badge.classList.remove('hidden');
+          }
+        }
+      }
+    });
+  } catch {
+    // Подсветка статуса необязательна — молча пропускаем при ошибке запроса.
+  }
+}
+
+// Тег и артикул сверяются по факту редактирования, а не только при открытии
+// диалога — иначе после правки артикула подсветка осталась бы от старого
+// значения. blur не всплывает — слушаем на фазе перехвата (capture).
+queueForm.elements.tag?.addEventListener('blur', refreshProfitLigaStatuses);
+queuePartsRowsEl.addEventListener(
+  'blur',
+  (e) => { if (e.target.classList.contains('row-article')) refreshProfitLigaStatuses(); },
+  true
+);
 
 function openQueueDialog(entry) {
   editingQueueId = entry ? entry.id : null;
@@ -1915,6 +2241,7 @@ function openQueueDialog(entry) {
   } else {
     queueForm.elements.parts_eta.value = 'до 5 рабочих дней';
   }
+  setDateMin(queueForm.elements.date, entry?.date);
   autoResizeTextarea(queueForm.elements.notes);
 
   queueWorksRowsEl.innerHTML = '';
@@ -1931,9 +2258,29 @@ function openQueueDialog(entry) {
 
   recomputeQueueSums();
   openDialog(queueDialog);
+  refreshProfitLigaStatuses();
 }
 
 document.getElementById('newQueueBtn').addEventListener('click', () => openQueueDialog(null));
+
+// Сверка комментариев запчастей с заказами на pr-lg.ru — сервер сам находит
+// совпадения и отмечает позиции "на складе", если у Профит-Лиги они уже
+// доставлены (см. /api/profitliga/sync). Ничего не отправляем на их сайт,
+// только читаем статус их же API-ключом.
+document.getElementById('checkProfitLigaBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('checkProfitLigaBtn');
+  btn.disabled = true;
+  try {
+    const { updated } = await api('/api/profitliga/sync', { method: 'POST' });
+    showToast(updated ? `Обновлено заказов: ${updated}` : 'Новых поступлений не найдено');
+    await loadQueue();
+    if (!queueDialog.classList.contains('hidden')) refreshProfitLigaStatuses();
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 queueForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -1950,10 +2297,15 @@ queueForm.addEventListener('submit', async (e) => {
       await api(`/api/queue/${editingQueueId}`, { method: 'PUT', body: JSON.stringify(data) });
       showToast('Изменения сохранены');
     } else {
-      await api('/api/queue', { method: 'POST', body: JSON.stringify(data) });
+      // Окно остаётся открытым после сохранения (см. ниже) — если не запомнить
+      // id нового заказа, повторное "Сохранить" создало бы дубликат вместо
+      // обновления той же записи.
+      const created = await api('/api/queue', { method: 'POST', body: JSON.stringify(data) });
+      editingQueueId = created.id;
+      document.getElementById('queueDialogTitle').textContent = 'Заказ';
+      deleteQueueBtn.classList.remove('hidden');
       showToast('Заказ добавлен');
     }
-    closeDialog(queueDialog);
     await loadQueue();
   } catch (err) {
     showToast(err.message, true);
@@ -1983,7 +2335,14 @@ document.getElementById('promoteQueueBtn').addEventListener('click', async () =>
     return;
   }
   try {
-    const newClient = await api('/api/clients', {
+    // Если VIN указан и уже есть у существующего клиента — это та же машина,
+    // не заводим дубль в базе, а добавляем смету к уже существующей карточке.
+    // Список клиентов обновляем прямо перед проверкой — если вкладка была
+    // открыта долго, state.clients мог устареть.
+    await loadClients();
+    const vin = queueForm.elements.vin.value.trim().toUpperCase();
+    const existingClient = vin ? state.clients.find((c) => c.vin === vin) : null;
+    const targetClient = existingClient || await api('/api/clients', {
       method: 'POST',
       body: JSON.stringify({
         name,
@@ -2006,7 +2365,7 @@ document.getElementById('promoteQueueBtn').addEventListener('click', async () =>
       .map(({ analogGroup, analogSelected, ...rest }) => rest);
     const title = queueForm.elements.title.value;
     if (works.length || parts.length || title.trim()) {
-      await api(`/api/clients/${newClient.id}/repairs`, {
+      await api(`/api/clients/${targetClient.id}/repairs`, {
         method: 'POST',
         body: JSON.stringify({
           title,
@@ -2020,7 +2379,7 @@ document.getElementById('promoteQueueBtn').addEventListener('click', async () =>
       });
     }
 
-    showToast('Клиент добавлен в базу');
+    showToast(existingClient ? 'Смета добавлена существующему клиенту' : 'Клиент добавлен в базу');
     closeDialog(queueDialog);
     await loadClients();
     await loadQueue();
@@ -2057,8 +2416,94 @@ function buildQueueOrderData() {
 document.getElementById('queueOrderBtn').addEventListener('click', () => {
   const order = buildQueueOrderData();
   currentOrderData = order;
+  currentOrderContext = 'queue';
+  currentOrderIsReportView = false;
+  // Как при "Добавить в список клиентов" — аналоги, которые не выбраны
+  // основными, и позиции, снятые галочкой, в постоянную историю не переносим.
+  const works = collectRepairRows(queueWorksRowsEl).filter((w) => w.included !== false);
+  const parts = collectRepairRows(queuePartsRowsEl)
+    .filter((p) => p.included !== false)
+    .filter((p) => !p.analogGroup || p.analogSelected)
+    .map(({ analogGroup, analogSelected, ...rest }) => rest);
+  currentOrderRecordData = {
+    title: queueForm.elements.title.value,
+    notes: queueForm.elements.notes.value,
+    parts_eta: queueForm.elements.parts_eta.value,
+    advance: queueAdvanceEnabled ? (Number(document.getElementById('queueAdvanceAmountInput').value) || 0) : 0,
+    works,
+    parts,
+  };
   document.getElementById('orderContent').innerHTML = buildOrderHtml(order);
   openDialog(orderDialog);
+});
+
+// ---------- "Добавить в отчёт" (см. вкладку «Отчёт») ----------
+// input[type=week] капризно поддерживается браузерами (в части из них нет
+// пикера, значение приходится набирать текстом в формате "YYYY-Www" — на
+// практике им невозможно пользоваться). Вместо этого — обычный date-picker:
+// пользователь выбирает любой день нужной недели, а сама неделя (понедельник
+// этой недели — см. startOfWeek, та же логика, что и в остальном отчёте)
+// считается автоматически.
+document.getElementById('orderAddToReportBtn').addEventListener('click', () => {
+  document.getElementById('orderAddToReportPanel').classList.toggle('hidden');
+});
+
+document.getElementById('orderAddToReportConfirmBtn').addEventListener('click', async () => {
+  const dateValue = document.getElementById('orderReportDateInput').value;
+  if (!dateValue) {
+    showToast('Выберите день недели', true);
+    return;
+  }
+  const date = toISODate(startOfWeek(new Date(dateValue + 'T00:00:00')));
+  try {
+    if (currentOrderContext === 'repair') {
+      const data = { ...currentOrderRecordData, date };
+      if (editingRepairId) {
+        // Запись уже существует в базе — клиент ей давно назначен, доп.
+        // разрешение клиента (в т.ч. создание нового walk-in) тут не нужно.
+        await api(`/api/repairs/${editingRepairId}`, { method: 'PUT', body: JSON.stringify(data) });
+      } else {
+        const clientId = pendingApptForRepair ? await resolveClientForAppt(pendingApptForRepair) : historyClientId;
+        if (!clientId) throw new Error('Не удалось определить клиента для записи');
+        const created = await api(`/api/clients/${clientId}/repairs`, { method: 'POST', body: JSON.stringify(data) });
+        editingRepairId = created.id;
+      }
+      if (historyClientId) await loadClientHistory(historyClientId);
+    } else if (currentOrderContext === 'queue') {
+      // Заказ в очереди ещё не привязан к настоящему клиенту (queue_entries
+      // клиента не хранит) — заводим его, как при "Добавить в список
+      // клиентов", и сразу создаём запись ремонта с выбранной датой.
+      const name = queueForm.elements.name.value.trim();
+      if (!name) {
+        showToast('Укажите имя клиента', true);
+        return;
+      }
+      const newClient = await api('/api/clients', {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          phone: queueForm.elements.phone.value,
+          car_make: queueForm.elements.car_make.value,
+          car_model: queueForm.elements.car_model.value,
+          plate: queueForm.elements.plate.value,
+          vin: queueForm.elements.vin.value,
+          notes: queueForm.elements.notes.value,
+        }),
+      });
+      await api(`/api/clients/${newClient.id}/repairs`, {
+        method: 'POST',
+        body: JSON.stringify({ ...currentOrderRecordData, date }),
+      });
+      await loadClients();
+    } else {
+      throw new Error('Неизвестный источник заказ-наряда');
+    }
+    showToast('Добавлено в отчёт');
+    document.getElementById('orderAddToReportPanel').classList.add('hidden');
+    document.getElementById('orderReportDateInput').value = '';
+  } catch (err) {
+    showToast(err.message, true);
+  }
 });
 
 // ================= CONSUMABLES (расходники) =================
@@ -2368,7 +2813,7 @@ function fillClientSelect() {
   const options = state.clients
     .map((c) => {
       const car = [c.car_make, c.car_model].filter(Boolean).join(' ');
-      return `<option value="${c.id}">${escapeHtml(c.name)}${car ? ' — ' + escapeHtml(car) : ''}</option>`;
+      return `<option value="${c.id}" data-tag="${escapeHtml(c.tag || '')}">${escapeHtml(c.name)}${car ? ' — ' + escapeHtml(car) : ''}</option>`;
     })
     .join('');
   sel.innerHTML = `<option value="">— Разовый визит (без базы) —</option>${options}`;
@@ -2442,7 +2887,11 @@ function enhanceClientSelect(selectEl, emptyLabel) {
   function renderList(filterText) {
     const q = filterText.trim().toLowerCase();
     const options = Array.from(selectEl.options).filter((o) => o.value); // без "— не из базы —"
-    const matches = q ? options.filter((o) => o.textContent.toLowerCase().includes(q)) : options;
+    // Тег в самом пункте списка не показан (см. fillQueueClientSelect/
+    // fillClientSelect), но ищем и по нему тоже — через data-tag.
+    const matches = q
+      ? options.filter((o) => (o.textContent + ' ' + (o.dataset.tag || '')).toLowerCase().includes(q))
+      : options;
     const shown = matches.slice(0, 100);
     list.innerHTML = '';
 
@@ -2659,6 +3108,7 @@ function openApptDialog(appt, defaultDate) {
     apptForm.elements.date.value = defaultDate;
     apptForm.elements.time.value = '09:00';
   }
+  setDateMin(apptForm.elements.date, appt?.date);
   // Для уже существующей записи прячем поля даты/времени/VIN/услуги/статуса/заметок
   // за кнопкой "Редактировать", чтобы окно не пугало кучей полей при простом просмотре.
   // Поля разового визита (имя/телефон/авто) — туда же, за кнопку: иначе они лезли
@@ -2801,6 +3251,33 @@ document.getElementById('todayBtn').addEventListener('click', () => { state.week
 
 // ---------- Отчёт (выполненные работы по автомобилям за неделю) ----------
 let reportRequestSeq = 0;
+// Последний загруженный (нефильтрованный) список записей — фильтр по мастеру
+// применяется поверх него без повторного запроса к серверу.
+let currentReportRecords = [];
+
+function applyReportMasterFilter(records) {
+  if (!state.reportMasterFilter) return records;
+  return records.filter((r) => (r.master || '') === state.reportMasterFilter);
+}
+
+async function loadReportMasters() {
+  let masters;
+  try {
+    masters = await api('/api/reports/masters');
+  } catch (err) {
+    return; // список мастеров — не критично, фильтр просто останется пустым
+  }
+  const sel = document.getElementById('reportMasterFilter');
+  const current = sel.value;
+  sel.innerHTML =
+    '<option value="">Все мастера</option>' + masters.map((m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+  if (masters.includes(current)) sel.value = current;
+}
+
+document.getElementById('reportMasterFilter').addEventListener('change', (e) => {
+  state.reportMasterFilter = e.target.value;
+  renderReport(applyReportMasterFilter(currentReportRecords));
+});
 
 async function loadReportWeek() {
   const mySeq = ++reportRequestSeq;
@@ -2817,8 +3294,35 @@ async function loadReportWeek() {
   }
   if (mySeq !== reportRequestSeq) return; // ответ на устаревший клик "вперёд/назад"
 
+  currentReportRecords = records;
   document.getElementById('reportWeekRange').textContent = fmtWeekRange(weekStart);
-  renderReport(records);
+  renderReport(applyReportMasterFilter(records));
+}
+
+// Строит данные заказ-наряда прямо из записи отчёта (без открытия/чтения
+// формы редактирования) — так сохраняются поля вроде поставщика запчасти,
+// которые редактор сметы (repairForm) не показывает и не умеет вернуть назад.
+function buildOrderDataFromRecord(record) {
+  const works = (record.works || []).filter((it) => it.included !== false);
+  const parts = (record.parts || []).filter((it) => it.included !== false);
+  const worksSum = sumItems(works);
+  const partsSum = sumItems(parts);
+  const advance = Number(record.advance) || 0;
+  return {
+    clientName: record.client_name || '',
+    carLine: [record.car_make, record.car_model].filter(Boolean).join(' '),
+    mileage: record.mileage,
+    partsEta: record.parts_eta,
+    title: record.title,
+    date: record.date,
+    notes: record.notes,
+    works,
+    parts,
+    worksSum,
+    partsSum,
+    advance,
+    total: Math.max(0, worksSum + partsSum - advance),
+  };
 }
 
 function renderReport(records) {
@@ -2842,10 +3346,49 @@ function renderReport(records) {
       <td>${escapeHtml(dateLabel)}</td>
       <td class="cell-tag">${escapeHtml(r.client_tag || '—')}</td>
       <td>${escapeHtml(carLine || '—')}</td>
+      <td>${escapeHtml(r.master || '—')}</td>
       <td>${fmtMoney(worksSum)}</td>
       <td>${fmtMoney(partsSum)}</td>
+      <td><button type="button" class="report-delete-btn" title="Удалить запись" aria-label="Удалить запись">${REPORT_DELETE_ICON_SVG}</button></td>
     `;
-    tr.addEventListener('click', () => openRepairDialog(r));
+    const deleteBtn = tr.querySelector('.report-delete-btn');
+    deleteBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!(await showConfirm('Удалить запись ремонта? Это действие необратимо.'))) return;
+      try {
+        await api(`/api/repairs/${r.id}`, { method: 'DELETE' });
+        showToast('Запись удалена');
+        await loadReportWeek();
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    });
+    // Клик по строке отчёта сразу открывает заказ-наряд (документ), а не
+    // диалог редактирования сметы. editingRepairId/historyClientId выставляем,
+    // как при открытии истории ремонта клиента, — чтобы "Добавить в отчёт"
+    // ниже (см. orderAddToReportConfirmBtn) знал, какую запись обновлять.
+    tr.addEventListener('click', () => {
+      editingRepairId = r.id;
+      historyClientId = r.client_id;
+      currentOrderContext = 'repair';
+      currentOrderIsReportView = true;
+      currentOrderRecordData = {
+        title: r.title,
+        mileage: r.mileage,
+        notes: r.notes,
+        parts_eta: r.parts_eta,
+        advance: Number(r.advance) || 0,
+        works: r.works || [],
+        parts: r.parts || [],
+        master: r.master || '',
+      };
+      const order = buildOrderDataFromRecord(r);
+      currentOrderData = order;
+      // showSupplier: true — поставщик запчасти виден только в заказ-наряде,
+      // открытом из вкладки «Отчёт», в остальных местах не показывается.
+      document.getElementById('orderContent').innerHTML = buildOrderHtml(order, { showSupplier: true });
+      openDialog(orderDialog);
+    });
     body.appendChild(tr);
   });
 

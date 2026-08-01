@@ -4,3 +4,5 @@ autoservice.db-*
 .DS_Store
 *.log
 .env
+.claude/
+.idea/

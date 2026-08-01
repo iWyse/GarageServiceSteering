@@ -57,6 +57,7 @@ db.exec(`
     car_model TEXT,
     plate TEXT,
     vin TEXT,
+    tag TEXT,
     status TEXT NOT NULL DEFAULT 'waiting', -- waiting | arrived
     title TEXT,
     date TEXT,
@@ -234,6 +235,16 @@ function migrateClientTagColumn() {
 }
 migrateClientTagColumn();
 
+// ---------- Миграция: тег у заказа (для сверки с Профит-Лигой) ----------
+function migrateQueueTagColumn() {
+  const columns = db.prepare(`PRAGMA table_info(queue_entries)`).all().map((c) => c.name);
+  if (columns.length && !columns.includes('tag')) {
+    db.exec(`ALTER TABLE queue_entries ADD COLUMN tag TEXT`);
+    console.log('База данных обновлена: добавлен тег заказа.');
+  }
+}
+migrateQueueTagColumn();
+
 // ---------- Миграция: пробег авто ----------
 function migrateMileageColumn() {
   for (const table of ['repair_records', 'queue_entries']) {
@@ -288,5 +299,15 @@ function migrateClientUpdatedAtColumn() {
   }
 }
 migrateClientUpdatedAtColumn();
+
+// ---------- Миграция: мастер в записи ремонта (виден только в отчёте) ----------
+function migrateRepairMasterColumn() {
+  const columns = db.prepare(`PRAGMA table_info(repair_records)`).all().map((c) => c.name);
+  if (columns.length && !columns.includes('master')) {
+    db.exec(`ALTER TABLE repair_records ADD COLUMN master TEXT`);
+    console.log('База данных обновлена: добавлен мастер в запись ремонта.');
+  }
+}
+migrateRepairMasterColumn();
 
 export default db;

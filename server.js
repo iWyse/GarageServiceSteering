@@ -22,6 +22,9 @@ const PORT = process.env.PORT || 3000;
 // Единственный пользователь — владелец автосервиса.
 const OWNER_PHONE = process.env.OWNER_PHONE;
 const OWNER_PASSWORD = process.env.OWNER_PASSWORD;
+// Ключ API Профит-Лиги — опционален: без него отслеживание статуса запчастей
+// просто не работает, сервер не падает (см. /api/profitliga/*).
+const PROFITLIGA_API_KEY = process.env.PROFITLIGA_API_KEY || '';
 if (!OWNER_PHONE || !OWNER_PASSWORD) {
   console.error(
     'Не заданы OWNER_PHONE/OWNER_PASSWORD. Скопируйте .env.example в .env и впишите туда логин и пароль владельца.'
@@ -74,6 +77,53 @@ function normalizeRuPhoneDigits(v) {
   let digits = onlyDigits(v);
   if (digits.length === 11 && digits[0] === '8') digits = '7' + digits.slice(1);
   return digits;
+}
+
+// Ищем клиента по телефону (сравниваем по цифрам, независимо от формата
+// хранения) — самый свежий по updated_at, если телефон встречается у нескольких строк.
+function findClientByPhoneDigits(phoneDigits) {
+  const rows = db.prepare(`SELECT * FROM clients WHERE phone != '' ORDER BY updated_at DESC`).all();
+  return rows.find((r) => normalizeRuPhoneDigits(r.phone) === phoneDigits) || null;
+}
+
+// Префикс для случая "нашли клиента по телефону, но VIN у него не указан"
+// (или телефон вообще неизвестен) — технический ключ сессии/анкеты, который
+// НЕЛЬЗЯ путать с настоящим VIN и НЕЛЬЗЯ показывать клиенту как его VIN (см.
+// getClientProfile — оттуда он специально не отдаётся на фронтенд). Клиент
+// должен вписать свой настоящий VIN сам в анкете — это и создаст заявку
+// админу (см. isNewClient в /api/client/car), как при обычной регистрации.
+const PHONE_LOGIN_PREFIX = 'PHONE:';
+
+// Вход клиента — по VIN или по телефону, оба сводятся к одному "идентификатору"
+// сессии, на котором держится весь клиентский кабинет (client_car_profiles,
+// история ремонта, сессии). По VIN — используется сам VIN. По телефону —
+// либо VIN уже найденного по телефону клиента (если он указан), либо
+// технический PHONE:-идентификатор (см. выше), но никогда не сам номер
+// телефона в качестве "VIN".
+function resolveClientLoginIdentifier(body) {
+  const vinInput = normalizeVin(body.vin);
+  if (vinInput) {
+    const known = !!db.prepare('SELECT 1 FROM clients WHERE UPPER(vin) = ? LIMIT 1').get(vinInput);
+    return { identifier: vinInput, known };
+  }
+  const phoneDigits = normalizeRuPhoneDigits(body.phone);
+  if (phoneDigits) {
+    const match = findClientByPhoneDigits(phoneDigits);
+    const matchVin = (match?.vin || '').trim().toUpperCase();
+    if (matchVin) return { identifier: matchVin, known: true };
+    if (match) {
+      // Клиент реально есть в базе (нашёлся по телефону), просто без VIN —
+      // авторизуем сразу (без пароля) и подставляем уже известные данные
+      // в анкету, чтобы не просить ввести их заново.
+      const identifier = PHONE_LOGIN_PREFIX + phoneDigits;
+      db.prepare(
+        'INSERT OR IGNORE INTO client_car_profiles (vin, name, phone, car_make, car_model, plate) VALUES (?, ?, ?, ?, ?, ?)'
+      ).run(identifier, match.name || '', match.phone || '', match.car_make || '', match.car_model || '', match.plate || '');
+      return { identifier, known: true };
+    }
+    return { identifier: PHONE_LOGIN_PREFIX + phoneDigits, known: false };
+  }
+  return { identifier: '', known: false };
 }
 
 function parseCookies(req) {
@@ -238,7 +288,7 @@ function listRepairRecordsByDateRange(start, end) {
 function createRepairRecord(clientId, data) {
   const info = db
     .prepare(
-      'INSERT INTO repair_records (client_id, title, date, mileage, works, parts, parts_eta, advance, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO repair_records (client_id, title, date, mileage, works, parts, parts_eta, advance, notes, master) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     )
     .run(
       clientId,
@@ -249,13 +299,14 @@ function createRepairRecord(clientId, data) {
       JSON.stringify(normalizeRepairItems(data.parts)),
       data.parts_eta || '',
       Number(data.advance) || 0,
-      data.notes || ''
+      data.notes || '',
+      (data.master || '').trim()
     );
   return parseRepairRecord(db.prepare('SELECT * FROM repair_records WHERE id = ?').get(info.lastInsertRowid));
 }
 
 function updateRepairRecord(id, data) {
-  db.prepare('UPDATE repair_records SET title=?, date=?, mileage=?, works=?, parts=?, parts_eta=?, advance=?, notes=? WHERE id=?').run(
+  db.prepare('UPDATE repair_records SET title=?, date=?, mileage=?, works=?, parts=?, parts_eta=?, advance=?, notes=?, master=? WHERE id=?').run(
     (data.title || '').trim(),
     data.date || '',
     data.mileage ? Number(data.mileage) : null,
@@ -264,9 +315,18 @@ function updateRepairRecord(id, data) {
     data.parts_eta || '',
     Number(data.advance) || 0,
     data.notes || '',
+    (data.master || '').trim(),
     id
   );
   return parseRepairRecord(db.prepare('SELECT * FROM repair_records WHERE id = ?').get(id));
+}
+
+// Список мастеров для фильтра в отчёте — только непустые, без повторов.
+function listReportMasters() {
+  return db
+    .prepare(`SELECT DISTINCT master FROM repair_records WHERE master IS NOT NULL AND master != '' ORDER BY master COLLATE NOCASE`)
+    .all()
+    .map((r) => r.master);
 }
 
 function deleteRepairRecord(id) {
@@ -286,8 +346,8 @@ function listQueueEntries() {
 function createQueueEntry(data) {
   const info = db
     .prepare(
-      `INSERT INTO queue_entries (name, phone, car_make, car_model, plate, vin, status, title, date, mileage, works, parts, parts_eta, advance, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO queue_entries (name, phone, car_make, car_model, plate, vin, tag, status, title, date, mileage, works, parts, parts_eta, advance, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       (data.name || '').trim(),
@@ -296,6 +356,7 @@ function createQueueEntry(data) {
       data.car_model || '',
       data.plate || '',
       (data.vin || '').trim().toUpperCase(),
+      (data.tag || '').trim(),
       data.status || 'waiting',
       (data.title || '').trim(),
       data.date || '',
@@ -312,7 +373,7 @@ function createQueueEntry(data) {
 function updateQueueEntry(id, data) {
   db.prepare(
     `UPDATE queue_entries
-     SET name=?, phone=?, car_make=?, car_model=?, plate=?, vin=?, status=?, title=?, date=?, mileage=?, works=?, parts=?, parts_eta=?, advance=?, notes=?
+     SET name=?, phone=?, car_make=?, car_model=?, plate=?, vin=?, tag=?, status=?, title=?, date=?, mileage=?, works=?, parts=?, parts_eta=?, advance=?, notes=?
      WHERE id=?`
   ).run(
     (data.name || '').trim(),
@@ -321,6 +382,7 @@ function updateQueueEntry(id, data) {
     data.car_model || '',
     data.plate || '',
     (data.vin || '').trim().toUpperCase(),
+    (data.tag || '').trim(),
     data.status || 'waiting',
     (data.title || '').trim(),
     data.date || '',
@@ -337,6 +399,64 @@ function updateQueueEntry(id, data) {
 
 function deleteQueueEntry(id) {
   db.prepare('DELETE FROM queue_entries WHERE id = ?').run(id);
+}
+
+// ---------- Профит-Лига: статус заказанных запчастей ----------
+// Мастер при заказе на сайте pr-lg.ru вписывает в комментарий к позиции
+// что-то узнаваемое (например "АлександрIS250" — клиент+модель) — тот же
+// текст мастер вписывает в поле "Тег" у клиента/заказа в нашем приложении.
+// Здесь тег сопоставляется с комментариями из последних заказов ПЛ через их
+// API, чтобы понять статус, не заходя на их сайт. Один тег может встречаться
+// в нескольких их заказах (позиции докупались отдельно) — поэтому на тег
+// приходится список позиций, а не одна.
+let plOrdersCache = { ts: 0, byTag: new Map() };
+const PL_CACHE_TTL_MS = 3 * 60 * 1000;
+
+async function fetchProfitLigaOrders() {
+  const now = Date.now();
+  if (now - plOrdersCache.ts < PL_CACHE_TTL_MS) return plOrdersCache.byTag;
+  const byTag = new Map();
+  if (PROFITLIGA_API_KEY) {
+    // Страницы отсортированы от новых к старым; для отслеживания «в пути»
+    // хватает первой (последние ~100 заказов) — давно закрытые не нужны.
+    const res = await fetch(`https://api.pr-lg.ru/orders/list?secret=${PROFITLIGA_API_KEY}&page=1`);
+    const json = await res.json();
+    for (const order of json.data || []) {
+      for (const p of order.products || []) {
+        const key = String(p.comment || '').trim().toLowerCase();
+        if (!key) continue;
+        if (!byTag.has(key)) byTag.set(key, []);
+        byTag.get(key).push({
+          order_id: order.order_id,
+          article: p.article,
+          brand: p.brand,
+          status_id: Number(p.status_id),
+          status: p.status,
+          status_update: p.status_update,
+        });
+      }
+    }
+  }
+  plOrdersCache = { ts: now, byTag };
+  return byTag;
+}
+
+const PL_DELIVERED_STATUSES = new Set([9, 19]);
+const PL_PROBLEM_STATUSES = new Set([6, 15, 17, 20, 22, 24, 25, 26, 27]);
+function plStatusCategory(statusId) {
+  if (PL_DELIVERED_STATUSES.has(statusId)) return 'delivered';
+  if (PL_PROBLEM_STATUSES.has(statusId)) return 'problem';
+  return 'transit';
+}
+
+// Артикул сравнивается без пробелов/дефисов и без учёта регистра — у нас и у
+// ПЛ один и тот же артикул может быть записан по-разному (напр. "CD 22-009"
+// и "CD22009"). Совпадение только тега недостаточно: тег общий на весь заказ,
+// а конкретная запчасть считается пришедшей только если у ПЛ нашлась позиция
+// с ТЕМ ЖЕ артикулом — иначе смена артикула/названия на несуществующие не
+// должна была бы отмечать позицию полученной (баг, который это исправляет).
+function normalizeArticle(s) {
+  return String(s || '').toUpperCase().replace(/[^A-ZА-Я0-9]/g, '');
 }
 
 // ---------- Consumables (расходники) ----------
@@ -435,8 +555,12 @@ function getClientProfile(vin) {
     .all(vin)
     .map(parseRepairRecord);
   const fallback = matched[0] || {};
+  // vin, вошедший по телефону без указанного VIN, — технический ключ сессии
+  // (см. PHONE_LOGIN_PREFIX), не настоящий VIN; клиенту его не показываем —
+  // иначе он выглядел бы как VIN и клиент решил бы, что всё уже заполнено.
+  const isPhonePlaceholder = vin.startsWith(PHONE_LOGIN_PREFIX);
   return {
-    vin,
+    vin: isPhonePlaceholder ? '' : vin,
     known: matched.length > 0,
     // Данные, которые ведёт админ, теперь в приоритете — правки в админке
     // (например, марку/модель) клиент сразу видит у себя в кабинете. Если
@@ -699,9 +823,8 @@ const server = http.createServer(async (req, res) => {
     // Авторизация клиента по VIN — отдельная от владельца, со своим гейтом ниже.
     if (pathname === '/api/client-login' && req.method === 'POST') {
       const body = await readBody(req);
-      const vin = normalizeVin(body.vin);
-      if (!vin) return sendJSON(res, 400, { error: 'Введите VIN' });
-      const known = !!db.prepare('SELECT 1 FROM clients WHERE UPPER(vin) = ? LIMIT 1').get(vin);
+      const { identifier, known } = resolveClientLoginIdentifier(body);
+      if (!identifier) return sendJSON(res, 400, { error: 'Введите VIN или телефон' });
       if (!known) {
         const password = (body.password || '').trim();
         if (!password) return sendJSON(res, 200, { ok: false, needPassword: true });
@@ -710,8 +833,8 @@ const server = http.createServer(async (req, res) => {
         }
       }
       const token = crypto.randomUUID();
-      clientSessions.set(token, vin);
-      db.prepare('INSERT INTO sessions (token, kind, vin) VALUES (?, ?, ?)').run(token, 'client', vin);
+      clientSessions.set(token, identifier);
+      db.prepare('INSERT INTO sessions (token, kind, vin) VALUES (?, ?, ?)').run(token, 'client', identifier);
       res.setHeader('Set-Cookie', `${CLIENT_SESSION_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`);
       return sendJSON(res, 200, { ok: true });
     }
@@ -876,6 +999,50 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { ok: true });
     }
 
+    // Список позиций у Профит-Лиги по тегу клиента/заказа (см. fetchProfitLigaOrders) —
+    // конкретную запчасть фронтенд сверяет с этим списком по артикулу сам.
+    if (pathname === '/api/profitliga/status' && req.method === 'GET') {
+      if (!PROFITLIGA_API_KEY) return sendJSON(res, 200, {});
+      const byTag = await fetchProfitLigaOrders();
+      const out = {};
+      for (const [key, products] of byTag) {
+        out[key] = products.map((p) => ({ ...p, category: plStatusCategory(p.status_id) }));
+      }
+      return sendJSON(res, 200, out);
+    }
+    // Проверить все заказы в «Заказах» и автоматически отметить «на складе» те
+    // позиции, у которых артикул совпал с доставленной позицией у Профит-Лиги
+    // под тем же тегом — тег без совпадения по артикулу ничего не отмечает.
+    if (pathname === '/api/profitliga/sync' && req.method === 'POST') {
+      if (!PROFITLIGA_API_KEY) return sendJSON(res, 400, { error: 'Профит-Лига API не настроен' });
+      const byTag = await fetchProfitLigaOrders();
+      let updated = 0;
+      for (const entry of listQueueEntries()) {
+        const tag = (entry.tag || '').trim().toLowerCase();
+        if (!tag) continue;
+        const products = byTag.get(tag);
+        if (!products || !products.length) continue;
+        let changed = false;
+        const parts = entry.parts.map((p) => {
+          if (!p.name || !p.article || p.received) return p;
+          const key = normalizeArticle(p.article);
+          if (!key) return p;
+          const match = products.find((prod) => normalizeArticle(prod.article) === key);
+          if (match && PL_DELIVERED_STATUSES.has(match.status_id)) {
+            changed = true;
+            return { ...p, received: true };
+          }
+          return p;
+        });
+        if (!changed) continue;
+        const partsWithName = parts.filter((p) => p.name);
+        const status = partsWithName.length && partsWithName.every((p) => p.received) ? 'arrived' : entry.status;
+        updateQueueEntry(entry.id, { ...entry, parts, status });
+        updated++;
+      }
+      return sendJSON(res, 200, { updated });
+    }
+
     // Consumables
     if (pathname === '/api/consumable-sections' && req.method === 'GET') {
       return sendJSON(res, 200, listConsumableSections());
@@ -938,6 +1105,10 @@ const server = http.createServer(async (req, res) => {
       const end = url.searchParams.get('end');
       if (!start || !end) return sendJSON(res, 400, { error: 'Нужны параметры start и end' });
       return sendJSON(res, 200, listRepairRecordsByDateRange(start, end));
+    }
+    // Отчёт — список мастеров для фильтра.
+    if (pathname === '/api/reports/masters' && req.method === 'GET') {
+      return sendJSON(res, 200, listReportMasters());
     }
 
     // Appointments
