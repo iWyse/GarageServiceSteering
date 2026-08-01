@@ -632,11 +632,11 @@ function renderClients() {
       <td class="cell-name" title="${escapeHtml(c.name)}">${escapeHtml(c.name)}</td>
       <td>${c.phone ? `<a class="cell-phone" href="tel:${escapeHtml(telHref)}">${escapeHtml(c.phone)}</a>` : '—'}</td>
       <td class="cell-car" title="${escapeHtml([c.car_make, c.car_model].filter(Boolean).join(' '))}">${escapeHtml([c.car_make, c.car_model].filter(Boolean).join(' ') || '—')}</td>
-      <td class="cell-plate">${escapeHtml(c.plate || '—')}</td>
+      <td class="cell-plate" title="${escapeHtml(c.plate || '')}">${escapeHtml(c.plate || '—')}</td>
       <td class="cell-tag" title="${escapeHtml(c.tag || '')}">${escapeHtml(c.tag || '—')}</td>
-      <td class="cell-plate cell-vin-td">${c.vin ? `<span class="cell-vin">${escapeHtml(c.vin)}<button type="button" class="vin-copy-btn" title="Копировать VIN">${COPY_ICON_SVG}</button></span>` : '—'}</td>
+      <td class="cell-plate cell-vin-td" title="${escapeHtml(c.vin || '')}">${c.vin ? `<span class="cell-vin"><span class="vin-text">${escapeHtml(c.vin)}</span><button type="button" class="vin-copy-btn" title="Копировать VIN">${COPY_ICON_SVG}</button></span>` : '—'}</td>
       <td class="cell-notes">${escapeHtml(c.notes || '')}</td>
-      <td class="cell-updated">${c.updated_at ? fmtFullDate(new Date(c.updated_at.replace(' ', 'T') + 'Z')) : '—'}</td>
+      <td class="cell-updated" title="${c.updated_at ? escapeHtml(fmtFullDate(new Date(c.updated_at.replace(' ', 'T') + 'Z'))) : ''}">${c.updated_at ? fmtFullDate(new Date(c.updated_at.replace(' ', 'T') + 'Z')) : '—'}</td>
       <td class="edit-hint">${EDIT_ICON_SVG}</td>
     `;
     const phoneLink = tr.querySelector('.cell-phone');

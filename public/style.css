@@ -400,29 +400,38 @@ input[type="number"]::-webkit-inner-spin-button {
    на <td> ненадёжно ограничивает ширину колонки, поэтому только fixed).
    Полный текст всегда доступен через title (см. renderClients в app.js). */
 .clients-list-table { table-layout: fixed; }
-.clients-list-table th:nth-child(1), .clients-list-table td:nth-child(1) { width: 13%; }
-.clients-list-table th:nth-child(2), .clients-list-table td:nth-child(2) { width: 11%; }
-.clients-list-table th:nth-child(3), .clients-list-table td:nth-child(3) { width: 13%; }
-.clients-list-table th:nth-child(4), .clients-list-table td:nth-child(4) { width: 8%; }
-.clients-list-table th:nth-child(5), .clients-list-table td:nth-child(5) { width: 10%; }
-.clients-list-table th:nth-child(6), .clients-list-table td:nth-child(6) { width: 16%; }
-.clients-list-table th:nth-child(7), .clients-list-table td:nth-child(7) { width: 18%; }
-.clients-list-table th:nth-child(8), .clients-list-table td:nth-child(8) { width: 9%; }
-.clients-list-table th:nth-child(9), .clients-list-table td:nth-child(9) { width: 2%; }
-/* Заметки — многострочные по смыслу, VIN — своя строка с кнопкой копирования
-   (ellipsis у flex-контейнера работает не так, как у текста) — эти две
-   колонки не обрезаем, остальные в одну строку с многоточием. */
-.clients-list-table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.clients-list-table td.cell-notes, .clients-list-table td.cell-vin-td {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
+.clients-list-table th:nth-child(1), .clients-list-table td:nth-child(1) { width: 12%; } /* Клиент */
+.clients-list-table th:nth-child(2), .clients-list-table td:nth-child(2) { width: 8%; }  /* Телефон */
+.clients-list-table th:nth-child(3), .clients-list-table td:nth-child(3) { width: 16%; } /* Автомобиль */
+.clients-list-table th:nth-child(4), .clients-list-table td:nth-child(4) { width: 9%; }  /* Номер */
+.clients-list-table th:nth-child(5), .clients-list-table td:nth-child(5) { width: 7%; }  /* Тег */
+.clients-list-table th:nth-child(6), .clients-list-table td:nth-child(6) { width: 15%; } /* VIN */
+.clients-list-table th:nth-child(7), .clients-list-table td:nth-child(7) { width: 15%; } /* Заметки */
+.clients-list-table th:nth-child(8), .clients-list-table td:nth-child(8) { width: 13%; } /* Изменён */
+.clients-list-table th:nth-child(9), .clients-list-table td:nth-child(9) { width: 5%; }  /* иконка карандаша */
+/* Только имя и тег обрезаем многоточием (обычно однословные, полный текст —
+   в title). Марка/модель, заметки, дата и VIN не обрезаем: марка/модель и
+   заметки переносятся по словам (там пробелы есть, ужаться некуда — просто
+   станут в 2 строки), а не рвутся многоточием; VIN — своя строка с кнопкой
+   копирования (ellipsis у flex-контейнера работает не так, как у текста).
+   fixed-layout всё равно не даёт им раздвинуть таблицу вширь. */
+.clients-list-table td.cell-name, .clients-list-table td.cell-tag {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .cell-name { font-weight: 600; }
-.cell-plate { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
+.cell-plate {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .cell-tag { font-size: 14px; color: var(--text-muted); }
 .cell-notes { color: var(--text-muted); font-size: 14px; max-width: 220px; }
-.cell-updated { color: var(--text-muted); font-size: 14px; white-space: nowrap; }
+.cell-updated { color: var(--text-muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cell-phone {
   font-family: var(--font-mono);
   font-size: 14px;
@@ -432,11 +441,18 @@ input[type="number"]::-webkit-inner-spin-button {
 .cell-phone:hover { color: var(--accent); text-decoration: underline; }
 .edit-hint { color: var(--text-muted); line-height: 0; }
 .clients-table tr:hover .edit-hint { color: var(--accent); }
-.cell-vin { display: inline-flex; align-items: center; gap: 6px; }
+.cell-vin { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; }
+/* Обрезаем многоточием только сам VIN, не кнопку копирования рядом — кнопка
+   копирует значение из данных (c.vin), а не видимый текст, так что усечение
+   на неё никак не влияет. min-width:0 обязателен — иначе flex-элемент не
+   сжимается меньше своей "естественной" ширины и текст всё равно вылезает
+   за пределы ячейки. */
+.vin-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .vin-copy-btn, .article-copy-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   padding: 3px;
   border: none;
   background: none;
