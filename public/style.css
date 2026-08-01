@@ -400,15 +400,12 @@ input[type="number"]::-webkit-inner-spin-button {
    на <td> ненадёжно ограничивает ширину колонки, поэтому только fixed).
    Полный текст всегда доступен через title (см. renderClients в app.js). */
 .clients-list-table { table-layout: fixed; }
-.clients-list-table th:nth-child(1), .clients-list-table td:nth-child(1) { width: 12%; } /* Клиент */
-.clients-list-table th:nth-child(2), .clients-list-table td:nth-child(2) { width: 8%; }  /* Телефон */
-.clients-list-table th:nth-child(3), .clients-list-table td:nth-child(3) { width: 16%; } /* Автомобиль */
-.clients-list-table th:nth-child(4), .clients-list-table td:nth-child(4) { width: 9%; }  /* Номер */
-.clients-list-table th:nth-child(5), .clients-list-table td:nth-child(5) { width: 7%; }  /* Тег */
-.clients-list-table th:nth-child(6), .clients-list-table td:nth-child(6) { width: 15%; } /* VIN */
-.clients-list-table th:nth-child(7), .clients-list-table td:nth-child(7) { width: 15%; } /* Заметки */
-.clients-list-table th:nth-child(8), .clients-list-table td:nth-child(8) { width: 13%; } /* Изменён */
-.clients-list-table th:nth-child(9), .clients-list-table td:nth-child(9) { width: 5%; }  /* иконка карандаша */
+.clients-list-table th:nth-child(1), .clients-list-table td:nth-child(1) { width: 18%; } /* Клиент */
+.clients-list-table th:nth-child(2), .clients-list-table td:nth-child(2) { width: 31%; } /* Автомобиль */
+.clients-list-table th:nth-child(3), .clients-list-table td:nth-child(3) { width: 12%; } /* Тег */
+.clients-list-table th:nth-child(4), .clients-list-table td:nth-child(4) { width: 22%; } /* VIN */
+.clients-list-table th:nth-child(5), .clients-list-table td:nth-child(5) { width: 13%; } /* Изменён */
+.clients-list-table th:nth-child(6), .clients-list-table td:nth-child(6) { width: 4%; }  /* иконка карандаша */
 /* Только имя и тег обрезаем многоточием (обычно однословные, полный текст —
    в title). Марка/модель, заметки, дата и VIN не обрезаем: марка/модель и
    заметки переносятся по словам (там пробелы есть, ужаться некуда — просто
@@ -430,15 +427,7 @@ input[type="number"]::-webkit-inner-spin-button {
   text-overflow: ellipsis;
 }
 .cell-tag { font-size: 14px; color: var(--text-muted); }
-.cell-notes { color: var(--text-muted); font-size: 14px; max-width: 220px; }
 .cell-updated { color: var(--text-muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cell-phone {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  color: var(--text);
-  text-decoration: none;
-}
-.cell-phone:hover { color: var(--accent); text-decoration: underline; }
 .edit-hint { color: var(--text-muted); line-height: 0; }
 .clients-table tr:hover .edit-hint { color: var(--accent); }
 .cell-vin { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; }
