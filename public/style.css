@@ -401,8 +401,8 @@ input[type="number"]::-webkit-inner-spin-button {
    Полный текст всегда доступен через title (см. renderClients в app.js). */
 .clients-list-table { table-layout: fixed; }
 .clients-list-table th:nth-child(1), .clients-list-table td:nth-child(1) { width: 18%; } /* Клиент */
-.clients-list-table th:nth-child(2), .clients-list-table td:nth-child(2) { width: 31%; } /* Автомобиль */
-.clients-list-table th:nth-child(3), .clients-list-table td:nth-child(3) { width: 12%; } /* Тег */
+.clients-list-table th:nth-child(2), .clients-list-table td:nth-child(2) { width: 24%; } /* Автомобиль */
+.clients-list-table th:nth-child(3), .clients-list-table td:nth-child(3) { width: 19%; } /* Тег */
 .clients-list-table th:nth-child(4), .clients-list-table td:nth-child(4) { width: 22%; } /* VIN */
 .clients-list-table th:nth-child(5), .clients-list-table td:nth-child(5) { width: 13%; } /* Изменён */
 .clients-list-table th:nth-child(6), .clients-list-table td:nth-child(6) { width: 4%; }  /* иконка карандаша */
