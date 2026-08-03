@@ -464,6 +464,13 @@ document.querySelectorAll('.tab').forEach((btn) => {
     if (target === 'requests') loadRequests();
     if (target === 'notes') loadNotes();
     if (target === 'report') { loadReportWeek(); loadReportMasters(); }
+    // Поиск клиентов очищается при каждом заходе на вкладку — иначе список
+    // остаётся отфильтрованным с прошлого раза, и непонятно, куда делись
+    // остальные клиенты.
+    if (target === 'clients') {
+      document.getElementById('clientSearch').value = '';
+      renderClients();
+    }
     closeMobileMenu();
   });
 });
@@ -1080,6 +1087,7 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
       <option value="ПЛ">ПЛ</option>
       <option value="emex">emex</option>
       <option value="Микадо">Микадо</option>
+      <option value="Пилот">Пилот</option>
     `;
     supplierSelect.value = item?.supplier || '';
 
