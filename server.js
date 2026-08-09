@@ -278,7 +278,7 @@ function listRepairRecordsByDateRange(start, end) {
       `SELECT r.*, c.tag AS client_tag, c.name AS client_name, c.car_make, c.car_model
        FROM repair_records r
        JOIN clients c ON c.id = r.client_id
-       WHERE r.date BETWEEN ? AND ?
+       WHERE r.date BETWEEN ? AND ? AND r.report_hidden = 0
        ORDER BY r.date, r.id`
     )
     .all(start, end)
@@ -306,7 +306,7 @@ function createRepairRecord(clientId, data) {
 }
 
 function updateRepairRecord(id, data) {
-  db.prepare('UPDATE repair_records SET title=?, date=?, mileage=?, works=?, parts=?, parts_eta=?, advance=?, notes=?, master=? WHERE id=?').run(
+  db.prepare('UPDATE repair_records SET title=?, date=?, mileage=?, works=?, parts=?, parts_eta=?, advance=?, notes=?, master=?, report_hidden=? WHERE id=?').run(
     (data.title || '').trim(),
     data.date || '',
     data.mileage ? Number(data.mileage) : null,
@@ -316,6 +316,7 @@ function updateRepairRecord(id, data) {
     Number(data.advance) || 0,
     data.notes || '',
     (data.master || '').trim(),
+    data.report_hidden ? 1 : 0,
     id
   );
   return parseRepairRecord(db.prepare('SELECT * FROM repair_records WHERE id = ?').get(id));

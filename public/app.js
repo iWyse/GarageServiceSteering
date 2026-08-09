@@ -1368,6 +1368,9 @@ repairForm.addEventListener('submit', async (e) => {
     works: collectRepairRows(worksRowsEl),
     parts: collectRepairRows(partsRowsEl),
     master: repairForm.elements.master.value,
+    // Поля в форме нет (убирается отдельной кнопкой в списке отчёта) —
+    // сохраняем как было, а не сбрасываем при обычном редактировании записи.
+    report_hidden: currentEditingRepairRecord?.report_hidden || false,
   };
   try {
     if (editingRepairId) {
@@ -2446,20 +2449,21 @@ document.getElementById('queueOrderBtn').addEventListener('click', () => {
 // input[type=week] капризно поддерживается браузерами (в части из них нет
 // пикера, значение приходится набирать текстом в формате "YYYY-Www" — на
 // практике им невозможно пользоваться). Вместо этого — обычный date-picker:
-// пользователь выбирает любой день нужной недели, а сама неделя (понедельник
-// этой недели — см. startOfWeek, та же логика, что и в остальном отчёте)
-// считается автоматически.
+// пользователь выбирает конкретный день, эта же дата и сохраняется у записи
+// как есть (её неделя в отчёте определяется этой датой через startOfWeek —
+// см. listRepairRecordsByDateRange на сервере, отдельно округлять её тут не
+// нужно и не надо: раньше выбранный день молча заменялся на понедельник его
+// недели, из-за чего реальная дата ремонта терялась).
 document.getElementById('orderAddToReportBtn').addEventListener('click', () => {
   document.getElementById('orderAddToReportPanel').classList.toggle('hidden');
 });
 
 document.getElementById('orderAddToReportConfirmBtn').addEventListener('click', async () => {
-  const dateValue = document.getElementById('orderReportDateInput').value;
-  if (!dateValue) {
-    showToast('Выберите день недели', true);
+  const date = document.getElementById('orderReportDateInput').value;
+  if (!date) {
+    showToast('Выберите дату', true);
     return;
   }
-  const date = toISODate(startOfWeek(new Date(dateValue + 'T00:00:00')));
   try {
     if (currentOrderContext === 'repair') {
       const data = { ...currentOrderRecordData, date };
@@ -3354,15 +3358,17 @@ function renderReport(records) {
       <td>${escapeHtml(r.master || '—')}</td>
       <td>${fmtMoney(worksSum)}</td>
       <td>${fmtMoney(partsSum)}</td>
-      <td><button type="button" class="report-delete-btn" title="Удалить запись" aria-label="Удалить запись">${REPORT_DELETE_ICON_SVG}</button></td>
+      <td><button type="button" class="report-delete-btn" title="Убрать из отчёта" aria-label="Убрать из отчёта">${REPORT_DELETE_ICON_SVG}</button></td>
     `;
     const deleteBtn = tr.querySelector('.report-delete-btn');
     deleteBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      if (!(await showConfirm('Удалить запись ремонта? Это действие необратимо.'))) return;
+      // Убирает запись только из отчёта (report_hidden=true) — в истории
+      // ремонта клиента она остаётся как была, это не удаление данных.
+      if (!(await showConfirm('Убрать запись из отчёта? В истории ремонта клиента она останется.', { confirmLabel: 'Убрать', danger: false }))) return;
       try {
-        await api(`/api/repairs/${r.id}`, { method: 'DELETE' });
-        showToast('Запись удалена');
+        await api(`/api/repairs/${r.id}`, { method: 'PUT', body: JSON.stringify({ ...r, report_hidden: true }) });
+        showToast('Запись убрана из отчёта');
         await loadReportWeek();
       } catch (err) {
         showToast(err.message, true);

@@ -46,6 +46,7 @@ db.exec(`
     parts_eta TEXT,          -- срок поставки запчастей
     advance REAL NOT NULL DEFAULT 0, -- аванс, вычитается из итоговой суммы; 0 = не используется
     notes TEXT,
+    report_hidden INTEGER NOT NULL DEFAULT 0, -- убрана из отчёта (кнопкой "Удалить" в списке отчёта), в истории клиента остаётся
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -309,5 +310,15 @@ function migrateRepairMasterColumn() {
   }
 }
 migrateRepairMasterColumn();
+
+// ---------- Миграция: скрытие записи ремонта из отчёта ----------
+function migrateRepairReportHiddenColumn() {
+  const columns = db.prepare(`PRAGMA table_info(repair_records)`).all().map((c) => c.name);
+  if (columns.length && !columns.includes('report_hidden')) {
+    db.exec(`ALTER TABLE repair_records ADD COLUMN report_hidden INTEGER NOT NULL DEFAULT 0`);
+    console.log('База данных обновлена: добавлено скрытие записи ремонта из отчёта.');
+  }
+}
+migrateRepairReportHiddenColumn();
 
 export default db;
