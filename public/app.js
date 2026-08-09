@@ -977,9 +977,12 @@ function addAnalogToRow(row, onChange) {
 // строки в другом диалоге (очередь) со своим пересчётом сумм. withReceived добавляет
 // переключатель "пришла"/"нет" и аналоги — нужны только в заказе (очередь на
 // запчасти): там же отслеживают, что из заказа уже привезли, а что ещё в пути.
-function createRepairRow(item, isPart, onChange = recomputeRepairSums, withReceived = false) {
+// withMaster — только у работ в истории ремонта (не в очереди, там мастера
+// нет вообще): переопределение мастера конкретной работы и исключение её из
+// суммы отчёта, см. renderReport.
+function createRepairRow(item, isPart, onChange = recomputeRepairSums, withReceived = false, withMaster = false) {
   const row = document.createElement('div');
-  row.className = 'repair-row' + (isPart ? ' repair-row-part' : '');
+  row.className = 'repair-row' + (isPart ? ' repair-row-part' : '') + (withMaster ? ' repair-row-withmaster' : '');
   if (withReceived && item?.analogGroup) {
     row.dataset.analogGroup = item.analogGroup;
     row.dataset.analogSelected = item.analogSelected ? '1' : '';
@@ -1148,6 +1151,29 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
         }
       });
     }
+  } else if (withMaster) {
+    const masterInput = document.createElement('input');
+    masterInput.type = 'text';
+    masterInput.className = 'row-master';
+    masterInput.placeholder = 'Мастер (если другой)';
+    masterInput.tabIndex = -1;
+    masterInput.value = item?.master || '';
+
+    // Кнопка-переключатель, а не чекбокс — так же, как "На складе?" у запчасти
+    // в заказе: понятнее с одного взгляда, что именно означает состояние.
+    const reportExcludedBtn = document.createElement('button');
+    reportExcludedBtn.type = 'button';
+    reportExcludedBtn.className = 'row-report-excluded-btn';
+    reportExcludedBtn.tabIndex = -1;
+    reportExcludedBtn.title = 'Не учитывать эту работу в сумме отчёта — в истории и заказ-наряде клиента останется как есть';
+    const setExcludedState = (excluded) => {
+      reportExcludedBtn.classList.toggle('active', excluded);
+      reportExcludedBtn.textContent = excluded ? 'Не в отчёте' : 'В отчёте';
+    };
+    setExcludedState(!!item?.reportExcluded);
+    reportExcludedBtn.addEventListener('click', () => { setExcludedState(!reportExcludedBtn.classList.contains('active')); onChange(); });
+
+    row.append(includeInput, nameInput, priceInput, masterInput, reportExcludedBtn, removeBtn);
   } else {
     row.append(includeInput, nameInput, priceInput, removeBtn);
   }
@@ -1155,8 +1181,8 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
   return row;
 }
 
-function addRepairRow(container, item, isPart, onChange = recomputeRepairSums, withReceived = false) {
-  container.appendChild(createRepairRow(item, isPart, onChange, withReceived));
+function addRepairRow(container, item, isPart, onChange = recomputeRepairSums, withReceived = false, withMaster = false) {
+  container.appendChild(createRepairRow(item, isPart, onChange, withReceived, withMaster));
 }
 
 function collectRepairRows(container) {
@@ -1171,6 +1197,8 @@ function collectRepairRows(container) {
       const qtyInput = row.querySelector('.row-qty');
       const receivedBtn = row.querySelector('.row-received-btn');
       const supplierSelect = row.querySelector('.row-supplier');
+      const masterInput = row.querySelector('.row-master');
+      const reportExcludedBtn = row.querySelector('.row-report-excluded-btn');
       if (articleInput) out.article = articleInput.value.trim();
       if (brandInput) out.brand = brandInput.value.trim();
       if (qtyInput) out.qty = Number(qtyInput.value) || 0;
@@ -1180,6 +1208,8 @@ function collectRepairRows(container) {
         out.analogSelected = row.dataset.analogSelected === '1';
       }
       if (supplierSelect) out.supplier = supplierSelect.value;
+      if (masterInput) out.master = masterInput.value.trim();
+      if (reportExcludedBtn) out.reportExcluded = reportExcludedBtn.classList.contains('active');
       const includeInput = row.querySelector('.row-include');
       if (includeInput && !includeInput.checked) out.included = false;
       return out;
@@ -1206,7 +1236,7 @@ function restoreUnexposedPartFields(parts, rawParts) {
   });
 }
 
-document.getElementById('addWorkRowBtn').addEventListener('click', () => addRepairRow(worksRowsEl, null));
+document.getElementById('addWorkRowBtn').addEventListener('click', () => addRepairRow(worksRowsEl, null, false, recomputeRepairSums, false, true));
 document.getElementById('addPartRowBtn').addEventListener('click', () => addRepairRow(partsRowsEl, null, true));
 
 document.getElementById('advanceToggleBtn').addEventListener('click', () => {
@@ -1231,7 +1261,7 @@ function openRepairDialog(record) {
   partsRowsEl.innerHTML = '';
   const works = record?.works?.length ? record.works : [null];
   const parts = record?.parts?.length ? record.parts : [null];
-  works.forEach((w) => addRepairRow(worksRowsEl, w));
+  works.forEach((w) => addRepairRow(worksRowsEl, w, false, recomputeRepairSums, false, true));
   parts.forEach((p) => addRepairRow(partsRowsEl, p, true));
 
   repairForm.elements.title.value = record ? (record.title || '') : '';
@@ -1518,8 +1548,15 @@ const SUPPLIER_COLORS = {
 // showSupplier — включается только для заказ-наряда, открытого из вкладки
 // «Отчёт» (см. renderReport); в обычной смете/заказе поставщик клиенту не показывается.
 function buildOrderHtml(order, { showSupplier = false } = {}) {
+  // Мастер у конкретной работы (переопределяет мастера всей записи) виден
+  // только в отчёте, как и поставщик у запчасти ниже — клиенту эта разбивка
+  // не показывается. Не в отчёте — тоже только справочная пометка тут же.
   const workLines = order.works
-    .map((w) => `<div class="order-line"><span>${escapeHtml(w.name)}</span><span>${fmtMoney(w.price)}</span></div>`)
+    .map((w) => {
+      const masterTag = showSupplier && w.master ? ` <span class="order-line-meta">(${escapeHtml(w.master)})</span>` : '';
+      const excludedTag = showSupplier && w.reportExcluded ? ' <span class="order-line-alt-tag">не в отчёте</span>' : '';
+      return `<div class="order-line"><span>${escapeHtml(w.name)}${masterTag}${excludedTag}</span><span>${fmtMoney(w.price)}</span></div>`;
+    })
     .join('');
   // Аналоги (несколько вариантов одной запчасти на выбор) рисуем рамкой с
   // отступом вокруг всей группы — не выбранный вариант приглушён и подписан
@@ -1560,6 +1597,7 @@ function buildOrderHtml(order, { showSupplier = false } = {}) {
       ${order.clientName ? `<div class="order-meta-row"><span>Клиент</span><strong>${escapeHtml(order.clientName)}</strong></div>` : ''}
       ${order.carLine ? `<div class="order-meta-row"><span>Автомобиль</span><strong>${escapeHtml(order.carLine)}</strong></div>` : ''}
       ${order.mileage ? `<div class="order-meta-row"><span>Пробег</span><strong>${fmtMileage(order.mileage)}</strong></div>` : ''}
+      ${showSupplier && order.master ? `<div class="order-meta-row"><span>Мастер</span><strong>${escapeHtml(order.master)}</strong></div>` : ''}
     </div>
     <div class="order-sep"></div>
     ${order.title ? `<h3 class="order-title">${escapeHtml(order.title)}</h3>` : ''}
@@ -3264,9 +3302,36 @@ let reportRequestSeq = 0;
 // применяется поверх него без повторного запроса к серверу.
 let currentReportRecords = [];
 
+// Мастер конкретной работы переопределяет мастера всей записи (см. поле
+// "Мастер (если другой)" у работы, withMaster в createRepairRow); пусто —
+// считается по мастеру записи. Работы, снятые галочкой "включить" или
+// помеченные "не в отчёте", в подсчёт мастеров и суммы отчёта не входят —
+// они всё ещё в истории/заказ-наряде клиента, просто не в отчёте.
+function effectiveWorkMaster(work, record) {
+  return (work.master && work.master.trim()) || record.master || '';
+}
+function reportRelevantWorks(record) {
+  return (record.works || []).filter((w) => w.included !== false && !w.reportExcluded);
+}
+function recordMasters(record) {
+  const set = new Set();
+  reportRelevantWorks(record).forEach((w) => {
+    const m = effectiveWorkMaster(w, record);
+    if (m) set.add(m);
+  });
+  return set;
+}
+// masterFilter — если задан, считает только долю этого мастера (для строки
+// отчёта под активным фильтром и для итога недели), иначе всю сумму работ.
+function sumWorksForReport(record, masterFilter) {
+  return reportRelevantWorks(record)
+    .filter((w) => !masterFilter || effectiveWorkMaster(w, record) === masterFilter)
+    .reduce((sum, w) => sum + (Number(w.price) || 0), 0);
+}
+
 function applyReportMasterFilter(records) {
   if (!state.reportMasterFilter) return records;
-  return records.filter((r) => (r.master || '') === state.reportMasterFilter);
+  return records.filter((r) => recordMasters(r).has(state.reportMasterFilter));
 }
 
 async function loadReportMasters() {
@@ -3325,6 +3390,7 @@ function buildOrderDataFromRecord(record) {
     title: record.title,
     date: record.date,
     notes: record.notes,
+    master: record.master || '',
     works,
     parts,
     worksSum,
@@ -3343,10 +3409,15 @@ function renderReport(records) {
   let totalParts = 0;
 
   records.forEach((r) => {
-    const worksSum = sumItems(r.works);
+    // Под активным фильтром по мастеру сумма работ — только его доля;
+    // без фильтра — все работы записи (кроме исключённых из отчёта).
+    const worksSum = sumWorksForReport(r, state.reportMasterFilter);
     const partsSum = sumItems(r.parts);
     totalWorks += worksSum;
     totalParts += partsSum;
+
+    const masters = Array.from(recordMasters(r));
+    const masterLabel = masters.length === 0 ? '—' : masters.length === 1 ? masters[0] : `Смешанно (${masters.length})`;
 
     const tr = document.createElement('tr');
     const carLine = [r.car_make, r.car_model].filter(Boolean).join(' ');
@@ -3355,7 +3426,7 @@ function renderReport(records) {
       <td>${escapeHtml(dateLabel)}</td>
       <td class="cell-tag">${escapeHtml(r.client_tag || '—')}</td>
       <td>${escapeHtml(carLine || '—')}</td>
-      <td>${escapeHtml(r.master || '—')}</td>
+      <td title="${escapeHtml(masters.join(', '))}">${escapeHtml(masterLabel)}</td>
       <td>${fmtMoney(worksSum)}</td>
       <td>${fmtMoney(partsSum)}</td>
       <td><button type="button" class="report-delete-btn" title="Убрать из отчёта" aria-label="Убрать из отчёта">${REPORT_DELETE_ICON_SVG}</button></td>

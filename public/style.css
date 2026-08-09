@@ -829,6 +829,9 @@ input[type="number"]::-webkit-inner-spin-button {
 .repair-rows { display: flex; flex-direction: column; gap: 6px; }
 .repair-row { display: grid; grid-template-columns: auto 1fr 100px auto; gap: 6px; align-items: center; }
 .repair-row.repair-row-excluded { opacity: 0.5; }
+/* Работа с переопределением мастера/исключением из отчёта — только в истории
+   ремонта (см. withMaster в createRepairRow), не в очереди на запчасти. */
+.repair-row.repair-row-withmaster { grid-template-columns: auto 1fr 100px 110px 100px auto; }
 /* margin — колонка под галочку в .repair-row-line1/.repair-rows-header шире
    самого чекбокса (26px против 18px), иначе он утыкается в края ячейки.
    padding:0 — иначе общий паддинг инпутов (9px 11px) на десктопе (см. ниже
@@ -862,7 +865,7 @@ input[type="number"]::-webkit-inner-spin-button {
     transform: rotate(45deg);
   }
 }
-.repair-row .row-name, .repair-row .row-price, .repair-row .row-brand, .repair-row .row-qty, .repair-row .row-article, .repair-row .row-supplier {
+.repair-row .row-name, .repair-row .row-price, .repair-row .row-brand, .repair-row .row-qty, .repair-row .row-article, .repair-row .row-supplier, .repair-row .row-master {
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -959,6 +962,22 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .row-received-btn:hover { border-color: var(--accent); color: var(--accent); }
 .row-received-btn.active { background: var(--status-done); border-color: var(--status-done); color: #fff; font-weight: 600; }
+.row-report-excluded-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+.row-report-excluded-btn:hover { border-color: var(--accent); color: var(--accent); }
+/* "Не в отчёте" — активное (нажатое) состояние сигнального цвета: работа
+   по-прежнему в истории/заказ-наряде, но выпадает из суммы отчёта, это стоит
+   заметить с одного взгляда. */
+.row-report-excluded-btn.active { background: var(--status-cancelled); border-color: var(--status-cancelled); color: #fff; font-weight: 600; }
 
 /* Аналоги запчасти — несколько вариантов одной позиции на выбор клиента,
    только "основной" считается в сумме заказа (см. sumRowInputs/sumItems). */
@@ -1167,12 +1186,12 @@ input[type="number"]::-webkit-inner-spin-button {
   .row-2 { grid-template-columns: 1fr; }
   /* Таблица запчастей (7 колонок с фиксированной шириной) не сжимается на
      узком экране — даём прокрутку вбок вместо обрезки/переноса полей. */
-  .repair-row-line1, .repair-rows-header {
+  .repair-row-line1, .repair-rows-header, .repair-row-withmaster {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     min-width: 0;
   }
-  .repair-row-line1 > *, .repair-rows-header > * { min-width: 0; }
+  .repair-row-line1 > *, .repair-rows-header > *, .repair-row-withmaster > * { min-width: 0; }
 }
 
 /* ---------- Login ---------- */

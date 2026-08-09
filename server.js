@@ -259,6 +259,12 @@ function normalizeRepairItems(items) {
       // в записи (чтобы не терять данные), но не в сумме и не в заказ-наряде.
       // Отсутствие поля равносильно true — старые записи без него не ломаются.
       if (it?.included === false) out.included = false;
+      // master у работы — переопределение мастера записи для конкретной
+      // работы (когда запись делали разные мастера); пусто = считается по
+      // мастеру всей записи. reportExcluded — работа не в сумме отчёта, но
+      // остаётся в заказ-наряде клиенту как есть (в отличие от included).
+      if (it?.master !== undefined) out.master = String(it.master || '').trim();
+      if (it?.reportExcluded !== undefined) out.reportExcluded = !!it.reportExcluded;
       return out;
     })
     .filter((it) => it.name || it.price);
@@ -322,12 +328,19 @@ function updateRepairRecord(id, data) {
   return parseRepairRecord(db.prepare('SELECT * FROM repair_records WHERE id = ?').get(id));
 }
 
-// Список мастеров для фильтра в отчёте — только непустые, без повторов.
+// Список мастеров для фильтра в отчёте — мастер записи плюс мастера,
+// переопределённые у отдельных работ (см. normalizeRepairItems), без повторов.
 function listReportMasters() {
-  return db
-    .prepare(`SELECT DISTINCT master FROM repair_records WHERE master IS NOT NULL AND master != '' ORDER BY master COLLATE NOCASE`)
-    .all()
-    .map((r) => r.master);
+  const masters = new Set();
+  for (const row of db.prepare(`SELECT master, works FROM repair_records`).all()) {
+    if (row.master) masters.add(row.master);
+    try {
+      for (const w of JSON.parse(row.works || '[]')) if (w.master) masters.add(w.master);
+    } catch {
+      // Повреждённый JSON — пропускаем эту запись, на список остальных не влияет.
+    }
+  }
+  return Array.from(masters).sort((a, b) => a.localeCompare(b, 'ru'));
 }
 
 function deleteRepairRecord(id) {
