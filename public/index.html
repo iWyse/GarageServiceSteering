@@ -596,9 +596,18 @@
         <label>Вязкость масла<input name="oil_spec" type="text" placeholder="Например: 5W-30"></label>
         <label>Артикул масла<input name="oil_article" type="text" class="mono-input"></label>
       </div>
-      <label>Артикул масляного фильтра<input name="oil_filter_article" type="text" class="mono-input"></label>
-      <label>Артикул воздушного фильтра<input name="air_filter_article" type="text" class="mono-input"></label>
-      <label>Артикул фильтра салона<input name="cabin_filter_article" type="text" class="mono-input"></label>
+      <div class="row-2">
+        <label>Фирма масляного фильтра<input name="oil_filter_brand" type="text"></label>
+        <label>Артикул масляного фильтра<input name="oil_filter_article" type="text" class="mono-input"></label>
+      </div>
+      <div class="row-2">
+        <label>Фирма воздушного фильтра<input name="air_filter_brand" type="text"></label>
+        <label>Артикул воздушного фильтра<input name="air_filter_article" type="text" class="mono-input"></label>
+      </div>
+      <div class="row-2">
+        <label>Фирма фильтра салона<input name="cabin_filter_brand" type="text"></label>
+        <label>Артикул фильтра салона<input name="cabin_filter_article" type="text" class="mono-input"></label>
+      </div>
       <label>Заметки<textarea name="notes" rows="2" class="notes-textarea" placeholder="Особенности, доп. информация…"></textarea></label>
       <div class="dialog-actions">
         <button type="button" id="deleteToArticleBtn" class="btn-danger hidden">Удалить</button>

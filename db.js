@@ -102,8 +102,11 @@ db.exec(`
     tag TEXT,
     oil_spec TEXT,              -- вязкость/спецификация масла, напр. "5W-30"
     oil_article TEXT,
+    oil_filter_brand TEXT,
     oil_filter_article TEXT,
+    air_filter_brand TEXT,
     air_filter_article TEXT,
+    cabin_filter_brand TEXT,
     cabin_filter_article TEXT,
     notes TEXT,
     created_at TEXT DEFAULT (datetime('now'))
@@ -346,5 +349,20 @@ function migrateToArticleTagColumn() {
   }
 }
 migrateToArticleTagColumn();
+
+// ---------- Миграция: фирма фильтров в ТО ----------
+function migrateToArticleFilterBrandColumns() {
+  const columns = db.prepare(`PRAGMA table_info(to_articles)`).all().map((c) => c.name);
+  if (!columns.length) return;
+  for (const col of ['oil_filter_brand', 'air_filter_brand', 'cabin_filter_brand']) {
+    if (!columns.includes(col)) {
+      db.exec(`ALTER TABLE to_articles ADD COLUMN ${col} TEXT`);
+    }
+  }
+  if (!columns.includes('oil_filter_brand')) {
+    console.log('База данных обновлена: добавлена фирма фильтров в ТО.');
+  }
+}
+migrateToArticleFilterBrandColumns();
 
 export default db;

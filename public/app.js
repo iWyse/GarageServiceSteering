@@ -322,6 +322,7 @@ function attachCarWordMask(input) {
 }
 
 document.querySelectorAll('input[name="car_make"], input[name="car_model"]').forEach(attachCarWordMask);
+document.querySelectorAll('input[name="oil_filter_brand"], input[name="air_filter_brand"], input[name="cabin_filter_brand"]').forEach(attachBrandMask);
 
 // ---------- Маска "Фирмы" (бренда запчасти) ----------
 // В отличие от марки/модели авто выше — тут кириллица разрешена (и в любом
@@ -4043,11 +4044,15 @@ document.getElementById('newToArticleBtn').addEventListener('click', () => openT
 document.getElementById('toArticleOrderBtn').addEventListener('click', () => {
   const parts = [
     { label: 'oil_article', name: `Масло${toArticleForm.elements.oil_spec.value.trim() ? ' ' + toArticleForm.elements.oil_spec.value.trim() : ''}` },
-    { label: 'oil_filter_article', name: 'Масляный фильтр' },
-    { label: 'air_filter_article', name: 'Воздушный фильтр' },
-    { label: 'cabin_filter_article', name: 'Фильтр салона' },
+    { label: 'oil_filter_article', brandLabel: 'oil_filter_brand', name: 'Масляный фильтр' },
+    { label: 'air_filter_article', brandLabel: 'air_filter_brand', name: 'Воздушный фильтр' },
+    { label: 'cabin_filter_article', brandLabel: 'cabin_filter_brand', name: 'Фильтр салона' },
   ]
-    .map(({ label, name }) => ({ name, article: toArticleForm.elements[label].value.trim() }))
+    .map(({ label, brandLabel, name }) => ({
+      name,
+      article: toArticleForm.elements[label].value.trim(),
+      brand: brandLabel ? toArticleForm.elements[brandLabel].value.trim() : '',
+    }))
     .filter((p) => p.article)
     .map((p) => ({ ...p, price: 0 }));
   if (!parts.length) {
@@ -4094,8 +4099,11 @@ toArticleForm.addEventListener('submit', async (e) => {
     tag: toArticleForm.elements.tag.value,
     oil_spec: toArticleForm.elements.oil_spec.value,
     oil_article: toArticleForm.elements.oil_article.value,
+    oil_filter_brand: toArticleForm.elements.oil_filter_brand.value,
     oil_filter_article: toArticleForm.elements.oil_filter_article.value,
+    air_filter_brand: toArticleForm.elements.air_filter_brand.value,
     air_filter_article: toArticleForm.elements.air_filter_article.value,
+    cabin_filter_brand: toArticleForm.elements.cabin_filter_brand.value,
     cabin_filter_article: toArticleForm.elements.cabin_filter_article.value,
     notes: toArticleForm.elements.notes.value,
   };
@@ -4134,6 +4142,13 @@ function toArticleCell(article) {
   return `<span class="to-article-cell"><span class="to-article-text" title="${escapeHtml(article)}">${escapeHtml(article)}</span><button type="button" class="article-copy-btn" data-article="${escapeHtml(article)}" title="Копировать артикул">${COPY_ICON_SVG}</button></span>`;
 }
 
+// Фирма фильтра — просто текстом перед артикулом (как вязкость у масла),
+// сам артикул — через toArticleCell (копирование, обрезка многоточием).
+function toFilterCell(brand, article) {
+  if (!article) return brand ? escapeHtml(brand) : '—';
+  return `${brand ? escapeHtml(brand) + ' — ' : ''}${toArticleCell(article)}`;
+}
+
 function renderToArticles() {
   const q = document.getElementById('toSearch').value.trim().toLowerCase();
   const body = document.getElementById('toArticlesBody');
@@ -4151,9 +4166,9 @@ function renderToArticles() {
       <td class="cell-name">${escapeHtml(carLine)}</td>
       <td class="cell-tag">${escapeHtml(it.tag || '—')}</td>
       <td>${oilLabel}</td>
-      <td>${toArticleCell(it.oil_filter_article)}</td>
-      <td>${toArticleCell(it.air_filter_article)}</td>
-      <td>${toArticleCell(it.cabin_filter_article)}</td>
+      <td>${toFilterCell(it.oil_filter_brand, it.oil_filter_article)}</td>
+      <td>${toFilterCell(it.air_filter_brand, it.air_filter_article)}</td>
+      <td>${toFilterCell(it.cabin_filter_brand, it.cabin_filter_article)}</td>
       <td class="edit-hint">${EDIT_ICON_SVG}</td>
     `;
     tr.querySelectorAll('.article-copy-btn').forEach((btn) => {

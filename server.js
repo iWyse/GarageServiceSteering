@@ -563,8 +563,8 @@ function listToArticles() {
 function createToArticle(data) {
   const info = db
     .prepare(
-      `INSERT INTO to_articles (car_make, car_model, tag, oil_spec, oil_article, oil_filter_article, air_filter_article, cabin_filter_article, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO to_articles (car_make, car_model, tag, oil_spec, oil_article, oil_filter_brand, oil_filter_article, air_filter_brand, air_filter_article, cabin_filter_brand, cabin_filter_article, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       (data.car_make || '').trim(),
@@ -572,8 +572,11 @@ function createToArticle(data) {
       (data.tag || '').trim(),
       (data.oil_spec || '').trim(),
       (data.oil_article || '').trim(),
+      (data.oil_filter_brand || '').trim(),
       (data.oil_filter_article || '').trim(),
+      (data.air_filter_brand || '').trim(),
       (data.air_filter_article || '').trim(),
+      (data.cabin_filter_brand || '').trim(),
       (data.cabin_filter_article || '').trim(),
       data.notes || ''
     );
@@ -583,7 +586,7 @@ function createToArticle(data) {
 function updateToArticle(id, data) {
   db.prepare(
     `UPDATE to_articles
-     SET car_make=?, car_model=?, tag=?, oil_spec=?, oil_article=?, oil_filter_article=?, air_filter_article=?, cabin_filter_article=?, notes=?
+     SET car_make=?, car_model=?, tag=?, oil_spec=?, oil_article=?, oil_filter_brand=?, oil_filter_article=?, air_filter_brand=?, air_filter_article=?, cabin_filter_brand=?, cabin_filter_article=?, notes=?
      WHERE id=?`
   ).run(
     (data.car_make || '').trim(),
@@ -591,8 +594,11 @@ function updateToArticle(id, data) {
     (data.tag || '').trim(),
     (data.oil_spec || '').trim(),
     (data.oil_article || '').trim(),
+    (data.oil_filter_brand || '').trim(),
     (data.oil_filter_article || '').trim(),
+    (data.air_filter_brand || '').trim(),
     (data.air_filter_article || '').trim(),
+    (data.cabin_filter_brand || '').trim(),
     (data.cabin_filter_article || '').trim(),
     data.notes || '',
     id
