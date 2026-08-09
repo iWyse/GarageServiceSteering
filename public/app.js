@@ -3486,12 +3486,12 @@ function renderReport(records) {
     const carLine = [r.car_make, r.car_model].filter(Boolean).join(' ');
     const dateLabel = r.date ? fmtFullDate(new Date(r.date + 'T00:00:00')) : 'Без даты';
     tr.innerHTML = `
-      <td>${escapeHtml(dateLabel)}</td>
-      <td class="cell-tag">${escapeHtml(r.client_tag || '—')}</td>
-      <td>${escapeHtml(carLine || '—')}</td>
-      <td title="${escapeHtml(masters.join(', '))}">${escapeHtml(masterLabel)}</td>
-      <td>${fmtMoney(worksSum)}</td>
-      <td>${fmtMoney(partsSum)}</td>
+      <td data-label="Дата">${escapeHtml(dateLabel)}</td>
+      <td class="cell-tag" data-label="Тег">${escapeHtml(r.client_tag || '—')}</td>
+      <td data-label="Автомобиль">${escapeHtml(carLine || '—')}</td>
+      <td data-label="Мастер" title="${escapeHtml(masters.join(', '))}">${escapeHtml(masterLabel)}</td>
+      <td data-label="Сумма работ">${fmtMoney(worksSum)}</td>
+      <td data-label="Сумма запчастей">${fmtMoney(partsSum)}</td>
       <td><button type="button" class="report-delete-btn" title="Убрать из отчёта" aria-label="Убрать из отчёта">${REPORT_DELETE_ICON_SVG}</button></td>
     `;
     const deleteBtn = tr.querySelector('.report-delete-btn');

@@ -394,6 +394,44 @@ input[type="number"]::-webkit-inner-spin-button {
 .clients-table tr:hover { background: var(--surface-2); cursor: pointer; }
 .report-total-row td { font-weight: 600; color: var(--accent); background: var(--surface-2); cursor: default; }
 .report-total-row:hover { background: var(--surface-2); cursor: default; }
+/* На узком экране 6-7 колонок таблицы отчёта физически не читаются даже с
+   горизонтальным скроллом — каждая строка (одна машина) превращается в
+   карточку: подписи колонок (data-label, см. renderReport в app.js) встают
+   перед значением вместо шапки таблицы, которая на карточках теряет смысл. */
+@media (max-width: 600px) {
+  .report-table thead { display: none; }
+  .report-table, .report-table tbody, .report-table tr, .report-table td {
+    display: block;
+    width: 100%;
+  }
+  .report-table tr {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    background: var(--surface);
+  }
+  .report-table tr:last-child { margin-bottom: 0; }
+  .report-table td {
+    padding: 4px 0;
+    border-bottom: none;
+    text-align: left;
+  }
+  .report-table td:empty { padding: 0; }
+  .report-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-family: var(--font-display);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+  /* Итоговая строка недели — то же превращение в карточку, но с колонками
+     местами: "Итого за неделю" объединяет первые 4 (colspan), суммы — свои,
+     последняя пустая ячейка (под крестик — тут её нет) схлопывается. */
+  .report-total-row td[colspan] { padding-bottom: 6px; }
+}
 /* Фиксированные % -колонки — иначе на 440+ строках реальных данных рано или
    поздно находится клиент с именем/тегом/маркой длиннее, чем помещается, и
    таблица понемногу становится шире контейнера (у auto-layout table max-width
