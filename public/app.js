@@ -3531,7 +3531,10 @@ function renderReport(records) {
       currentOrderData = order;
       // showSupplier: true — поставщик запчасти виден только в заказ-наряде,
       // открытом из вкладки «Отчёт», в остальных местах не показывается.
-      document.getElementById('orderAddToReportBtn').classList.remove('hidden');
+      // "Добавить в отчёт" тут смысла не имеет — запись и так уже в отчёте,
+      // раз её отсюда открыли.
+      document.getElementById('orderAddToReportBtn').classList.add('hidden');
+      document.getElementById('orderAddToReportPanel').classList.add('hidden');
       document.getElementById('orderAddToHistoryBtn').classList.add('hidden');
       document.getElementById('orderAddToHistoryPanel').classList.add('hidden');
       document.getElementById('orderContent').innerHTML = buildOrderHtml(order, { showSupplier: true });
