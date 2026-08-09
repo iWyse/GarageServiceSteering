@@ -1233,7 +1233,17 @@ input[type="number"]::-webkit-inner-spin-button {
   /* Заказ-наряд: шапка с кнопками остаётся на месте, скроллится только
      сам документ — так удобнее делать скриншот и не терять кнопки внизу. */
   #orderDialog .dialog { display: flex; flex-direction: column; overflow-y: hidden; }
-  #orderDialog .order-doc { flex: 1; overflow-y: auto; }
+  /* Без -webkit-overflow-scrolling на iOS скролл этой области идёт без
+     аппаратного ускорения — на реальном устройстве (напр. iPhone 12) текст
+     во время прокрутки визуально "смазывается"/наезжает сам на себя.
+     overscroll-behavior — чтобы прокрутка документа не "протекала" в скролл
+     страницы под диалогом на границе. */
+  #orderDialog .order-doc {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
   /* Нативные поля даты/времени на телефоне рисуют собственный текст
      ("13 Jul 2026"), который не сжимается вместе с колонкой — в паре 50/50
      он утыкается в край рамки. Ставим Дата/Время друг под другом на всю
