@@ -1408,12 +1408,18 @@ repairForm.addEventListener('submit', async (e) => {
   };
   try {
     if (editingRepairId) {
-      await api(`/api/repairs/${editingRepairId}`, { method: 'PUT', body: JSON.stringify(data) });
+      const updated = await api(`/api/repairs/${editingRepairId}`, { method: 'PUT', body: JSON.stringify(data) });
+      currentEditingRepairRecord = updated;
       showToast('Запись ремонта обновлена');
-      closeDialog(repairDialog);
+      // Окно остаётся открытым — сохранить и продолжить редактировать,
+      // не открывая запись заново каждый раз (как и в заказе, см. queueForm).
+      // Кроме случая с привязанной записью (запись пришла из превращения
+      // записи в расписании в клиента) — там всё ещё нужно вернуться в
+      // расписание, поэтому только тут окна закрываются.
       if (pendingApptForRepair) {
         await resolveClientForAppt(pendingApptForRepair);
         pendingApptForRepair = null;
+        closeDialog(repairDialog);
         closeDialog(apptDialog);
         await loadWeek();
       } else {
@@ -1428,9 +1434,16 @@ repairForm.addEventListener('submit', async (e) => {
       closeDialog(apptDialog);
       await loadWeek();
     } else {
-      await api(`/api/clients/${historyClientId}/repairs`, { method: 'POST', body: JSON.stringify(data) });
+      // Как и в заказе — после первого сохранения новой записи запоминаем
+      // её id и окно остаётся открытым, повторное "Сохранить" дальше уже
+      // обновляет эту же запись, а не создаёт дубликат.
+      const created = await api(`/api/clients/${historyClientId}/repairs`, { method: 'POST', body: JSON.stringify(data) });
+      editingRepairId = created.id;
+      currentEditingRepairRecord = created;
+      document.getElementById('repairDialogTitle').textContent = 'Запись ремонта';
+      deleteRepairBtn.classList.remove('hidden');
+      document.getElementById('moveRepairToQueueBtn').classList.remove('hidden');
       showToast('Запись ремонта добавлена');
-      closeDialog(repairDialog);
       await loadClientHistory(historyClientId);
     }
   } catch (err) {
