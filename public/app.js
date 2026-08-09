@@ -4003,7 +4003,9 @@ function fillToArticleClientSelect() {
     .map((c) => {
       const car = [c.car_make, c.car_model].filter(Boolean).join(' ');
       if (!car) return ''; // без машины подставлять нечего
-      return `<option value="${c.id}">${escapeHtml(c.name)} — ${escapeHtml(car)}</option>`;
+      // data-tag — тег не показываем в самом пункте списка (не захламляем),
+      // но поиск в client-picker (см. enhanceClientSelect) должен его находить.
+      return `<option value="${c.id}" data-tag="${escapeHtml(c.tag || '')}">${escapeHtml(c.name)} — ${escapeHtml(car)}</option>`;
     })
     .join('');
   sel.innerHTML = `<option value="">— ввести вручную —</option>${options}`;
@@ -4014,6 +4016,7 @@ document.getElementById('toArticleClientSelect').addEventListener('change', (e) 
   if (!client) return;
   toArticleForm.elements.car_make.value = client.car_make || '';
   toArticleForm.elements.car_model.value = client.car_model || '';
+  toArticleForm.elements.tag.value = client.tag || '';
 });
 enhanceClientSelect(document.getElementById('toArticleClientSelect'), '— ввести вручную —');
 
