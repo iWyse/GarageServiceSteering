@@ -3947,11 +3947,34 @@ const deleteToArticleBtn = document.getElementById('deleteToArticleBtn');
 let toArticles = [];
 let editingToArticleId = null;
 
+// Марка/модель можно подтянуть из уже существующего клиента вместо ручного
+// набора — сам клиент тут не сохраняется, берётся только его марка/модель.
+function fillToArticleClientSelect() {
+  const sel = document.getElementById('toArticleClientSelect');
+  const options = state.clients
+    .map((c) => {
+      const car = [c.car_make, c.car_model].filter(Boolean).join(' ');
+      if (!car) return ''; // без машины подставлять нечего
+      return `<option value="${c.id}">${escapeHtml(c.name)} — ${escapeHtml(car)}</option>`;
+    })
+    .join('');
+  sel.innerHTML = `<option value="">— ввести вручную —</option>${options}`;
+}
+
+document.getElementById('toArticleClientSelect').addEventListener('change', (e) => {
+  const client = state.clients.find((c) => c.id === Number(e.target.value));
+  if (!client) return;
+  toArticleForm.elements.car_make.value = client.car_make || '';
+  toArticleForm.elements.car_model.value = client.car_model || '';
+});
+enhanceClientSelect(document.getElementById('toArticleClientSelect'), '— ввести вручную —');
+
 function openToArticleDialog(item) {
   editingToArticleId = item ? item.id : null;
   document.getElementById('toArticleDialogTitle').textContent = item ? 'Марка / модель' : 'Новая машина';
   deleteToArticleBtn.classList.toggle('hidden', !item);
   toArticleForm.reset();
+  fillToArticleClientSelect();
   if (item) {
     for (const [k, v] of Object.entries(item)) {
       if (toArticleForm.elements[k]) toArticleForm.elements[k].value = v || '';
