@@ -99,6 +99,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     car_make TEXT NOT NULL,
     car_model TEXT,
+    tag TEXT,
     oil_spec TEXT,              -- вязкость/спецификация масла, напр. "5W-30"
     oil_article TEXT,
     oil_filter_article TEXT,
@@ -335,5 +336,15 @@ function migrateRepairReportHiddenColumn() {
   }
 }
 migrateRepairReportHiddenColumn();
+
+// ---------- Миграция: тег в ТО ----------
+function migrateToArticleTagColumn() {
+  const columns = db.prepare(`PRAGMA table_info(to_articles)`).all().map((c) => c.name);
+  if (columns.length && !columns.includes('tag')) {
+    db.exec(`ALTER TABLE to_articles ADD COLUMN tag TEXT`);
+    console.log('База данных обновлена: добавлен тег в ТО.');
+  }
+}
+migrateToArticleTagColumn();
 
 export default db;

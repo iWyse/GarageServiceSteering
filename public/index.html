@@ -196,7 +196,7 @@
   <!-- ===== TO VIEW (артикулы масла/фильтров по марке/модели авто) ===== -->
   <section id="view-to" class="view">
     <div class="clients-toolbar">
-      <input id="toSearch" type="text" inputmode="search" enterkeyhint="done" placeholder="Поиск: марка, модель…" class="search-input">
+      <input id="toSearch" type="text" inputmode="search" enterkeyhint="done" placeholder="Поиск: марка, модель, тег…" class="search-input">
       <button id="newToArticleBtn" class="btn-primary">+ Добавить машину</button>
     </div>
 
@@ -205,6 +205,7 @@
         <thead>
           <tr>
             <th>Марка / модель</th>
+            <th>Тег</th>
             <th>Масло</th>
             <th>Масляный фильтр</th>
             <th>Воздушный фильтр</th>
@@ -582,6 +583,7 @@
       </button>
     </div>
     <form id="toArticleForm">
+      <button type="button" id="toArticleOrderBtn" class="btn-ghost">Заказ-наряд</button>
       <label>Марка/модель из базы клиентов
         <select id="toArticleClientSelect"><option value="">— ввести вручную —</option></select>
       </label>
@@ -589,6 +591,7 @@
         <label><span>Марка <span class="req">*</span></span><input required name="car_make" type="text"></label>
         <label>Модель<input name="car_model" type="text"></label>
       </div>
+      <label>Тег<input name="tag" type="text" placeholder="Например: постоянный клиент, такси…"></label>
       <div class="row-2">
         <label>Вязкость масла<input name="oil_spec" type="text" placeholder="Например: 5W-30"></label>
         <label>Артикул масла<input name="oil_article" type="text" class="mono-input"></label>

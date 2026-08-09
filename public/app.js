@@ -1654,6 +1654,7 @@ document.getElementById('sendToClientBtn').addEventListener('click', () => {
     parts: restoreUnexposedPartFields(collectRepairRows(partsRowsEl), currentEditingRepairRecord?.parts),
     master: repairForm.elements.master.value,
   };
+  document.getElementById('orderAddToReportBtn').classList.remove('hidden');
   document.getElementById('orderContent').innerHTML = buildOrderHtml(order);
   openDialog(orderDialog);
 });
@@ -2482,6 +2483,7 @@ document.getElementById('queueOrderBtn').addEventListener('click', () => {
     works,
     parts,
   };
+  document.getElementById('orderAddToReportBtn').classList.remove('hidden');
   document.getElementById('orderContent').innerHTML = buildOrderHtml(order);
   openDialog(orderDialog);
 });
@@ -3485,6 +3487,7 @@ function renderReport(records) {
       currentOrderData = order;
       // showSupplier: true — поставщик запчасти виден только в заказ-наряде,
       // открытом из вкладки «Отчёт», в остальных местах не показывается.
+      document.getElementById('orderAddToReportBtn').classList.remove('hidden');
       document.getElementById('orderContent').innerHTML = buildOrderHtml(order, { showSupplier: true });
       openDialog(orderDialog);
     });
@@ -3985,11 +3988,55 @@ function openToArticleDialog(item) {
 
 document.getElementById('newToArticleBtn').addEventListener('click', () => openToArticleDialog(null));
 
+// Быстрый заказ-наряд прямо из карточки ТО — без клиента, просто список
+// артикулов этой марки/модели (масло + фильтры) для печати/отправки, чтобы
+// не переносить их вручную в новую смету. Строится из текущих полей формы
+// (можно сформировать даже ещё не сохранив карточку).
+document.getElementById('toArticleOrderBtn').addEventListener('click', () => {
+  const parts = [
+    { label: 'oil_article', name: `Масло${toArticleForm.elements.oil_spec.value.trim() ? ' ' + toArticleForm.elements.oil_spec.value.trim() : ''}` },
+    { label: 'oil_filter_article', name: 'Масляный фильтр' },
+    { label: 'air_filter_article', name: 'Воздушный фильтр' },
+    { label: 'cabin_filter_article', name: 'Фильтр салона' },
+  ]
+    .map(({ label, name }) => ({ name, article: toArticleForm.elements[label].value.trim() }))
+    .filter((p) => p.article)
+    .map((p) => ({ ...p, price: 0 }));
+  if (!parts.length) {
+    showToast('Заполните хотя бы один артикул', true);
+    return;
+  }
+  const order = {
+    clientName: '',
+    carLine: [toArticleForm.elements.car_make.value, toArticleForm.elements.car_model.value].filter(Boolean).join(' '),
+    mileage: null,
+    partsEta: '',
+    title: 'ТО',
+    date: '',
+    notes: toArticleForm.elements.notes.value,
+    works: [],
+    parts,
+    worksSum: 0,
+    partsSum: 0,
+    advance: 0,
+    total: 0,
+  };
+  currentOrderData = order;
+  currentOrderContext = 'to';
+  currentOrderIsReportView = false;
+  // "Добавить в отчёт" тут не при делах — заказ-наряд не привязан ни к
+  // клиенту, ни к записи ремонта, сохранять в отчёт нечего.
+  document.getElementById('orderAddToReportBtn').classList.add('hidden');
+  document.getElementById('orderContent').innerHTML = buildOrderHtml(order);
+  openDialog(orderDialog);
+});
+
 toArticleForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const data = {
     car_make: toArticleForm.elements.car_make.value,
     car_model: toArticleForm.elements.car_model.value,
+    tag: toArticleForm.elements.tag.value,
     oil_spec: toArticleForm.elements.oil_spec.value,
     oil_article: toArticleForm.elements.oil_article.value,
     oil_filter_article: toArticleForm.elements.oil_filter_article.value,
@@ -4036,7 +4083,7 @@ function renderToArticles() {
   const q = document.getElementById('toSearch').value.trim().toLowerCase();
   const body = document.getElementById('toArticlesBody');
   const filtered = q
-    ? toArticles.filter((it) => [it.car_make, it.car_model].filter(Boolean).join(' ').toLowerCase().includes(q))
+    ? toArticles.filter((it) => [it.car_make, it.car_model, it.tag].filter(Boolean).join(' ').toLowerCase().includes(q))
     : toArticles;
   body.innerHTML = '';
   document.getElementById('toArticlesEmpty').classList.toggle('hidden', toArticles.length !== 0);
@@ -4047,6 +4094,7 @@ function renderToArticles() {
     const oilLabel = it.oil_article ? `${it.oil_spec ? escapeHtml(it.oil_spec) + ' — ' : ''}${toArticleCell(it.oil_article)}` : (it.oil_spec ? escapeHtml(it.oil_spec) : '—');
     tr.innerHTML = `
       <td class="cell-name">${escapeHtml(carLine)}</td>
+      <td class="cell-tag">${escapeHtml(it.tag || '—')}</td>
       <td>${oilLabel}</td>
       <td>${toArticleCell(it.oil_filter_article)}</td>
       <td>${toArticleCell(it.air_filter_article)}</td>
