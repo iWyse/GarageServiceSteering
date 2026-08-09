@@ -89,6 +89,7 @@
     <button class="tab" data-tab="clients" role="tab" aria-selected="false">Клиенты</button>
     <button class="tab tab-with-badge" data-tab="queue" role="tab" aria-selected="false">Заказы<span id="queueBadge" class="tab-badge tab-badge-count hidden">0</span></button>
     <button class="tab" data-tab="consumables" role="tab" aria-selected="false">Расходники</button>
+    <button class="tab" data-tab="to" role="tab" aria-selected="false">ТО</button>
     <button class="tab tab-with-badge" data-tab="requests" role="tab" aria-selected="false">Заявки<span id="requestsBadge" class="tab-badge hidden">0</span></button>
     <button class="tab tab-with-badge" data-tab="notes" role="tab" aria-selected="false">Заметки<span id="notesBadge" class="tab-badge tab-badge-count hidden">0</span></button>
     <button class="tab" data-tab="report" role="tab" aria-selected="false">Отчёт</button>
@@ -190,6 +191,31 @@
 
     <div id="consumablesList" class="consumables-list"></div>
     <p id="consumablesEmpty" class="empty-state hidden">Пока нет ни одного раздела расходников. Начните с кнопки «+ Раздел» выше.</p>
+  </section>
+
+  <!-- ===== TO VIEW (артикулы масла/фильтров по марке/модели авто) ===== -->
+  <section id="view-to" class="view">
+    <div class="clients-toolbar">
+      <input id="toSearch" type="text" inputmode="search" enterkeyhint="done" placeholder="Поиск: марка, модель…" class="search-input">
+      <button id="newToArticleBtn" class="btn-primary">+ Добавить машину</button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="clients-table to-articles-table">
+        <thead>
+          <tr>
+            <th>Марка / модель</th>
+            <th>Масло</th>
+            <th>Масляный фильтр</th>
+            <th>Воздушный фильтр</th>
+            <th>Фильтр салона</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="toArticlesBody"><!-- rows injected by JS --></tbody>
+      </table>
+    </div>
+    <p id="toArticlesEmpty" class="empty-state hidden">Пока нет ни одной марки. Добавьте первую — кнопка выше.</p>
   </section>
 
   <!-- ===== REQUESTS VIEW (заявки от клиентов) ===== -->
@@ -534,6 +560,42 @@
       <label>Заметки<textarea name="notes" rows="2" class="notes-textarea" placeholder="Поставщик, периодичность заказа…"></textarea></label>
       <div class="dialog-actions">
         <button type="button" id="deleteConsumableBtn" class="btn-danger hidden">Удалить</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
+        <button type="submit" class="btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== TO article dialog ===== -->
+<div id="toArticleDialog" class="dialog-overlay hidden">
+  <div class="dialog">
+    <div class="dialog-header">
+      <h2 id="toArticleDialogTitle">Новая машина</h2>
+      <button type="button" class="btn-ghost icon-btn" data-close-dialog title="Закрыть" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <form id="toArticleForm">
+      <div class="row-2">
+        <label><span>Марка <span class="req">*</span></span><input required name="car_make" type="text"></label>
+        <label>Модель<input name="car_model" type="text"></label>
+      </div>
+      <div class="row-2">
+        <label>Вязкость масла<input name="oil_spec" type="text" placeholder="Например: 5W-30"></label>
+        <label>Артикул масла<input name="oil_article" type="text" class="mono-input"></label>
+      </div>
+      <label>Артикул масляного фильтра<input name="oil_filter_article" type="text" class="mono-input"></label>
+      <label>Артикул воздушного фильтра<input name="air_filter_article" type="text" class="mono-input"></label>
+      <label>Артикул фильтра салона<input name="cabin_filter_article" type="text" class="mono-input"></label>
+      <label>Заметки<textarea name="notes" rows="2" class="notes-textarea" placeholder="Особенности, доп. информация…"></textarea></label>
+      <div class="dialog-actions">
+        <button type="button" id="deleteToArticleBtn" class="btn-danger hidden">Удалить</button>
         <div class="spacer"></div>
         <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
         <button type="submit" class="btn-primary">Сохранить</button>

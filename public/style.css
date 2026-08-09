@@ -418,6 +418,21 @@ input[type="number"]::-webkit-inner-spin-button {
   text-overflow: ellipsis;
 }
 .cell-name { font-weight: 600; }
+/* Таблица ТО — те же уроки, что и у таблицы клиентов выше: сразу fixed-layout
+   с процентными колонками, чтобы длинный артикул не раздвигал таблицу. */
+.to-articles-table { table-layout: fixed; }
+.to-articles-table th:nth-child(1), .to-articles-table td:nth-child(1) { width: 20%; } /* Марка/модель */
+.to-articles-table th:nth-child(2), .to-articles-table td:nth-child(2) { width: 22%; } /* Масло */
+.to-articles-table th:nth-child(3), .to-articles-table td:nth-child(3) { width: 18%; } /* Масляный фильтр */
+.to-articles-table th:nth-child(4), .to-articles-table td:nth-child(4) { width: 18%; } /* Воздушный фильтр */
+.to-articles-table th:nth-child(5), .to-articles-table td:nth-child(5) { width: 18%; } /* Фильтр салона */
+.to-articles-table th:nth-child(6), .to-articles-table td:nth-child(6) { width: 4%; }  /* иконка карандаша */
+.to-articles-table td { font-size: 14px; }
+/* Текст артикула + кнопка копирования — как VIN в таблице клиентов: обрезаем
+   многоточием только сам текст (min-width:0 у flex — иначе не сжимается),
+   кнопка копирования всегда на месте и копирует значение из данных. */
+.to-article-cell { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-width: 0; font-family: var(--font-mono); }
+.to-article-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .cell-plate {
   font-family: var(--font-mono);
   font-size: 14px;

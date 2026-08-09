@@ -3940,6 +3940,119 @@ async function loadNotes() {
   });
 }
 
+// ---------- ТО: артикулы масла/фильтров по марке/модели авто ----------
+const toArticleDialog = document.getElementById('toArticleDialog');
+const toArticleForm = document.getElementById('toArticleForm');
+const deleteToArticleBtn = document.getElementById('deleteToArticleBtn');
+let toArticles = [];
+let editingToArticleId = null;
+
+function openToArticleDialog(item) {
+  editingToArticleId = item ? item.id : null;
+  document.getElementById('toArticleDialogTitle').textContent = item ? 'Марка / модель' : 'Новая машина';
+  deleteToArticleBtn.classList.toggle('hidden', !item);
+  toArticleForm.reset();
+  if (item) {
+    for (const [k, v] of Object.entries(item)) {
+      if (toArticleForm.elements[k]) toArticleForm.elements[k].value = v || '';
+    }
+  }
+  openDialog(toArticleDialog);
+}
+
+document.getElementById('newToArticleBtn').addEventListener('click', () => openToArticleDialog(null));
+
+toArticleForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = {
+    car_make: toArticleForm.elements.car_make.value,
+    car_model: toArticleForm.elements.car_model.value,
+    oil_spec: toArticleForm.elements.oil_spec.value,
+    oil_article: toArticleForm.elements.oil_article.value,
+    oil_filter_article: toArticleForm.elements.oil_filter_article.value,
+    air_filter_article: toArticleForm.elements.air_filter_article.value,
+    cabin_filter_article: toArticleForm.elements.cabin_filter_article.value,
+    notes: toArticleForm.elements.notes.value,
+  };
+  try {
+    if (editingToArticleId) {
+      await api(`/api/to-articles/${editingToArticleId}`, { method: 'PUT', body: JSON.stringify(data) });
+      showToast('Изменения сохранены');
+    } else {
+      await api('/api/to-articles', { method: 'POST', body: JSON.stringify(data) });
+      showToast('Машина добавлена');
+    }
+    closeDialog(toArticleDialog);
+    await loadToArticles();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+deleteToArticleBtn.addEventListener('click', async () => {
+  if (!editingToArticleId) return;
+  if (!(await showConfirm('Удалить эту марку/модель из ТО?'))) return;
+  try {
+    await api(`/api/to-articles/${editingToArticleId}`, { method: 'DELETE' });
+    showToast('Удалено');
+    closeDialog(toArticleDialog);
+    await loadToArticles();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+// Артикул в отдельном span с кнопкой копирования — тот же приём, что и у
+// расходников/VIN: клик по кнопке не должен открывать диалог редактирования.
+function toArticleCell(article) {
+  if (!article) return '—';
+  return `<span class="to-article-cell"><span class="to-article-text" title="${escapeHtml(article)}">${escapeHtml(article)}</span><button type="button" class="article-copy-btn" data-article="${escapeHtml(article)}" title="Копировать артикул">${COPY_ICON_SVG}</button></span>`;
+}
+
+function renderToArticles() {
+  const q = document.getElementById('toSearch').value.trim().toLowerCase();
+  const body = document.getElementById('toArticlesBody');
+  const filtered = q
+    ? toArticles.filter((it) => [it.car_make, it.car_model].filter(Boolean).join(' ').toLowerCase().includes(q))
+    : toArticles;
+  body.innerHTML = '';
+  document.getElementById('toArticlesEmpty').classList.toggle('hidden', toArticles.length !== 0);
+
+  filtered.forEach((it) => {
+    const tr = document.createElement('tr');
+    const carLine = [it.car_make, it.car_model].filter(Boolean).join(' ');
+    const oilLabel = it.oil_article ? `${it.oil_spec ? escapeHtml(it.oil_spec) + ' — ' : ''}${toArticleCell(it.oil_article)}` : (it.oil_spec ? escapeHtml(it.oil_spec) : '—');
+    tr.innerHTML = `
+      <td class="cell-name">${escapeHtml(carLine)}</td>
+      <td>${oilLabel}</td>
+      <td>${toArticleCell(it.oil_filter_article)}</td>
+      <td>${toArticleCell(it.air_filter_article)}</td>
+      <td>${toArticleCell(it.cabin_filter_article)}</td>
+      <td class="edit-hint">${EDIT_ICON_SVG}</td>
+    `;
+    tr.querySelectorAll('.article-copy-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        copyArticleToClipboard(btn.dataset.article);
+      });
+    });
+    tr.addEventListener('click', () => openToArticleDialog(it));
+    body.appendChild(tr);
+  });
+}
+
+document.getElementById('toSearch').addEventListener('input', renderToArticles);
+
+async function loadToArticles() {
+  try {
+    toArticles = await api('/api/to-articles');
+  } catch (err) {
+    showToast('Не удалось загрузить ТО: ' + err.message, true);
+    return;
+  }
+  renderToArticles();
+}
+
 // ---------- Init ----------
 async function bootApp() {
   try {
@@ -3947,6 +4060,7 @@ async function bootApp() {
     await loadWeek();
     await loadQueue();
     await loadConsumables();
+    await loadToArticles();
     await loadRequests();
     await loadNotes();
   } catch (err) {

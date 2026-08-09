@@ -555,6 +555,53 @@ function deleteConsumable(id) {
   db.prepare('DELETE FROM consumables WHERE id = ?').run(id);
 }
 
+// ---------- ТО: артикулы масла/фильтров по марке/модели авто ----------
+function listToArticles() {
+  return db.prepare('SELECT * FROM to_articles ORDER BY car_make COLLATE NOCASE, car_model COLLATE NOCASE').all();
+}
+
+function createToArticle(data) {
+  const info = db
+    .prepare(
+      `INSERT INTO to_articles (car_make, car_model, oil_spec, oil_article, oil_filter_article, air_filter_article, cabin_filter_article, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(
+      (data.car_make || '').trim(),
+      (data.car_model || '').trim(),
+      (data.oil_spec || '').trim(),
+      (data.oil_article || '').trim(),
+      (data.oil_filter_article || '').trim(),
+      (data.air_filter_article || '').trim(),
+      (data.cabin_filter_article || '').trim(),
+      data.notes || ''
+    );
+  return db.prepare('SELECT * FROM to_articles WHERE id = ?').get(info.lastInsertRowid);
+}
+
+function updateToArticle(id, data) {
+  db.prepare(
+    `UPDATE to_articles
+     SET car_make=?, car_model=?, oil_spec=?, oil_article=?, oil_filter_article=?, air_filter_article=?, cabin_filter_article=?, notes=?
+     WHERE id=?`
+  ).run(
+    (data.car_make || '').trim(),
+    (data.car_model || '').trim(),
+    (data.oil_spec || '').trim(),
+    (data.oil_article || '').trim(),
+    (data.oil_filter_article || '').trim(),
+    (data.air_filter_article || '').trim(),
+    (data.cabin_filter_article || '').trim(),
+    data.notes || '',
+    id
+  );
+  return db.prepare('SELECT * FROM to_articles WHERE id = ?').get(id);
+}
+
+function deleteToArticle(id) {
+  db.prepare('DELETE FROM to_articles WHERE id = ?').run(id);
+}
+
 // ---------- Client portal (кабинет клиента) ----------
 function getClientProfile(vin) {
   const matched = db.prepare('SELECT * FROM clients WHERE UPPER(vin) = ?').all(vin);
@@ -1110,6 +1157,26 @@ const server = http.createServer(async (req, res) => {
     }
     if (m && req.method === 'DELETE') {
       deleteConsumable(Number(m[1]));
+      return sendJSON(res, 200, { ok: true });
+    }
+
+    // ТО — артикулы масла/фильтров по марке/модели авто
+    if (pathname === '/api/to-articles' && req.method === 'GET') {
+      return sendJSON(res, 200, listToArticles());
+    }
+    if (pathname === '/api/to-articles' && req.method === 'POST') {
+      const body = await readBody(req);
+      if (!body.car_make || !body.car_make.trim()) return sendJSON(res, 400, { error: 'Марка обязательна' });
+      return sendJSON(res, 201, createToArticle(body));
+    }
+    m = pathname.match(/^\/api\/to-articles\/(\d+)$/);
+    if (m && req.method === 'PUT') {
+      const body = await readBody(req);
+      if (!body.car_make || !body.car_make.trim()) return sendJSON(res, 400, { error: 'Марка обязательна' });
+      return sendJSON(res, 200, updateToArticle(Number(m[1]), body));
+    }
+    if (m && req.method === 'DELETE') {
+      deleteToArticle(Number(m[1]));
       return sendJSON(res, 200, { ok: true });
     }
 

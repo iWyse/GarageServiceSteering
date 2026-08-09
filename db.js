@@ -93,6 +93,21 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
+  -- Вкладка «ТО» — артикулы масла и фильтров по каждой марке/модели авто
+  -- (у разных машин разные артикулы), см. вкладку «ТО».
+  CREATE TABLE IF NOT EXISTS to_articles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    car_make TEXT NOT NULL,
+    car_model TEXT,
+    oil_spec TEXT,              -- вязкость/спецификация масла, напр. "5W-30"
+    oil_article TEXT,
+    oil_filter_article TEXT,
+    air_filter_article TEXT,
+    cabin_filter_article TEXT,
+    notes TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   -- Данные о машине, которые клиент вносит сам в своём кабинете (вход по VIN).
   -- Хранится отдельно от clients — так правки клиента никогда не затирают
   -- карточку клиента, которую ведёт админ, а один и тот же VIN может встречаться
