@@ -1157,6 +1157,8 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
     masterInput.className = 'row-master';
     masterInput.placeholder = 'Мастер (если другой)';
     masterInput.tabIndex = -1;
+    masterInput.autocomplete = 'off';
+    masterInput.setAttribute('list', 'mastersDatalist');
     masterInput.value = item?.master || '';
 
     // Кнопка-переключатель, а не чекбокс — так же, как "На складе?" у запчасти
@@ -1256,6 +1258,7 @@ function openRepairDialog(record) {
   deleteRepairBtn.classList.toggle('hidden', !record);
   document.getElementById('moveRepairToQueueBtn').classList.toggle('hidden', !record);
   repairForm.reset();
+  loadMastersDatalist();
 
   worksRowsEl.innerHTML = '';
   partsRowsEl.innerHTML = '';
@@ -3346,6 +3349,20 @@ async function loadReportMasters() {
   sel.innerHTML =
     '<option value="">Все мастера</option>' + masters.map((m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
   if (masters.includes(current)) sel.value = current;
+}
+
+// Список мастеров для полей ввода "Мастер" в записи ремонта (сама запись и
+// каждая работа отдельно, см. openRepairDialog/createRepairRow) — datalist,
+// а не строгий select, чтобы можно было и выбрать существующего мастера
+// кликом, и вписать нового, если такого ещё не было.
+async function loadMastersDatalist() {
+  let masters;
+  try {
+    masters = await api('/api/reports/masters');
+  } catch (err) {
+    return; // необязательные подсказки — если не загрузились, поле остаётся обычным текстовым
+  }
+  document.getElementById('mastersDatalist').innerHTML = masters.map((m) => `<option value="${escapeHtml(m)}"></option>`).join('');
 }
 
 document.getElementById('reportMasterFilter').addEventListener('change', (e) => {

@@ -667,7 +667,8 @@
       <label>Заголовок<input name="title" type="text" placeholder="Например: ТО-1, ремонт рулевой рейки…"></label>
       <label>Дата<input name="date" type="date"></label>
       <label>Пробег, км<input name="mileage" type="number" min="0" step="1" placeholder="Например: 85000" class="mono-input"></label>
-      <label>Мастер<input name="master" type="text" placeholder="Кто выполнял работу"><span class="field-hint">Виден только во вкладке «Отчёт», клиенту не показывается</span></label>
+      <label>Мастер<input name="master" type="text" list="mastersDatalist" placeholder="Кто выполнял работу" autocomplete="off"><span class="field-hint">Виден только во вкладке «Отчёт», клиенту не показывается</span></label>
+      <datalist id="mastersDatalist"></datalist>
 
       <div class="repair-section">
         <div class="repair-section-head">
