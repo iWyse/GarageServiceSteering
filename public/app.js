@@ -1655,6 +1655,8 @@ document.getElementById('sendToClientBtn').addEventListener('click', () => {
     master: repairForm.elements.master.value,
   };
   document.getElementById('orderAddToReportBtn').classList.remove('hidden');
+  document.getElementById('orderAddToHistoryBtn').classList.add('hidden');
+  document.getElementById('orderAddToHistoryPanel').classList.add('hidden');
   document.getElementById('orderContent').innerHTML = buildOrderHtml(order);
   openDialog(orderDialog);
 });
@@ -2484,6 +2486,8 @@ document.getElementById('queueOrderBtn').addEventListener('click', () => {
     parts,
   };
   document.getElementById('orderAddToReportBtn').classList.remove('hidden');
+  document.getElementById('orderAddToHistoryBtn').classList.add('hidden');
+  document.getElementById('orderAddToHistoryPanel').classList.add('hidden');
   document.getElementById('orderContent').innerHTML = buildOrderHtml(order);
   openDialog(orderDialog);
 });
@@ -2499,6 +2503,45 @@ document.getElementById('queueOrderBtn').addEventListener('click', () => {
 // недели, из-за чего реальная дата ремонта терялась).
 document.getElementById('orderAddToReportBtn').addEventListener('click', () => {
   document.getElementById('orderAddToReportPanel').classList.toggle('hidden');
+});
+
+// ---------- "Добавить в историю клиента" (см. вкладку «ТО») ----------
+// Заказ-наряд из ТО не привязан ни к клиенту, ни к записи ремонта (см.
+// toArticleOrderBtn) — тут нужно сначала выбрать, кому именно эта замена
+// масла/фильтров засчитывается, прежде чем сохранять.
+function fillOrderHistoryClientSelect() {
+  const sel = document.getElementById('orderHistoryClientSelect');
+  const options = state.clients
+    .map((c) => {
+      const car = [c.car_make, c.car_model].filter(Boolean).join(' ');
+      return `<option value="${c.id}" data-tag="${escapeHtml(c.tag || '')}">${escapeHtml(c.name)}${car ? ' — ' + escapeHtml(car) : ''}</option>`;
+    })
+    .join('');
+  sel.innerHTML = `<option value="">— выберите клиента —</option>${options}`;
+}
+enhanceClientSelect(document.getElementById('orderHistoryClientSelect'), '— выберите клиента —');
+
+document.getElementById('orderAddToHistoryBtn').addEventListener('click', () => {
+  document.getElementById('orderAddToHistoryPanel').classList.toggle('hidden');
+});
+
+document.getElementById('orderAddToHistoryConfirmBtn').addEventListener('click', async () => {
+  const clientId = Number(document.getElementById('orderHistoryClientSelect').value);
+  const date = document.getElementById('orderHistoryDateInput').value;
+  if (!clientId) { showToast('Выберите клиента', true); return; }
+  if (!date) { showToast('Выберите дату', true); return; }
+  try {
+    await api(`/api/clients/${clientId}/repairs`, {
+      method: 'POST',
+      body: JSON.stringify({ title: 'ТО-Замена масла ДВС', date, works: [], parts: currentOrderData.parts }),
+    });
+    showToast('Добавлено в историю клиента');
+    document.getElementById('orderAddToHistoryPanel').classList.add('hidden');
+    document.getElementById('orderHistoryClientSelect').value = '';
+    document.getElementById('orderHistoryDateInput').value = '';
+  } catch (err) {
+    showToast(err.message, true);
+  }
 });
 
 document.getElementById('orderAddToReportConfirmBtn').addEventListener('click', async () => {
@@ -3488,6 +3531,8 @@ function renderReport(records) {
       // showSupplier: true — поставщик запчасти виден только в заказ-наряде,
       // открытом из вкладки «Отчёт», в остальных местах не показывается.
       document.getElementById('orderAddToReportBtn').classList.remove('hidden');
+      document.getElementById('orderAddToHistoryBtn').classList.add('hidden');
+      document.getElementById('orderAddToHistoryPanel').classList.add('hidden');
       document.getElementById('orderContent').innerHTML = buildOrderHtml(order, { showSupplier: true });
       openDialog(orderDialog);
     });
@@ -4025,8 +4070,15 @@ document.getElementById('toArticleOrderBtn').addEventListener('click', () => {
   currentOrderContext = 'to';
   currentOrderIsReportView = false;
   // "Добавить в отчёт" тут не при делах — заказ-наряд не привязан ни к
-  // клиенту, ни к записи ремонта, сохранять в отчёт нечего.
+  // клиенту, ни к записи ремонта, сохранять в отчёт нечего. Вместо неё —
+  // "Добавить в историю клиента": там выбирается, кому именно засчитать.
   document.getElementById('orderAddToReportBtn').classList.add('hidden');
+  document.getElementById('orderAddToReportPanel').classList.add('hidden');
+  document.getElementById('orderAddToHistoryBtn').classList.remove('hidden');
+  document.getElementById('orderAddToHistoryPanel').classList.add('hidden');
+  fillOrderHistoryClientSelect();
+  document.getElementById('orderHistoryClientSelect').value = '';
+  document.getElementById('orderHistoryDateInput').value = '';
   document.getElementById('orderContent').innerHTML = buildOrderHtml(order);
   openDialog(orderDialog);
 });

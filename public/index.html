@@ -824,6 +824,16 @@
         <label>Дата<input type="date" id="orderReportDateInput"></label>
         <button type="button" id="orderAddToReportConfirmBtn" class="btn-primary btn-block">Подтвердить</button>
       </div>
+      <!-- Только для заказ-наряда из ТО (см. toArticleOrderBtn) — привязывать
+           не к чему заранее, клиента нужно выбрать здесь. -->
+      <button type="button" id="orderAddToHistoryBtn" class="btn-ghost btn-block hidden">Добавить в историю клиента</button>
+      <div id="orderAddToHistoryPanel" class="order-add-to-report hidden">
+        <label>Клиент
+          <select id="orderHistoryClientSelect"><option value="">— выберите клиента —</option></select>
+        </label>
+        <label>Дата<input type="date" id="orderHistoryDateInput"></label>
+        <button type="button" id="orderAddToHistoryConfirmBtn" class="btn-primary btn-block">Подтвердить</button>
+      </div>
     </div>
   </div>
 </div>
