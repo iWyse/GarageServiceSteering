@@ -291,6 +291,14 @@ function listRepairRecordsByDateRange(start, end) {
     .map(parseRepairRecord);
 }
 
+// Список клиентов по умолчанию сортируется по дате редактирования — правка
+// истории ремонта (создание/изменение/удаление записи) тоже должна её
+// двигать, иначе "недавно отредактированные" не показывают то, что реально
+// недавно трогали, если правка была не в самой карточке клиента.
+function touchClientUpdatedAt(clientId) {
+  db.prepare(`UPDATE clients SET updated_at = datetime('now') WHERE id = ?`).run(clientId);
+}
+
 function createRepairRecord(clientId, data) {
   const info = db
     .prepare(
@@ -308,6 +316,7 @@ function createRepairRecord(clientId, data) {
       data.notes || '',
       (data.master || '').trim()
     );
+  touchClientUpdatedAt(clientId);
   return parseRepairRecord(db.prepare('SELECT * FROM repair_records WHERE id = ?').get(info.lastInsertRowid));
 }
 
@@ -325,7 +334,9 @@ function updateRepairRecord(id, data) {
     data.report_hidden ? 1 : 0,
     id
   );
-  return parseRepairRecord(db.prepare('SELECT * FROM repair_records WHERE id = ?').get(id));
+  const row = db.prepare('SELECT * FROM repair_records WHERE id = ?').get(id);
+  if (row) touchClientUpdatedAt(row.client_id);
+  return parseRepairRecord(row);
 }
 
 // Список мастеров для фильтра в отчёте — мастер записи плюс мастера,
@@ -344,7 +355,9 @@ function listReportMasters() {
 }
 
 function deleteRepairRecord(id) {
+  const row = db.prepare('SELECT client_id FROM repair_records WHERE id = ?').get(id);
   db.prepare('DELETE FROM repair_records WHERE id = ?').run(id);
+  if (row) touchClientUpdatedAt(row.client_id);
 }
 
 // ---------- Queue (клиенты в очереди на запчасти) ----------
