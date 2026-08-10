@@ -1225,11 +1225,19 @@ input[type="number"]::-webkit-inner-spin-button {
    компактным попапом. */
 @media (max-width: 600px) {
   .dialog-overlay { padding: 0; }
+  /* height:100vh на мобильных браузерах считается по МАКСИМАЛЬНОЙ высоте
+     окна (когда адресная строка/панели браузера свёрнуты) — пока они видны
+     (обычный случай, см. скриншот с реального устройства), фактическая
+     видимая область меньше, и верх/низ диалога уезжают под эти панели.
+     100dvh перекрывает 100vh там, где поддерживается (тот же приём, что
+     уже используется в #loginOverlay ниже) и всегда считается по реально
+     видимой области. */
   .dialog-overlay .dialog {
     max-width: none;
     max-height: none;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     border-radius: 0;
     overflow-y: auto;
   }
@@ -1504,6 +1512,7 @@ input[type="number"]::-webkit-inner-spin-button {
     inset: 0;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     justify-self: stretch;
     align-self: stretch;
     flex-direction: column;
