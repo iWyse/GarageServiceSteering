@@ -1274,6 +1274,7 @@ function openRepairDialog(record) {
   repairForm.elements.mileage.value = record && record.mileage ? record.mileage : '';
   repairForm.elements.notes.value = record ? (record.notes || '') : '';
   repairForm.elements.master.value = record ? (record.master || '') : '';
+  repairForm.elements.parts_eta.value = record ? (record.parts_eta || '') : '';
   autoResizeTextarea(repairForm.elements.notes);
 
   advanceEnabled = !!(record && Number(record.advance) > 0);
@@ -1395,9 +1396,7 @@ repairForm.addEventListener('submit', async (e) => {
     date: repairForm.elements.date.value,
     mileage: repairForm.elements.mileage.value,
     notes: repairForm.elements.notes.value,
-    // Поля в форме нет (срок поставки актуален только для заказов, см. queueForm) —
-    // сохраняем как было в записи, а не затираем пустым, если запись пришла из заказа.
-    parts_eta: currentEditingRepairRecord?.parts_eta || '',
+    parts_eta: repairForm.elements.parts_eta.value,
     advance: advanceEnabled ? (Number(document.getElementById('advanceAmountInput').value) || 0) : 0,
     works: collectRepairRows(worksRowsEl),
     parts: collectRepairRows(partsRowsEl),
@@ -1493,6 +1492,7 @@ document.getElementById('moveRepairToQueueBtn').addEventListener('click', async 
         date: repairForm.elements.date.value,
         mileage: repairForm.elements.mileage.value,
         notes: repairForm.elements.notes.value,
+        parts_eta: repairForm.elements.parts_eta.value,
         advance: advanceEnabled ? (Number(document.getElementById('advanceAmountInput').value) || 0) : 0,
         works: collectRepairRows(worksRowsEl),
         parts: collectRepairRows(partsRowsEl),
@@ -1537,9 +1537,7 @@ function buildOrderData() {
     clientName: ctx.clientName,
     carLine: ctx.carLine,
     mileage: repairForm.elements.mileage.value,
-    // Поля в форме нет (см. removed parts_eta input) — если запись пришла
-    // из заказа, там уже мог быть указан срок, показываем как есть.
-    partsEta: currentEditingRepairRecord?.parts_eta || '',
+    partsEta: repairForm.elements.parts_eta.value,
     title: repairForm.elements.title.value,
     date: repairForm.elements.date.value,
     notes: repairForm.elements.notes.value,
@@ -1662,7 +1660,7 @@ document.getElementById('sendToClientBtn').addEventListener('click', () => {
     title: repairForm.elements.title.value,
     mileage: repairForm.elements.mileage.value,
     notes: repairForm.elements.notes.value,
-    parts_eta: currentEditingRepairRecord?.parts_eta || '',
+    parts_eta: repairForm.elements.parts_eta.value,
     advance: advanceEnabled ? (Number(document.getElementById('advanceAmountInput').value) || 0) : 0,
     works: collectRepairRows(worksRowsEl),
     parts: restoreUnexposedPartFields(collectRepairRows(partsRowsEl), currentEditingRepairRecord?.parts),
