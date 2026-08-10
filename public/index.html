@@ -608,6 +608,21 @@
         <label>Фирма фильтра салона<input name="cabin_filter_brand" type="text"></label>
         <label>Артикул фильтра салона<input name="cabin_filter_article" type="text" class="mono-input"></label>
       </div>
+      <div class="repair-section">
+        <div class="repair-section-head">
+          <span>Дополнительные расходники</span>
+          <button type="button" class="btn-ghost icon-btn add-row-btn" id="addToExtraRowBtn" title="Добавить расходник" aria-label="Добавить расходник">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="to-extra-rows-header" aria-hidden="true">
+          <span>Название</span><span>Фирма</span><span>Артикул</span><span></span>
+        </div>
+        <div id="toExtraRows" class="repair-rows"></div>
+      </div>
       <label>Заметки<textarea name="notes" rows="2" class="notes-textarea" placeholder="Особенности, доп. информация…"></textarea></label>
       <div class="dialog-actions">
         <button type="button" id="deleteToArticleBtn" class="btn-danger hidden">Удалить</button>

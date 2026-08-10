@@ -930,7 +930,8 @@ input[type="number"]::-webkit-inner-spin-button {
     transform: rotate(45deg);
   }
 }
-.repair-row .row-name, .repair-row .row-price, .repair-row .row-brand, .repair-row .row-qty, .repair-row .row-article, .repair-row .row-supplier, .repair-row .row-master {
+.repair-row .row-name, .repair-row .row-price, .repair-row .row-brand, .repair-row .row-qty, .repair-row .row-article, .repair-row .row-supplier, .repair-row .row-master,
+.to-extra-row .row-name, .to-extra-row .row-brand, .to-extra-row .row-article {
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -939,6 +940,30 @@ input[type="number"]::-webkit-inner-spin-button {
   font-size: 16px; /* < 16px — iOS зумит страницу при фокусе */
   width: 100%;
   min-width: 0; /* иначе инпут не сжимается уже своей "естественной" ширины в узкой grid-колонке и рвёт диалог по горизонтали */
+}
+/* Доп. расходники в ТО (см. createToExtraRow в app.js) — простая строка без
+   цены/количества/галочки, поэтому своя, более короткая сетка колонок. */
+.to-extra-rows-header {
+  display: grid;
+  grid-template-columns: 1fr 110px 140px 30px;
+  gap: 6px;
+  padding: 0 10px;
+  margin-bottom: -2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.to-extra-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 140px 30px;
+  gap: 6px;
+  align-items: center;
+}
+@media (max-width: 600px) {
+  .to-extra-rows-header { display: none; }
+  .to-extra-row { grid-template-columns: 1fr; gap: 4px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+  .to-extra-row .row-remove { justify-self: end; }
 }
 /* Цвет рамки тега — статус заказа из Профит-Лиги (см. refreshProfitLigaStatuses
    в app.js): подтягивается по совпадению тега с комментарием заказа на их

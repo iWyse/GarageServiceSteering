@@ -108,6 +108,7 @@ db.exec(`
     air_filter_article TEXT,
     cabin_filter_brand TEXT,
     cabin_filter_article TEXT,
+    extra_items TEXT NOT NULL DEFAULT '[]', -- JSON [{name, brand, article}] — доп. расходники (колодки и т.п.)
     notes TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
@@ -364,5 +365,15 @@ function migrateToArticleFilterBrandColumns() {
   }
 }
 migrateToArticleFilterBrandColumns();
+
+// ---------- Миграция: доп. расходники в ТО ----------
+function migrateToArticleExtraItemsColumn() {
+  const columns = db.prepare(`PRAGMA table_info(to_articles)`).all().map((c) => c.name);
+  if (columns.length && !columns.includes('extra_items')) {
+    db.exec(`ALTER TABLE to_articles ADD COLUMN extra_items TEXT NOT NULL DEFAULT '[]'`);
+    console.log('База данных обновлена: добавлены доп. расходники в ТО.');
+  }
+}
+migrateToArticleExtraItemsColumn();
 
 export default db;

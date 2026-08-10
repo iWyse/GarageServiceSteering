@@ -4007,8 +4007,64 @@ async function loadNotes() {
 const toArticleDialog = document.getElementById('toArticleDialog');
 const toArticleForm = document.getElementById('toArticleForm');
 const deleteToArticleBtn = document.getElementById('deleteToArticleBtn');
+const toExtraRowsEl = document.getElementById('toExtraRows');
 let toArticles = [];
 let editingToArticleId = null;
+
+// Доп. расходники (колодки, ремни и т.п.) — свободный список, в отличие от
+// масла/фильтров у него нет фиксированных полей: просто название, фирма,
+// артикул. Строка проще, чем у смет (createRepairRow) — тут не нужны ни
+// цена, ни количество, ни галочка "включить".
+function createToExtraRow(item) {
+  const row = document.createElement('div');
+  row.className = 'to-extra-row';
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.className = 'row-name';
+  nameInput.placeholder = 'Например: Колодки передние';
+  nameInput.value = item?.name || '';
+
+  const brandInput = document.createElement('input');
+  brandInput.type = 'text';
+  brandInput.className = 'row-brand';
+  brandInput.placeholder = 'Фирма';
+  brandInput.value = item?.brand || '';
+  attachBrandMask(brandInput);
+
+  const articleInput = document.createElement('input');
+  articleInput.type = 'text';
+  articleInput.className = 'row-article mono-input';
+  articleInput.placeholder = 'Артикул';
+  articleInput.value = item?.article || '';
+  attachCarWordMask(articleInput);
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'row-remove';
+  removeBtn.setAttribute('aria-label', 'Удалить строку');
+  removeBtn.textContent = '×';
+  removeBtn.addEventListener('click', () => row.remove());
+
+  row.append(nameInput, brandInput, articleInput, removeBtn);
+  return row;
+}
+
+function addToExtraRow(item) {
+  toExtraRowsEl.appendChild(createToExtraRow(item));
+}
+
+function collectToExtraRows() {
+  return Array.from(toExtraRowsEl.querySelectorAll('.to-extra-row'))
+    .map((row) => ({
+      name: row.querySelector('.row-name').value.trim(),
+      brand: row.querySelector('.row-brand').value.trim(),
+      article: row.querySelector('.row-article').value.trim(),
+    }))
+    .filter((it) => it.name);
+}
+
+document.getElementById('addToExtraRowBtn').addEventListener('click', () => addToExtraRow(null));
 
 // Марка/модель можно подтянуть из уже существующего клиента вместо ручного
 // набора — сам клиент тут не сохраняется, берётся только его марка/модель.
@@ -4046,6 +4102,8 @@ function openToArticleDialog(item) {
       if (toArticleForm.elements[k]) toArticleForm.elements[k].value = v || '';
     }
   }
+  toExtraRowsEl.innerHTML = '';
+  (item?.extra_items || []).forEach((it) => addToExtraRow(it));
   openDialog(toArticleDialog);
 }
 
@@ -4069,6 +4127,9 @@ document.getElementById('toArticleOrderBtn').addEventListener('click', () => {
     }))
     .filter((p) => p.article)
     .map((p) => ({ ...p, price: 0 }));
+  // Доп. расходники — в отличие от масла/фильтров выше, добавляются в заказ-наряд
+  // даже без артикула (сам факт "нужны колодки" уже полезная информация).
+  collectToExtraRows().forEach((it) => parts.push({ ...it, price: 0 }));
   if (!parts.length) {
     showToast('Заполните хотя бы один артикул', true);
     return;
@@ -4119,6 +4180,7 @@ toArticleForm.addEventListener('submit', async (e) => {
     air_filter_article: toArticleForm.elements.air_filter_article.value,
     cabin_filter_brand: toArticleForm.elements.cabin_filter_brand.value,
     cabin_filter_article: toArticleForm.elements.cabin_filter_article.value,
+    extra_items: collectToExtraRows(),
     notes: toArticleForm.elements.notes.value,
   };
   try {

@@ -569,15 +569,43 @@ function deleteConsumable(id) {
 }
 
 // ---------- ТО: артикулы масла/фильтров по марке/модели авто ----------
+function parseToArticle(row) {
+  if (!row) return row;
+  let extraItems = [];
+  try {
+    extraItems = JSON.parse(row.extra_items || '[]');
+  } catch {
+    extraItems = [];
+  }
+  return { ...row, extra_items: extraItems };
+}
+
+// Доп. расходники (колодки и т.п.) — свободный список, не фиксированный
+// набор полей как у масла/фильтров: у каждой позиции просто название,
+// фирма и артикул, все необязательны кроме названия.
+function normalizeToArticleExtraItems(items) {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((it) => ({
+      name: String(it?.name || '').trim(),
+      brand: String(it?.brand || '').trim(),
+      article: String(it?.article || '').trim(),
+    }))
+    .filter((it) => it.name);
+}
+
 function listToArticles() {
-  return db.prepare('SELECT * FROM to_articles ORDER BY car_make COLLATE NOCASE, car_model COLLATE NOCASE').all();
+  return db
+    .prepare('SELECT * FROM to_articles ORDER BY car_make COLLATE NOCASE, car_model COLLATE NOCASE')
+    .all()
+    .map(parseToArticle);
 }
 
 function createToArticle(data) {
   const info = db
     .prepare(
-      `INSERT INTO to_articles (car_make, car_model, tag, oil_spec, oil_article, oil_filter_brand, oil_filter_article, air_filter_brand, air_filter_article, cabin_filter_brand, cabin_filter_article, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO to_articles (car_make, car_model, tag, oil_spec, oil_article, oil_filter_brand, oil_filter_article, air_filter_brand, air_filter_article, cabin_filter_brand, cabin_filter_article, extra_items, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       (data.car_make || '').trim(),
@@ -591,15 +619,16 @@ function createToArticle(data) {
       (data.air_filter_article || '').trim(),
       (data.cabin_filter_brand || '').trim(),
       (data.cabin_filter_article || '').trim(),
+      JSON.stringify(normalizeToArticleExtraItems(data.extra_items)),
       data.notes || ''
     );
-  return db.prepare('SELECT * FROM to_articles WHERE id = ?').get(info.lastInsertRowid);
+  return parseToArticle(db.prepare('SELECT * FROM to_articles WHERE id = ?').get(info.lastInsertRowid));
 }
 
 function updateToArticle(id, data) {
   db.prepare(
     `UPDATE to_articles
-     SET car_make=?, car_model=?, tag=?, oil_spec=?, oil_article=?, oil_filter_brand=?, oil_filter_article=?, air_filter_brand=?, air_filter_article=?, cabin_filter_brand=?, cabin_filter_article=?, notes=?
+     SET car_make=?, car_model=?, tag=?, oil_spec=?, oil_article=?, oil_filter_brand=?, oil_filter_article=?, air_filter_brand=?, air_filter_article=?, cabin_filter_brand=?, cabin_filter_article=?, extra_items=?, notes=?
      WHERE id=?`
   ).run(
     (data.car_make || '').trim(),
@@ -613,10 +642,11 @@ function updateToArticle(id, data) {
     (data.air_filter_article || '').trim(),
     (data.cabin_filter_brand || '').trim(),
     (data.cabin_filter_article || '').trim(),
+    JSON.stringify(normalizeToArticleExtraItems(data.extra_items)),
     data.notes || '',
     id
   );
-  return db.prepare('SELECT * FROM to_articles WHERE id = ?').get(id);
+  return parseToArticle(db.prepare('SELECT * FROM to_articles WHERE id = ?').get(id));
 }
 
 function deleteToArticle(id) {
