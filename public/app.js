@@ -1515,13 +1515,13 @@ function getRepairOrderContext() {
     const carLine = appt.client_id
       ? [appt.car_make, appt.car_model].filter(Boolean).join(' ')
       : (appt.walkin_car || '');
-    return { clientName: appt.client_name || '', carLine };
+    return { clientName: appt.client_name || '', carLine, vin: appt.vin || '' };
   }
   if (historyClientId) {
     const client = state.clients.find((c) => c.id === historyClientId);
-    if (client) return { clientName: client.name, carLine: [client.car_make, client.car_model].filter(Boolean).join(' ') };
+    if (client) return { clientName: client.name, carLine: [client.car_make, client.car_model].filter(Boolean).join(' '), vin: client.vin || '' };
   }
-  return { clientName: '', carLine: '' };
+  return { clientName: '', carLine: '', vin: '' };
 }
 
 function buildOrderData() {
@@ -1536,6 +1536,7 @@ function buildOrderData() {
   return {
     clientName: ctx.clientName,
     carLine: ctx.carLine,
+    vin: ctx.vin,
     mileage: repairForm.elements.mileage.value,
     partsEta: repairForm.elements.parts_eta.value,
     title: repairForm.elements.title.value,
@@ -1611,6 +1612,7 @@ function buildOrderHtml(order, { showSupplier = false } = {}) {
     <div class="order-meta">
       ${order.clientName ? `<div class="order-meta-row"><span>Клиент</span><strong>${escapeHtml(order.clientName)}</strong></div>` : ''}
       ${order.carLine ? `<div class="order-meta-row"><span>Автомобиль</span><strong>${escapeHtml(order.carLine)}</strong></div>` : ''}
+      ${order.vin ? `<div class="order-meta-row"><span>VIN</span><strong class="mono">${escapeHtml(order.vin)}</strong></div>` : ''}
       ${order.mileage ? `<div class="order-meta-row"><span>Пробег</span><strong>${fmtMileage(order.mileage)}</strong></div>` : ''}
       ${showSupplier && order.master ? `<div class="order-meta-row"><span>Мастер</span><strong>${escapeHtml(order.master)}</strong></div>` : ''}
     </div>
@@ -1789,6 +1791,7 @@ async function renderOrderToCanvas() {
 
   if (order.clientName) row('Клиент', order.clientName);
   if (order.carLine) row('Автомобиль', order.carLine);
+  if (order.vin) row('VIN', order.vin);
   if (order.mileage) row('Пробег', fmtMileage(order.mileage));
   y += 16;
 
@@ -2463,6 +2466,7 @@ function buildQueueOrderData() {
   return {
     clientName: queueForm.elements.name.value,
     carLine: [queueForm.elements.car_make.value, queueForm.elements.car_model.value].filter(Boolean).join(' '),
+    vin: queueForm.elements.vin.value,
     mileage: queueForm.elements.mileage.value,
     partsEta: queueForm.elements.parts_eta.value,
     title: queueForm.elements.title.value,
@@ -3459,6 +3463,7 @@ function buildOrderDataFromRecord(record) {
   return {
     clientName: record.client_name || '',
     carLine: [record.car_make, record.car_model].filter(Boolean).join(' '),
+    vin: record.client_vin || '',
     mileage: record.mileage,
     partsEta: record.parts_eta,
     title: record.title,

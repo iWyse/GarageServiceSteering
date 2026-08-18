@@ -281,7 +281,7 @@ function listRepairRecords(clientId) {
 function listRepairRecordsByDateRange(start, end) {
   return db
     .prepare(
-      `SELECT r.*, c.tag AS client_tag, c.name AS client_name, c.car_make, c.car_model
+      `SELECT r.*, c.tag AS client_tag, c.name AS client_name, c.car_make, c.car_model, c.vin AS client_vin
        FROM repair_records r
        JOIN clients c ON c.id = r.client_id
        WHERE r.date BETWEEN ? AND ? AND r.report_hidden = 0

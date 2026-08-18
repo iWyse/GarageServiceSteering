@@ -1167,6 +1167,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .order-meta { display: flex; flex-direction: column; gap: 6px; }
 .order-meta-row { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
 .order-meta-row span { color: var(--text-muted); }
+.order-meta-row strong.mono { font-family: var(--font-mono); letter-spacing: 0.03em; }
 .order-sep { border-top: 1px solid var(--border); }
 .order-title { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.03em; font-size: 18px; margin: 0; }
 .order-date { font-family: var(--font-mono); font-size: 14px; color: var(--accent); }
