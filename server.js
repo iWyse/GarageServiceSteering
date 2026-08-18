@@ -654,7 +654,8 @@ function deleteToArticle(id) {
 }
 
 // ---------- Готовые сборки запчастей (см. ТО extra_items — та же форма
-// позиции: name/brand/article, без цены/количества) ----------
+// позиции: name/brand/article, без цены/количества; плюс работы: name/price,
+// как в разделе "Выполненные работы") ----------
 function parsePartKit(row) {
   if (!row) return row;
   let items = [];
@@ -663,7 +664,13 @@ function parsePartKit(row) {
   } catch {
     items = [];
   }
-  return { ...row, items };
+  let works = [];
+  try {
+    works = JSON.parse(row.works || '[]');
+  } catch {
+    works = [];
+  }
+  return { ...row, items, works };
 }
 
 function normalizePartKitItems(items) {
@@ -677,21 +684,32 @@ function normalizePartKitItems(items) {
     .filter((it) => it.name);
 }
 
+function normalizePartKitWorks(works) {
+  if (!Array.isArray(works)) return [];
+  return works
+    .map((w) => ({
+      name: String(w?.name || '').trim(),
+      price: Number(w?.price) || 0,
+    }))
+    .filter((w) => w.name);
+}
+
 function listPartKits() {
   return db.prepare('SELECT * FROM part_kits ORDER BY name COLLATE NOCASE').all().map(parsePartKit);
 }
 
 function createPartKit(data) {
   const info = db
-    .prepare('INSERT INTO part_kits (name, items) VALUES (?, ?)')
-    .run((data.name || '').trim(), JSON.stringify(normalizePartKitItems(data.items)));
+    .prepare('INSERT INTO part_kits (name, items, works) VALUES (?, ?, ?)')
+    .run((data.name || '').trim(), JSON.stringify(normalizePartKitItems(data.items)), JSON.stringify(normalizePartKitWorks(data.works)));
   return parsePartKit(db.prepare('SELECT * FROM part_kits WHERE id = ?').get(info.lastInsertRowid));
 }
 
 function updatePartKit(id, data) {
-  db.prepare('UPDATE part_kits SET name=?, items=? WHERE id=?').run(
+  db.prepare('UPDATE part_kits SET name=?, items=?, works=? WHERE id=?').run(
     (data.name || '').trim(),
     JSON.stringify(normalizePartKitItems(data.items)),
+    JSON.stringify(normalizePartKitWorks(data.works)),
     id
   );
   return parsePartKit(db.prepare('SELECT * FROM part_kits WHERE id = ?').get(id));

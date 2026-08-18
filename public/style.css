@@ -968,6 +968,39 @@ input[type="number"]::-webkit-inner-spin-button {
   .to-extra-row { grid-template-columns: 1fr; gap: 4px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
   .to-extra-row .row-remove { justify-self: end; }
 }
+/* Работы в сборке запчастей (см. createKitWorkRow в app.js) — название + цена. */
+.kit-work-rows-header {
+  display: grid;
+  grid-template-columns: 1fr 110px 30px;
+  gap: 6px;
+  padding: 0 10px;
+  margin-bottom: -2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.kit-work-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 30px;
+  gap: 6px;
+  align-items: center;
+}
+.kit-work-row .row-name, .kit-work-row .row-price {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+  width: 100%;
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .kit-work-rows-header { display: none; }
+  .kit-work-row { grid-template-columns: 1fr; gap: 4px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+  .kit-work-row .row-remove { justify-self: end; }
+}
 /* Цвет рамки тега — статус заказа из Профит-Лиги (см. refreshProfitLigaStatuses
    в app.js): подтягивается по совпадению тега с комментарием заказа на их
    сайте, ничего вручную считать не нужно. */

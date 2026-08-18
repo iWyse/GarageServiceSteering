@@ -479,7 +479,12 @@
         </div>
         <div id="queuePartsRows" class="repair-rows"></div>
         <div class="repair-sum-row repair-sum-accent"><span>Сумма запчастей</span><strong id="queuePartsSum">0 ₽</strong></div>
-        <label>Срок поставки запчастей<input name="parts_eta" type="text" placeholder="например: 2-3 дня, к среде…"></label>
+        <div class="repair-advance">
+          <button type="button" id="queuePartsEtaToggleBtn" class="btn-ghost">Срок поставки запчастей</button>
+          <div id="queuePartsEtaWrap" class="hidden">
+            <input name="parts_eta" type="text" placeholder="например: 2-3 дня, к среде…">
+          </div>
+        </div>
       </div>
 
       <div class="repair-section">
@@ -688,6 +693,19 @@
         <span>Название</span><span>Фирма</span><span>Артикул</span><span></span>
       </div>
       <div id="partKitItemRows" class="repair-rows"></div>
+      <div class="repair-section-head">
+        <span>Работы</span>
+        <button type="button" class="btn-ghost icon-btn add-row-btn" id="addPartKitWorkBtn" title="Добавить работу" aria-label="Добавить работу">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="kit-work-rows-header" aria-hidden="true">
+        <span>Название</span><span>Цена</span><span></span>
+      </div>
+      <div id="partKitWorkRows" class="repair-rows"></div>
       <div class="dialog-actions">
         <button type="button" id="deletePartKitBtn" class="btn-danger hidden">Удалить</button>
         <div class="spacer"></div>
@@ -845,7 +863,12 @@
         </div>
         <div id="partsRows" class="repair-rows"></div>
         <div class="repair-sum-row repair-sum-accent"><span>Сумма запчастей</span><strong id="partsSum">0 ₽</strong></div>
-        <label>Срок поставки запчастей<input name="parts_eta" type="text" placeholder="например: 2-3 дня, к среде…"></label>
+        <div class="repair-advance">
+          <button type="button" id="partsEtaToggleBtn" class="btn-ghost">Срок поставки запчастей</button>
+          <div id="partsEtaWrap" class="hidden">
+            <input name="parts_eta" type="text" placeholder="например: 2-3 дня, к среде…">
+          </div>
+        </div>
       </div>
 
       <div class="repair-section">

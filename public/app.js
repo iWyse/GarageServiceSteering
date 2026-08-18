@@ -878,6 +878,7 @@ let editingRepairId = null;
 let historyClientId = null;
 let pendingApptForRepair = null; // смета создаётся из записи расписания, а не из карточки клиента
 let advanceEnabled = false;
+let partsEtaEnabled = false;
 // Сырая запись, как её вернул сервер, — repairForm не показывает поле
 // "поставщик" у запчасти (оно есть только в заказе, см. withReceived), поэтому
 // collectRepairRows() не может его вернуть. Храним оригинал, чтобы "Добавить
@@ -1251,6 +1252,13 @@ document.getElementById('advanceToggleBtn').addEventListener('click', () => {
 });
 document.getElementById('advanceAmountInput').addEventListener('input', recomputeRepairSums);
 
+document.getElementById('partsEtaToggleBtn').addEventListener('click', () => {
+  partsEtaEnabled = !partsEtaEnabled;
+  document.getElementById('partsEtaToggleBtn').classList.toggle('active', partsEtaEnabled);
+  document.getElementById('partsEtaWrap').classList.toggle('hidden', !partsEtaEnabled);
+  if (!partsEtaEnabled) repairForm.elements.parts_eta.value = '';
+});
+
 function openRepairDialog(record) {
   editingRepairId = record ? record.id : null;
   currentEditingRepairRecord = record || null;
@@ -1275,6 +1283,9 @@ function openRepairDialog(record) {
   repairForm.elements.notes.value = record ? (record.notes || '') : '';
   repairForm.elements.master.value = record ? (record.master || '') : '';
   repairForm.elements.parts_eta.value = record ? (record.parts_eta || '') : '';
+  partsEtaEnabled = !!repairForm.elements.parts_eta.value;
+  document.getElementById('partsEtaToggleBtn').classList.toggle('active', partsEtaEnabled);
+  document.getElementById('partsEtaWrap').classList.toggle('hidden', !partsEtaEnabled);
   autoResizeTextarea(repairForm.elements.notes);
 
   advanceEnabled = !!(record && Number(record.advance) > 0);
@@ -2070,6 +2081,7 @@ const queuePartsRowsEl = document.getElementById('queuePartsRows');
 let queueItems = [];
 let editingQueueId = null;
 let queueAdvanceEnabled = false;
+let queuePartsEtaEnabled = false;
 // Тег(в нижнем регистре) → список позиций у Профит-Лиги (см. /api/profitliga/status).
 // Заполняется в фоне отдельно от loadQueue, чтобы список заказов не ждал их API —
 // после загрузки список перерисовывается уже со статусом "Отказ" по артикулу.
@@ -2169,6 +2181,13 @@ document.getElementById('queueAdvanceToggleBtn').addEventListener('click', () =>
   recomputeQueueSums();
 });
 document.getElementById('queueAdvanceAmountInput').addEventListener('input', recomputeQueueSums);
+
+document.getElementById('queuePartsEtaToggleBtn').addEventListener('click', () => {
+  queuePartsEtaEnabled = !queuePartsEtaEnabled;
+  document.getElementById('queuePartsEtaToggleBtn').classList.toggle('active', queuePartsEtaEnabled);
+  document.getElementById('queuePartsEtaWrap').classList.toggle('hidden', !queuePartsEtaEnabled);
+  if (!queuePartsEtaEnabled) queueForm.elements.parts_eta.value = '';
+});
 
 // ---------- Аккордеон "Данные клиента и автомобиля" ----------
 const queueClientFields = document.getElementById('queueClientFields');
@@ -2308,6 +2327,9 @@ function openQueueDialog(entry) {
   } else {
     queueForm.elements.parts_eta.value = 'до 5 рабочих дней';
   }
+  queuePartsEtaEnabled = !!queueForm.elements.parts_eta.value;
+  document.getElementById('queuePartsEtaToggleBtn').classList.toggle('active', queuePartsEtaEnabled);
+  document.getElementById('queuePartsEtaWrap').classList.toggle('hidden', !queuePartsEtaEnabled);
   setDateMin(queueForm.elements.date, entry?.date);
   autoResizeTextarea(queueForm.elements.notes);
 
@@ -4297,26 +4319,29 @@ function fillPartKitSelects() {
   });
 }
 
-// Вставляет позиции сборки в конец списка запчастей — уже введённые строки
-// не трогает, каждую позицию можно потом доредактировать (цену, кол-во).
-// Селект после вставки возвращается к плейсхолдеру, чтобы им можно было
-// воспользоваться ещё раз для другой сборки.
-function insertPartKit(selectEl, partsRowsEl, onChange, withReceived) {
+// Вставляет позиции сборки (запчасти + работы) в конец соответствующих
+// списков — уже введённые строки не трогает, каждую позицию можно потом
+// доредактировать (цену, кол-во). Селект после вставки возвращается к
+// плейсхолдеру, чтобы им можно было воспользоваться ещё раз для другой сборки.
+function insertPartKit(selectEl, partsRowsEl, worksRowsEl, onChange, withReceived, worksWithMaster) {
   const kit = partKits.find((k) => k.id === Number(selectEl.value));
   selectEl.value = '';
   if (!kit) return;
   kit.items.forEach((it) => {
     addRepairRow(partsRowsEl, { name: it.name, brand: it.brand, article: it.article, price: 0 }, true, onChange, withReceived);
   });
+  (kit.works || []).forEach((w) => {
+    addRepairRow(worksRowsEl, { name: w.name, price: w.price }, false, onChange, false, worksWithMaster);
+  });
   onChange();
   showToast(`Сборка «${kit.name}» добавлена`);
 }
 
 document.getElementById('partKitSelect').addEventListener('change', (e) => {
-  insertPartKit(e.target, partsRowsEl, recomputeRepairSums, false);
+  insertPartKit(e.target, partsRowsEl, worksRowsEl, recomputeRepairSums, false, true);
 });
 document.getElementById('queuePartKitSelect').addEventListener('change', (e) => {
-  insertPartKit(e.target, queuePartsRowsEl, recomputeQueueSums, true);
+  insertPartKit(e.target, queuePartsRowsEl, queueWorksRowsEl, recomputeQueueSums, true, false);
 });
 
 function addPartKitItemRow(item) {
@@ -4333,6 +4358,47 @@ function collectPartKitItemRows() {
 }
 document.getElementById('addPartKitItemBtn').addEventListener('click', () => addPartKitItemRow(null));
 
+function createKitWorkRow(item) {
+  const row = document.createElement('div');
+  row.className = 'kit-work-row';
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.className = 'row-name';
+  nameInput.placeholder = 'Например: Замена масла ДВС и фильтров';
+  nameInput.value = item?.name || '';
+
+  const priceInput = document.createElement('input');
+  priceInput.type = 'number';
+  priceInput.className = 'row-price mono-input';
+  priceInput.placeholder = 'Цена';
+  priceInput.min = '0';
+  priceInput.step = '0.01';
+  priceInput.value = item?.price ?? '';
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'row-remove';
+  removeBtn.setAttribute('aria-label', 'Удалить строку');
+  removeBtn.textContent = '×';
+  removeBtn.addEventListener('click', () => row.remove());
+
+  row.append(nameInput, priceInput, removeBtn);
+  return row;
+}
+function addPartKitWorkRow(item) {
+  document.getElementById('partKitWorkRows').appendChild(createKitWorkRow(item));
+}
+function collectPartKitWorkRows() {
+  return Array.from(document.getElementById('partKitWorkRows').querySelectorAll('.kit-work-row'))
+    .map((row) => ({
+      name: row.querySelector('.row-name').value.trim(),
+      price: Number(row.querySelector('.row-price').value) || 0,
+    }))
+    .filter((w) => w.name);
+}
+document.getElementById('addPartKitWorkBtn').addEventListener('click', () => addPartKitWorkRow(null));
+
 function renderPartKitsList() {
   const list = document.getElementById('partKitsList');
   list.innerHTML = '';
@@ -4340,8 +4406,11 @@ function renderPartKitsList() {
   partKits.forEach((kit) => {
     const item = document.createElement('div');
     item.className = 'note-item';
+    const parts = [];
+    if (kit.items.length) parts.push(`${kit.items.length} ${kit.items.length === 1 ? 'позиция' : 'позиций'}`);
+    if (kit.works?.length) parts.push(`${kit.works.length} ${kit.works.length === 1 ? 'работа' : 'работ'}`);
     item.innerHTML = `
-      <div class="note-item-head"><span class="note-item-date">${kit.items.length} ${kit.items.length === 1 ? 'позиция' : 'позиций'}</span></div>
+      <div class="note-item-head"><span class="note-item-date">${escapeHtml(parts.join(' · '))}</span></div>
       <p class="note-item-text">${escapeHtml(kit.name)}</p>
     `;
     item.addEventListener('click', () => openPartKitDialog(kit));
@@ -4367,6 +4436,8 @@ function openPartKitDialog(kit) {
   form.elements.name.value = kit ? kit.name : '';
   document.getElementById('partKitItemRows').innerHTML = '';
   (kit?.items?.length ? kit.items : [null]).forEach((it) => addPartKitItemRow(it));
+  document.getElementById('partKitWorkRows').innerHTML = '';
+  (kit?.works?.length ? kit.works : [null]).forEach((w) => addPartKitWorkRow(w));
   closeDialog(document.getElementById('partKitsListDialog'));
   openDialog(document.getElementById('partKitDialog'));
 }
@@ -4376,7 +4447,7 @@ document.getElementById('newPartKitBtn').addEventListener('click', () => openPar
 document.getElementById('partKitForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const form = e.target;
-  const data = { name: form.elements.name.value, items: collectPartKitItemRows() };
+  const data = { name: form.elements.name.value, items: collectPartKitItemRows(), works: collectPartKitWorkRows() };
   try {
     if (editingPartKitId) {
       await api(`/api/part-kits/${editingPartKitId}`, { method: 'PUT', body: JSON.stringify(data) });

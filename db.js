@@ -100,6 +100,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     items TEXT NOT NULL DEFAULT '[]', -- JSON [{name, brand, article}]
+    works TEXT NOT NULL DEFAULT '[]', -- JSON [{name, price}]
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -385,5 +386,14 @@ function migrateToArticleExtraItemsColumn() {
   }
 }
 migrateToArticleExtraItemsColumn();
+
+function migratePartKitsWorksColumn() {
+  const columns = db.prepare(`PRAGMA table_info(part_kits)`).all().map((c) => c.name);
+  if (columns.length && !columns.includes('works')) {
+    db.exec(`ALTER TABLE part_kits ADD COLUMN works TEXT NOT NULL DEFAULT '[]'`);
+    console.log('База данных обновлена: добавлены работы в сборки запчастей.');
+  }
+}
+migratePartKitsWorksColumn();
 
 export default db;
