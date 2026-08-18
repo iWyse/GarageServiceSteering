@@ -891,6 +891,9 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .repair-section-head { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--text-muted); }
 .repair-section-head > span:first-child { font-size: 16px; font-weight: 600; color: var(--accent); }
+.part-kit-bar { display: flex; gap: 8px; margin: 8px 0; }
+.part-kit-bar select { flex: 1; min-width: 0; }
+.part-kit-bar .btn-ghost { padding: 8px 12px; font-size: 13px; white-space: nowrap; }
 .repair-rows { display: flex; flex-direction: column; gap: 6px; }
 .repair-row { display: grid; grid-template-columns: auto 1fr 100px auto; gap: 6px; align-items: center; }
 .repair-row.repair-row-excluded { opacity: 0.5; }

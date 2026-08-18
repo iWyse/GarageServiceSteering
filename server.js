@@ -653,6 +653,54 @@ function deleteToArticle(id) {
   db.prepare('DELETE FROM to_articles WHERE id = ?').run(id);
 }
 
+// ---------- Готовые сборки запчастей (см. ТО extra_items — та же форма
+// позиции: name/brand/article, без цены/количества) ----------
+function parsePartKit(row) {
+  if (!row) return row;
+  let items = [];
+  try {
+    items = JSON.parse(row.items || '[]');
+  } catch {
+    items = [];
+  }
+  return { ...row, items };
+}
+
+function normalizePartKitItems(items) {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((it) => ({
+      name: String(it?.name || '').trim(),
+      brand: String(it?.brand || '').trim(),
+      article: String(it?.article || '').trim(),
+    }))
+    .filter((it) => it.name);
+}
+
+function listPartKits() {
+  return db.prepare('SELECT * FROM part_kits ORDER BY name COLLATE NOCASE').all().map(parsePartKit);
+}
+
+function createPartKit(data) {
+  const info = db
+    .prepare('INSERT INTO part_kits (name, items) VALUES (?, ?)')
+    .run((data.name || '').trim(), JSON.stringify(normalizePartKitItems(data.items)));
+  return parsePartKit(db.prepare('SELECT * FROM part_kits WHERE id = ?').get(info.lastInsertRowid));
+}
+
+function updatePartKit(id, data) {
+  db.prepare('UPDATE part_kits SET name=?, items=? WHERE id=?').run(
+    (data.name || '').trim(),
+    JSON.stringify(normalizePartKitItems(data.items)),
+    id
+  );
+  return parsePartKit(db.prepare('SELECT * FROM part_kits WHERE id = ?').get(id));
+}
+
+function deletePartKit(id) {
+  db.prepare('DELETE FROM part_kits WHERE id = ?').run(id);
+}
+
 // ---------- Client portal (кабинет клиента) ----------
 function getClientProfile(vin) {
   const matched = db.prepare('SELECT * FROM clients WHERE UPPER(vin) = ?').all(vin);
@@ -1228,6 +1276,26 @@ const server = http.createServer(async (req, res) => {
     }
     if (m && req.method === 'DELETE') {
       deleteToArticle(Number(m[1]));
+      return sendJSON(res, 200, { ok: true });
+    }
+
+    // Готовые сборки запчастей — селект под заголовком "Запчасти" в смете/заказе
+    if (pathname === '/api/part-kits' && req.method === 'GET') {
+      return sendJSON(res, 200, listPartKits());
+    }
+    if (pathname === '/api/part-kits' && req.method === 'POST') {
+      const body = await readBody(req);
+      if (!body.name || !body.name.trim()) return sendJSON(res, 400, { error: 'Название обязательно' });
+      return sendJSON(res, 201, createPartKit(body));
+    }
+    m = pathname.match(/^\/api\/part-kits\/(\d+)$/);
+    if (m && req.method === 'PUT') {
+      const body = await readBody(req);
+      if (!body.name || !body.name.trim()) return sendJSON(res, 400, { error: 'Название обязательно' });
+      return sendJSON(res, 200, updatePartKit(Number(m[1]), body));
+    }
+    if (m && req.method === 'DELETE') {
+      deletePartKit(Number(m[1]));
       return sendJSON(res, 200, { ok: true });
     }
 

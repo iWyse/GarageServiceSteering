@@ -4275,6 +4275,136 @@ async function loadToArticles() {
   renderToArticles();
 }
 
+// ---------- Готовые сборки запчастей (селект под заголовком "Запчасти" в
+// смете и в заказе — чтобы не вписывать одни и те же позиции вручную) ----------
+let partKits = [];
+let editingPartKitId = null;
+
+async function loadPartKits() {
+  try {
+    partKits = await api('/api/part-kits');
+  } catch {
+    return; // необязательная подсказка — если не загрузилась, селект просто пустой
+  }
+  fillPartKitSelects();
+}
+
+function fillPartKitSelects() {
+  const options = partKits.map((k) => `<option value="${k.id}">${escapeHtml(k.name)}</option>`).join('');
+  ['partKitSelect', 'queuePartKitSelect'].forEach((id) => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = `<option value="">— вставить готовую сборку —</option>${options}`;
+  });
+}
+
+// Вставляет позиции сборки в конец списка запчастей — уже введённые строки
+// не трогает, каждую позицию можно потом доредактировать (цену, кол-во).
+// Селект после вставки возвращается к плейсхолдеру, чтобы им можно было
+// воспользоваться ещё раз для другой сборки.
+function insertPartKit(selectEl, partsRowsEl, onChange, withReceived) {
+  const kit = partKits.find((k) => k.id === Number(selectEl.value));
+  selectEl.value = '';
+  if (!kit) return;
+  kit.items.forEach((it) => {
+    addRepairRow(partsRowsEl, { name: it.name, brand: it.brand, article: it.article, price: 0 }, true, onChange, withReceived);
+  });
+  onChange();
+  showToast(`Сборка «${kit.name}» добавлена`);
+}
+
+document.getElementById('partKitSelect').addEventListener('change', (e) => {
+  insertPartKit(e.target, partsRowsEl, recomputeRepairSums, false);
+});
+document.getElementById('queuePartKitSelect').addEventListener('change', (e) => {
+  insertPartKit(e.target, queuePartsRowsEl, recomputeQueueSums, true);
+});
+
+function addPartKitItemRow(item) {
+  document.getElementById('partKitItemRows').appendChild(createToExtraRow(item));
+}
+function collectPartKitItemRows() {
+  return Array.from(document.getElementById('partKitItemRows').querySelectorAll('.to-extra-row'))
+    .map((row) => ({
+      name: row.querySelector('.row-name').value.trim(),
+      brand: row.querySelector('.row-brand').value.trim(),
+      article: row.querySelector('.row-article').value.trim(),
+    }))
+    .filter((it) => it.name);
+}
+document.getElementById('addPartKitItemBtn').addEventListener('click', () => addPartKitItemRow(null));
+
+function renderPartKitsList() {
+  const list = document.getElementById('partKitsList');
+  list.innerHTML = '';
+  document.getElementById('partKitsEmpty').classList.toggle('hidden', partKits.length !== 0);
+  partKits.forEach((kit) => {
+    const item = document.createElement('div');
+    item.className = 'note-item';
+    item.innerHTML = `
+      <div class="note-item-head"><span class="note-item-date">${kit.items.length} ${kit.items.length === 1 ? 'позиция' : 'позиций'}</span></div>
+      <p class="note-item-text">${escapeHtml(kit.name)}</p>
+    `;
+    item.addEventListener('click', () => openPartKitDialog(kit));
+    list.appendChild(item);
+  });
+}
+
+document.getElementById('managePartKitsBtn').addEventListener('click', () => {
+  renderPartKitsList();
+  openDialog(document.getElementById('partKitsListDialog'));
+});
+document.getElementById('manageQueuePartKitsBtn').addEventListener('click', () => {
+  renderPartKitsList();
+  openDialog(document.getElementById('partKitsListDialog'));
+});
+
+function openPartKitDialog(kit) {
+  editingPartKitId = kit ? kit.id : null;
+  document.getElementById('partKitDialogTitle').textContent = kit ? 'Сборка' : 'Новая сборка';
+  document.getElementById('deletePartKitBtn').classList.toggle('hidden', !kit);
+  const form = document.getElementById('partKitForm');
+  form.reset();
+  form.elements.name.value = kit ? kit.name : '';
+  document.getElementById('partKitItemRows').innerHTML = '';
+  (kit?.items?.length ? kit.items : [null]).forEach((it) => addPartKitItemRow(it));
+  closeDialog(document.getElementById('partKitsListDialog'));
+  openDialog(document.getElementById('partKitDialog'));
+}
+
+document.getElementById('newPartKitBtn').addEventListener('click', () => openPartKitDialog(null));
+
+document.getElementById('partKitForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const data = { name: form.elements.name.value, items: collectPartKitItemRows() };
+  try {
+    if (editingPartKitId) {
+      await api(`/api/part-kits/${editingPartKitId}`, { method: 'PUT', body: JSON.stringify(data) });
+      showToast('Сборка обновлена');
+    } else {
+      await api('/api/part-kits', { method: 'POST', body: JSON.stringify(data) });
+      showToast('Сборка добавлена');
+    }
+    closeDialog(document.getElementById('partKitDialog'));
+    await loadPartKits();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+document.getElementById('deletePartKitBtn').addEventListener('click', async () => {
+  if (!editingPartKitId) return;
+  if (!(await showConfirm('Удалить эту сборку?'))) return;
+  try {
+    await api(`/api/part-kits/${editingPartKitId}`, { method: 'DELETE' });
+    showToast('Сборка удалена');
+    closeDialog(document.getElementById('partKitDialog'));
+    await loadPartKits();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
 // ---------- Init ----------
 async function bootApp() {
   try {
@@ -4283,6 +4413,7 @@ async function bootApp() {
     await loadQueue();
     await loadConsumables();
     await loadToArticles();
+    await loadPartKits();
     await loadRequests();
     await loadNotes();
   } catch (err) {

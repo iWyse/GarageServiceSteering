@@ -93,6 +93,16 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
+  -- Готовые сборки запчастей (напр. "ТО: масло+фильтры") — чтобы не вписывать
+  -- одни и те же позиции вручную каждый раз в смете/заказе, см. селект под
+  -- заголовком "Запчасти".
+  CREATE TABLE IF NOT EXISTS part_kits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    items TEXT NOT NULL DEFAULT '[]', -- JSON [{name, brand, article}]
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   -- Вкладка «ТО» — артикулы масла и фильтров по каждой марке/модели авто
   -- (у разных машин разные артикулы), см. вкладку «ТО».
   CREATE TABLE IF NOT EXISTS to_articles (

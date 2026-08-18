@@ -470,6 +470,10 @@
             </svg>
           </button>
         </div>
+        <div class="part-kit-bar">
+          <select id="queuePartKitSelect"><option value="">— вставить готовую сборку —</option></select>
+          <button type="button" class="btn-ghost" id="manageQueuePartKitsBtn">Сборки</button>
+        </div>
         <div class="repair-rows-header repair-rows-header-supply" aria-hidden="true">
           <span></span><span>Название</span><span>Цена</span><span>Кол-во</span><span>Фирма</span><span>Артикул</span><span>Поставщик</span><span></span><span></span><span></span>
         </div>
@@ -634,6 +638,66 @@
   </div>
 </div>
 
+<!-- ===== Part kits: list ===== -->
+<div id="partKitsListDialog" class="dialog-overlay hidden">
+  <div class="dialog">
+    <div class="dialog-header">
+      <h2>Сборки запчастей</h2>
+      <button type="button" class="btn-ghost icon-btn" data-close-dialog title="Закрыть" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div id="partKitsList" class="notes-list"></div>
+    <p id="partKitsEmpty" class="empty-state hidden">Пока нет ни одной сборки.</p>
+    <div class="dialog-actions">
+      <div class="spacer"></div>
+      <button type="button" id="newPartKitBtn" class="btn-primary">+ Новая сборка</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Part kit: edit ===== -->
+<div id="partKitDialog" class="dialog-overlay hidden">
+  <div class="dialog">
+    <div class="dialog-header">
+      <h2 id="partKitDialogTitle">Новая сборка</h2>
+      <button type="button" class="btn-ghost icon-btn" data-close-dialog title="Закрыть" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <form id="partKitForm">
+      <label><span>Название <span class="req">*</span></span><input required name="name" type="text" placeholder="Например: ТО (масло+фильтры)"></label>
+      <div class="repair-section-head">
+        <span>Позиции</span>
+        <button type="button" class="btn-ghost icon-btn add-row-btn" id="addPartKitItemBtn" title="Добавить позицию" aria-label="Добавить позицию">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="to-extra-rows-header" aria-hidden="true">
+        <span>Название</span><span>Фирма</span><span>Артикул</span><span></span>
+      </div>
+      <div id="partKitItemRows" class="repair-rows"></div>
+      <div class="dialog-actions">
+        <button type="button" id="deletePartKitBtn" class="btn-danger hidden">Удалить</button>
+        <div class="spacer"></div>
+        <button type="button" class="btn-ghost" data-close-dialog>Отмена</button>
+        <button type="submit" class="btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- ===== Note dialog ===== -->
 <div id="noteDialog" class="dialog-overlay hidden">
   <div class="dialog">
@@ -771,6 +835,10 @@
               <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
           </button>
+        </div>
+        <div class="part-kit-bar">
+          <select id="partKitSelect"><option value="">— вставить готовую сборку —</option></select>
+          <button type="button" class="btn-ghost" id="managePartKitsBtn">Сборки</button>
         </div>
         <div class="repair-rows-header" aria-hidden="true">
           <span></span><span>Название</span><span>Цена</span><span>Кол-во</span><span>Фирма</span><span>Артикул</span><span>Поставщик</span><span></span>
