@@ -888,6 +888,11 @@ const repairForm = document.getElementById('repairForm');
 attachCapitalizeMask(repairForm.elements.title);
 attachCapitalizeMask(repairForm.elements.master);
 attachCapitalizeMask(repairForm.elements.notes);
+document.getElementById('closeRepairDialogBtn').addEventListener('click', async () => {
+  if (await showConfirm('Закрыть окно? Несохранённые изменения будут потеряны.', { confirmLabel: 'Закрыть', danger: false })) {
+    closeDialog(repairDialog);
+  }
+});
 const deleteRepairBtn = document.getElementById('deleteRepairBtn');
 const worksRowsEl = document.getElementById('worksRows');
 const partsRowsEl = document.getElementById('partsRows');
