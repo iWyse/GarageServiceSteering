@@ -340,6 +340,22 @@ function attachBrandMask(input) {
   });
 }
 
+// ---------- Заглавная буква в начале поля (запись ремонта) ----------
+// В отличие от масок выше — тут меняется только первый символ, поэтому
+// курсор не переносится в конец: правится середина длинного текста
+// (рекомендации), а не только начало.
+function attachCapitalizeMask(input) {
+  if (!input) return;
+  input.addEventListener('input', () => {
+    if (!input.value) return;
+    const formatted = input.value.charAt(0).toUpperCase() + input.value.slice(1);
+    if (formatted === input.value) return;
+    const pos = input.selectionStart;
+    input.value = formatted;
+    input.setSelectionRange(pos, pos);
+  });
+}
+
 // ---------- Маска гос. номера ----------
 // Формат: буква-цифра-цифра-цифра-буква-буква-цифра-цифра-цифра (Л ДДД ЛЛ ДДД).
 // Буквы — только из набора, разрешённого ГОСТом (визуально совпадают с
@@ -869,6 +885,9 @@ deleteClientBtn.addEventListener('click', async () => {
 // ================= REPAIR HISTORY =================
 const repairDialog = document.getElementById('repairDialog');
 const repairForm = document.getElementById('repairForm');
+attachCapitalizeMask(repairForm.elements.title);
+attachCapitalizeMask(repairForm.elements.master);
+attachCapitalizeMask(repairForm.elements.notes);
 const deleteRepairBtn = document.getElementById('deleteRepairBtn');
 const worksRowsEl = document.getElementById('worksRows');
 const partsRowsEl = document.getElementById('partsRows');
@@ -1009,6 +1028,7 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
   nameInput.className = 'row-name';
   nameInput.placeholder = 'Название';
   nameInput.value = item?.name || '';
+  attachCapitalizeMask(nameInput);
 
   const priceInput = document.createElement('input');
   priceInput.type = 'number';
@@ -1632,6 +1652,7 @@ function buildOrderHtml(order, { showSupplier = false } = {}) {
     ${order.date ? `<div class="order-date">Дата ремонта: ${fmtFullDate(new Date(order.date + 'T00:00:00'))}</div>` : ''}
     ${order.parts.length ? `<div class="order-block"><div class="order-block-title">Стоимость запчастей</div>${partLines}<div class="order-line order-line-sum"><span>Сумма запчастей</span><span>${fmtMoney(order.partsSum)}</span></div>${order.partsEta && !showSupplier ? `<div class="order-meta-row"><span>Срок поставки запчастей</span><strong>${escapeHtml(order.partsEta)}</strong></div>` : ''}</div>` : ''}
     ${order.works.length ? `<div class="order-block"><div class="order-block-title">Стоимость работ</div>${workLines}<div class="order-line order-line-sum"><span>Сумма работ</span><span>${fmtMoney(order.worksSum)}</span></div></div>` : ''}
+    ${order.advance > 0 ? `<div class="order-line order-line-sum"><span>Итоговая сумма</span><span>${fmtMoney(order.partsSum + order.worksSum)}</span></div>` : ''}
     ${order.advance > 0 ? `<div class="order-line order-line-advance"><span>Аванс</span><span>− ${fmtMoney(order.advance)}</span></div>` : ''}
     <div class="order-total"><span>Итого к оплате</span><span>${fmtMoney(order.total)}</span></div>
     ${order.notes ? `<div class="order-block"><div class="order-block-title">Рекомендации</div>${order.notes
@@ -1939,6 +1960,15 @@ async function renderOrderToCanvas() {
   block('Стоимость работ', order.works, 'Сумма работ:');
 
   if (order.advance > 0) {
+    ctx.font = `600 16px ${ORDER_IMG.fontBody}`;
+    ctx.fillStyle = C.accent;
+    ctx.textAlign = 'left';
+    ctx.fillText('Итоговая сумма', pad, y);
+    ctx.textAlign = 'right';
+    ctx.fillText(fmtMoney(order.partsSum + order.worksSum), width - pad, y);
+    ctx.textAlign = 'left';
+    y += 24;
+
     ctx.font = `15px ${ORDER_IMG.fontBody}`;
     ctx.fillStyle = C.danger;
     ctx.textAlign = 'left';
