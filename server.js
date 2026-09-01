@@ -281,7 +281,7 @@ function listRepairRecords(clientId) {
 function listRepairRecordsByDateRange(start, end) {
   return db
     .prepare(
-      `SELECT r.*, c.tag AS client_tag, c.name AS client_name, c.car_make, c.car_model, c.vin AS client_vin
+      `SELECT r.*, c.tag AS client_tag, c.name AS client_name, c.phone AS client_phone, c.car_make, c.car_model, c.vin AS client_vin
        FROM repair_records r
        JOIN clients c ON c.id = r.client_id
        WHERE r.date BETWEEN ? AND ? AND r.report_hidden = 0
@@ -352,6 +352,26 @@ function listReportMasters() {
     }
   }
   return Array.from(masters).sort((a, b) => a.localeCompare(b, 'ru'));
+}
+
+// Список ранее вписанных названий запчастей (см. datalist "partNamesDatalist"
+// в форме — чтобы не вбивать одно и то же вручную каждый раз, например
+// "втулки стабилизатора"). Собирается из истории ремонта и заказов сразу.
+function listPartNames() {
+  const names = new Set();
+  const collect = (json) => {
+    try {
+      for (const p of JSON.parse(json || '[]')) {
+        const name = (p.name || '').trim();
+        if (name) names.add(name);
+      }
+    } catch {
+      // Повреждённый JSON — пропускаем эту запись, на список остальных не влияет.
+    }
+  };
+  for (const row of db.prepare(`SELECT parts FROM repair_records`).all()) collect(row.parts);
+  for (const row of db.prepare(`SELECT parts FROM queue_entries`).all()) collect(row.parts);
+  return Array.from(names).sort((a, b) => a.localeCompare(b, 'ru'));
 }
 
 function deleteRepairRecord(id) {
@@ -1327,6 +1347,9 @@ const server = http.createServer(async (req, res) => {
     // Отчёт — список мастеров для фильтра.
     if (pathname === '/api/reports/masters' && req.method === 'GET') {
       return sendJSON(res, 200, listReportMasters());
+    }
+    if (pathname === '/api/parts/names' && req.method === 'GET') {
+      return sendJSON(res, 200, listPartNames());
     }
 
     // Appointments
