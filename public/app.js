@@ -309,7 +309,10 @@ loginPhoneInput.addEventListener('blur', () => {
 // целиком в верхнем регистре, как во всей остальной базе; кириллица и
 // прочие символы отбрасываются.
 function formatCarWordMask(raw) {
-  return raw.replace(/[^a-zA-Z0-9\s-]/g, '').toUpperCase();
+  // Схлопывает подряд идущие пробелы в один и убирает пробел в начале —
+  // иначе вставленный откуда-то артикул с двойными пробелами так и
+  // остаётся с ними (например, при вставке из буфера обмена).
+  return raw.replace(/[^a-zA-Z0-9\s-]/g, '').toUpperCase().replace(/\s+/g, ' ').replace(/^\s+/, '');
 }
 
 function attachCarWordMask(input) {
@@ -328,7 +331,10 @@ document.querySelectorAll('input[name="oil_filter_brand"], input[name="air_filte
 // В отличие от марки/модели авто выше — тут кириллица разрешена (и в любом
 // регистре, как набрал), а латиница всё равно приводится к верхнему регистру.
 function formatBrandMask(raw) {
-  return raw.replace(/[^a-zA-Zа-яА-ЯёЁ0-9\s-]/g, '').replace(/[a-z]/g, (c) => c.toUpperCase());
+  const value = raw.replace(/[^a-zA-Zа-яА-ЯёЁ0-9\s-]/g, '').replace(/[a-z]/g, (c) => c.toUpperCase());
+  // Латиница и так вся в верхнем регистре после замены выше — здесь только
+  // поднимает регистр первой кириллической буквы (Втулки, а не втулки).
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 }
 
 function attachBrandMask(input) {
@@ -604,7 +610,7 @@ async function copyVinToClipboard(vin) {
 
 async function copyArticleToClipboard(article) {
   try {
-    await navigator.clipboard.writeText(article);
+    await navigator.clipboard.writeText(String(article || '').trim().replace(/\s+/g, ' '));
     showToast('Артикул скопирован');
   } catch {
     showToast('Не удалось скопировать артикул', true);
@@ -1034,6 +1040,7 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
   nameInput.placeholder = 'Название';
   nameInput.value = item?.name || '';
   attachCapitalizeMask(nameInput);
+  if (isPart) nameInput.setAttribute('list', 'partNamesDatalist');
 
   const priceInput = document.createElement('input');
   priceInput.type = 'number';
@@ -1293,6 +1300,7 @@ function openRepairDialog(record) {
   document.getElementById('moveRepairToQueueBtn').classList.toggle('hidden', !record);
   repairForm.reset();
   loadMastersDatalist();
+  loadPartNamesDatalist();
 
   worksRowsEl.innerHTML = '';
   partsRowsEl.innerHTML = '';
@@ -1551,13 +1559,13 @@ function getRepairOrderContext() {
     const carLine = appt.client_id
       ? [appt.car_make, appt.car_model].filter(Boolean).join(' ')
       : (appt.walkin_car || '');
-    return { clientName: appt.client_name || '', carLine, vin: appt.vin || '' };
+    return { clientName: appt.client_name || '', carLine, vin: appt.vin || '', phone: appt.client_phone || '' };
   }
   if (historyClientId) {
     const client = state.clients.find((c) => c.id === historyClientId);
-    if (client) return { clientName: client.name, carLine: [client.car_make, client.car_model].filter(Boolean).join(' '), vin: client.vin || '' };
+    if (client) return { clientName: client.name, carLine: [client.car_make, client.car_model].filter(Boolean).join(' '), vin: client.vin || '', phone: client.phone || '' };
   }
-  return { clientName: '', carLine: '', vin: '' };
+  return { clientName: '', carLine: '', vin: '', phone: '' };
 }
 
 function buildOrderData() {
@@ -1571,6 +1579,7 @@ function buildOrderData() {
   const advance = advanceEnabled ? (Number(document.getElementById('advanceAmountInput').value) || 0) : 0;
   return {
     clientName: ctx.clientName,
+    phone: ctx.phone,
     carLine: ctx.carLine,
     vin: ctx.vin,
     mileage: repairForm.elements.mileage.value,
@@ -1647,6 +1656,7 @@ function buildOrderHtml(order, { showSupplier = false } = {}) {
     </div>
     <div class="order-meta">
       ${order.clientName ? `<div class="order-meta-row"><span>Клиент</span><strong>${escapeHtml(order.clientName)}</strong></div>` : ''}
+      ${order.phone ? `<div class="order-meta-row"><span>Телефон</span><strong>${escapeHtml(order.phone)}</strong></div>` : ''}
       ${order.carLine ? `<div class="order-meta-row"><span>Автомобиль</span><strong>${escapeHtml(order.carLine)}</strong></div>` : ''}
       ${order.vin ? `<div class="order-meta-row"><span>VIN</span><strong class="mono">${escapeHtml(order.vin)}</strong></div>` : ''}
       ${order.mileage ? `<div class="order-meta-row"><span>Пробег</span><strong>${fmtMileage(order.mileage)}</strong></div>` : ''}
@@ -1827,6 +1837,7 @@ async function renderOrderToCanvas() {
   y += 24;
 
   if (order.clientName) row('Клиент', order.clientName);
+  if (order.phone) row('Телефон', order.phone);
   if (order.carLine) row('Автомобиль', order.carLine);
   if (order.vin) row('VIN', order.vin);
   if (order.mileage) row('Пробег', fmtMileage(order.mileage));
@@ -2354,6 +2365,7 @@ function openQueueDialog(entry) {
   queueForm.reset();
   fillQueueClientSelect();
   setQueueClientFieldsOpen(false);
+  loadPartNamesDatalist();
 
   if (entry) {
     for (const [k, v] of Object.entries(entry)) {
@@ -2476,6 +2488,7 @@ document.getElementById('promoteQueueBtn').addEventListener('click', async () =>
         plate: queueForm.elements.plate.value,
         vin: queueForm.elements.vin.value,
         notes: queueForm.elements.notes.value,
+        tag: queueForm.elements.tag.value,
       }),
     });
 
@@ -2522,6 +2535,7 @@ function buildQueueOrderData() {
   const advance = queueAdvanceEnabled ? (Number(document.getElementById('queueAdvanceAmountInput').value) || 0) : 0;
   return {
     clientName: queueForm.elements.name.value,
+    phone: queueForm.elements.phone.value,
     carLine: [queueForm.elements.car_make.value, queueForm.elements.car_model.value].filter(Boolean).join(' '),
     vin: queueForm.elements.vin.value,
     mileage: queueForm.elements.mileage.value,
@@ -2656,6 +2670,7 @@ document.getElementById('orderAddToReportConfirmBtn').addEventListener('click', 
           plate: queueForm.elements.plate.value,
           vin: queueForm.elements.vin.value,
           notes: queueForm.elements.notes.value,
+          tag: queueForm.elements.tag.value,
         }),
       });
       await api(`/api/clients/${newClient.id}/repairs`, {
@@ -3483,6 +3498,19 @@ async function loadMastersDatalist() {
   document.getElementById('mastersDatalist').innerHTML = masters.map((m) => `<option value="${escapeHtml(m)}"></option>`).join('');
 }
 
+// Подсказки по названиям запчастей (см. поле "Название" в разделе "Запчасти")
+// — чтобы не вписывать вручную то, что уже когда-то писали, например
+// "втулки стабилизатора".
+async function loadPartNamesDatalist() {
+  let names;
+  try {
+    names = await api('/api/parts/names');
+  } catch {
+    return; // необязательные подсказки — если не загрузились, поле остаётся обычным текстовым
+  }
+  document.getElementById('partNamesDatalist').innerHTML = names.map((n) => `<option value="${escapeHtml(n)}"></option>`).join('');
+}
+
 document.getElementById('reportMasterFilter').addEventListener('change', (e) => {
   state.reportMasterFilter = e.target.value;
   renderReport(applyReportMasterFilter(currentReportRecords));
@@ -3519,6 +3547,7 @@ function buildOrderDataFromRecord(record) {
   const advance = Number(record.advance) || 0;
   return {
     clientName: record.client_name || '',
+    phone: record.client_phone || '',
     carLine: [record.car_make, record.car_model].filter(Boolean).join(' '),
     vin: record.client_vin || '',
     mileage: record.mileage,
