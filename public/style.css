@@ -633,6 +633,12 @@ input[type="number"]::-webkit-inner-spin-button {
   padding: 20px;
   z-index: 50;
 }
+/* Диалоги сборок запчастей открываются кнопкой "Сборки" поверх уже открытой
+   записи ремонта/заказа — при одинаковом z-index более поздний в разметке
+   .dialog-overlay (сама запись/заказ) перекрывал бы их своим фоном. */
+#partKitsListDialog, #partKitDialog {
+  z-index: 55;
+}
 .dialog {
   background: var(--surface);
   border: 1px solid var(--border);
