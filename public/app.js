@@ -1040,7 +1040,7 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
   nameInput.placeholder = 'Название';
   nameInput.value = item?.name || '';
   attachCapitalizeMask(nameInput);
-  if (isPart) nameInput.setAttribute('list', 'partNamesDatalist');
+  nameInput.setAttribute('list', isPart ? 'partNamesDatalist' : 'workNamesDatalist');
 
   const priceInput = document.createElement('input');
   priceInput.type = 'number';
@@ -1301,6 +1301,7 @@ function openRepairDialog(record) {
   repairForm.reset();
   loadMastersDatalist();
   loadPartNamesDatalist();
+  loadWorkNamesDatalist();
 
   worksRowsEl.innerHTML = '';
   partsRowsEl.innerHTML = '';
@@ -2366,6 +2367,7 @@ function openQueueDialog(entry) {
   fillQueueClientSelect();
   setQueueClientFieldsOpen(false);
   loadPartNamesDatalist();
+  loadWorkNamesDatalist();
 
   if (entry) {
     for (const [k, v] of Object.entries(entry)) {
@@ -3509,6 +3511,18 @@ async function loadPartNamesDatalist() {
     return; // необязательные подсказки — если не загрузились, поле остаётся обычным текстовым
   }
   document.getElementById('partNamesDatalist').innerHTML = names.map((n) => `<option value="${escapeHtml(n)}"></option>`).join('');
+}
+
+// Подсказки по названиям работ (см. поле "Название" в разделе "Выполненные
+// работы") — тот же принцип, что и для запчастей выше.
+async function loadWorkNamesDatalist() {
+  let names;
+  try {
+    names = await api('/api/works/names');
+  } catch {
+    return; // необязательные подсказки — если не загрузились, поле остаётся обычным текстовым
+  }
+  document.getElementById('workNamesDatalist').innerHTML = names.map((n) => `<option value="${escapeHtml(n)}"></option>`).join('');
 }
 
 document.getElementById('reportMasterFilter').addEventListener('change', (e) => {

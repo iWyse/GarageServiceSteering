@@ -354,10 +354,11 @@ function listReportMasters() {
   return Array.from(masters).sort((a, b) => a.localeCompare(b, 'ru'));
 }
 
-// Список ранее вписанных названий запчастей (см. datalist "partNamesDatalist"
-// в форме — чтобы не вбивать одно и то же вручную каждый раз, например
-// "втулки стабилизатора"). Собирается из истории ремонта и заказов сразу.
-function listPartNames() {
+// Список ранее вписанных названий запчастей/работ (см. datalist
+// "partNamesDatalist"/"workNamesDatalist" в форме — чтобы не вбивать одно и
+// то же вручную каждый раз, например "втулки стабилизатора"). Собирается из
+// истории ремонта и заказов сразу.
+function listDistinctItemNames(column) {
   const names = new Set();
   const collect = (json) => {
     try {
@@ -369,9 +370,15 @@ function listPartNames() {
       // Повреждённый JSON — пропускаем эту запись, на список остальных не влияет.
     }
   };
-  for (const row of db.prepare(`SELECT parts FROM repair_records`).all()) collect(row.parts);
-  for (const row of db.prepare(`SELECT parts FROM queue_entries`).all()) collect(row.parts);
+  for (const row of db.prepare(`SELECT ${column} FROM repair_records`).all()) collect(row[column]);
+  for (const row of db.prepare(`SELECT ${column} FROM queue_entries`).all()) collect(row[column]);
   return Array.from(names).sort((a, b) => a.localeCompare(b, 'ru'));
+}
+function listPartNames() {
+  return listDistinctItemNames('parts');
+}
+function listWorkNames() {
+  return listDistinctItemNames('works');
 }
 
 function deleteRepairRecord(id) {
@@ -1350,6 +1357,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/api/parts/names' && req.method === 'GET') {
       return sendJSON(res, 200, listPartNames());
+    }
+    if (pathname === '/api/works/names' && req.method === 'GET') {
+      return sendJSON(res, 200, listWorkNames());
     }
 
     // Appointments
