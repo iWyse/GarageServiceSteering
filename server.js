@@ -284,7 +284,7 @@ function listRepairRecordsByDateRange(start, end) {
       `SELECT r.*, c.tag AS client_tag, c.name AS client_name, c.phone AS client_phone, c.car_make, c.car_model, c.vin AS client_vin
        FROM repair_records r
        JOIN clients c ON c.id = r.client_id
-       WHERE r.date BETWEEN ? AND ? AND r.report_hidden = 0
+       WHERE r.date BETWEEN ? AND ? AND r.report_hidden = 0 AND r.in_report = 1
        ORDER BY r.date, r.id`
     )
     .all(start, end)
@@ -302,7 +302,7 @@ function touchClientUpdatedAt(clientId) {
 function createRepairRecord(clientId, data) {
   const info = db
     .prepare(
-      'INSERT INTO repair_records (client_id, title, date, mileage, works, parts, parts_eta, advance, notes, master) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO repair_records (client_id, title, date, mileage, works, parts, parts_eta, advance, notes, master, in_report) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     )
     .run(
       clientId,
@@ -314,14 +314,17 @@ function createRepairRecord(clientId, data) {
       data.parts_eta || '',
       Number(data.advance) || 0,
       data.notes || '',
-      (data.master || '').trim()
+      (data.master || '').trim(),
+      // По умолчанию запись НЕ попадает в отчёт — только явно, через кнопку
+      // "Добавить в отчёт" (см. миграцию migrateRepairInReportColumn выше).
+      data.in_report ? 1 : 0
     );
   touchClientUpdatedAt(clientId);
   return parseRepairRecord(db.prepare('SELECT * FROM repair_records WHERE id = ?').get(info.lastInsertRowid));
 }
 
 function updateRepairRecord(id, data) {
-  db.prepare('UPDATE repair_records SET title=?, date=?, mileage=?, works=?, parts=?, parts_eta=?, advance=?, notes=?, master=?, report_hidden=? WHERE id=?').run(
+  db.prepare('UPDATE repair_records SET title=?, date=?, mileage=?, works=?, parts=?, parts_eta=?, advance=?, notes=?, master=?, report_hidden=?, in_report=? WHERE id=?').run(
     (data.title || '').trim(),
     data.date || '',
     data.mileage ? Number(data.mileage) : null,
@@ -332,6 +335,7 @@ function updateRepairRecord(id, data) {
     data.notes || '',
     (data.master || '').trim(),
     data.report_hidden ? 1 : 0,
+    data.in_report ? 1 : 0,
     id
   );
   const row = db.prepare('SELECT * FROM repair_records WHERE id = ?').get(id);
@@ -352,33 +356,6 @@ function listReportMasters() {
     }
   }
   return Array.from(masters).sort((a, b) => a.localeCompare(b, 'ru'));
-}
-
-// Список ранее вписанных названий запчастей/работ (см. datalist
-// "partNamesDatalist"/"workNamesDatalist" в форме — чтобы не вбивать одно и
-// то же вручную каждый раз, например "втулки стабилизатора"). Собирается из
-// истории ремонта и заказов сразу.
-function listDistinctItemNames(column) {
-  const names = new Set();
-  const collect = (json) => {
-    try {
-      for (const p of JSON.parse(json || '[]')) {
-        const name = (p.name || '').trim();
-        if (name) names.add(name);
-      }
-    } catch {
-      // Повреждённый JSON — пропускаем эту запись, на список остальных не влияет.
-    }
-  };
-  for (const row of db.prepare(`SELECT ${column} FROM repair_records`).all()) collect(row[column]);
-  for (const row of db.prepare(`SELECT ${column} FROM queue_entries`).all()) collect(row[column]);
-  return Array.from(names).sort((a, b) => a.localeCompare(b, 'ru'));
-}
-function listPartNames() {
-  return listDistinctItemNames('parts');
-}
-function listWorkNames() {
-  return listDistinctItemNames('works');
 }
 
 function deleteRepairRecord(id) {
@@ -1354,12 +1331,6 @@ const server = http.createServer(async (req, res) => {
     // Отчёт — список мастеров для фильтра.
     if (pathname === '/api/reports/masters' && req.method === 'GET') {
       return sendJSON(res, 200, listReportMasters());
-    }
-    if (pathname === '/api/parts/names' && req.method === 'GET') {
-      return sendJSON(res, 200, listPartNames());
-    }
-    if (pathname === '/api/works/names' && req.method === 'GET') {
-      return sendJSON(res, 200, listWorkNames());
     }
 
     // Appointments

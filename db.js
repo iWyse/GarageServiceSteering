@@ -47,6 +47,7 @@ db.exec(`
     advance REAL NOT NULL DEFAULT 0, -- аванс, вычитается из итоговой суммы; 0 = не используется
     notes TEXT,
     report_hidden INTEGER NOT NULL DEFAULT 0, -- убрана из отчёта (кнопкой "Удалить" в списке отчёта), в истории клиента остаётся
+    in_report INTEGER NOT NULL DEFAULT 0, -- добавлена в отчёт кнопкой "Добавить в отчёт" — обычная запись ремонта сама в отчёт не попадает
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -351,6 +352,24 @@ function migrateRepairReportHiddenColumn() {
   }
 }
 migrateRepairReportHiddenColumn();
+
+// ---------- Миграция: запись должна попадать в отчёт только явно ----------
+// Раньше любая запись ремонта с датой внутри просматриваемого диапазона
+// автоматически показывалась в отчёте — путаница, когда обычная смета
+// незаметно "сама" оказывалась в отчёте. Теперь видимость в отчёте — отдельный
+// флаг, который явно включается кнопкой "Добавить в отчёт". Чтобы не потерять
+// уже сделанные отчёты, весь существующий на момент миграции список отмечается
+// видимым как есть (см. UPDATE ниже) — флаг влияет только на записи, созданные
+// после этого обновления.
+function migrateRepairInReportColumn() {
+  const columns = db.prepare(`PRAGMA table_info(repair_records)`).all().map((c) => c.name);
+  if (columns.length && !columns.includes('in_report')) {
+    db.exec(`ALTER TABLE repair_records ADD COLUMN in_report INTEGER NOT NULL DEFAULT 0`);
+    db.exec(`UPDATE repair_records SET in_report = 1`);
+    console.log('База данных обновлена: отчёт теперь только по явному добавлению записи.');
+  }
+}
+migrateRepairInReportColumn();
 
 // ---------- Миграция: тег в ТО ----------
 function migrateToArticleTagColumn() {

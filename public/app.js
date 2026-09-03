@@ -1040,7 +1040,6 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
   nameInput.placeholder = 'Название';
   nameInput.value = item?.name || '';
   attachCapitalizeMask(nameInput);
-  nameInput.setAttribute('list', isPart ? 'partNamesDatalist' : 'workNamesDatalist');
 
   const priceInput = document.createElement('input');
   priceInput.type = 'number';
@@ -1300,8 +1299,6 @@ function openRepairDialog(record) {
   document.getElementById('moveRepairToQueueBtn').classList.toggle('hidden', !record);
   repairForm.reset();
   loadMastersDatalist();
-  loadPartNamesDatalist();
-  loadWorkNamesDatalist();
 
   worksRowsEl.innerHTML = '';
   partsRowsEl.innerHTML = '';
@@ -1446,9 +1443,11 @@ repairForm.addEventListener('submit', async (e) => {
     works: collectRepairRows(worksRowsEl),
     parts: collectRepairRows(partsRowsEl),
     master: repairForm.elements.master.value,
-    // Поля в форме нет (убирается отдельной кнопкой в списке отчёта) —
-    // сохраняем как было, а не сбрасываем при обычном редактировании записи.
+    // Полей в форме нет (report_hidden убирается отдельной кнопкой в списке
+    // отчёта; in_report включается кнопкой "Добавить в отчёт") — сохраняем
+    // как было, а не сбрасываем при обычном редактировании записи.
     report_hidden: currentEditingRepairRecord?.report_hidden || false,
+    in_report: currentEditingRepairRecord?.in_report || false,
   };
   try {
     if (editingRepairId) {
@@ -2366,8 +2365,6 @@ function openQueueDialog(entry) {
   queueForm.reset();
   fillQueueClientSelect();
   setQueueClientFieldsOpen(false);
-  loadPartNamesDatalist();
-  loadWorkNamesDatalist();
 
   if (entry) {
     for (const [k, v] of Object.entries(entry)) {
@@ -2641,16 +2638,20 @@ document.getElementById('orderAddToReportConfirmBtn').addEventListener('click', 
   }
   try {
     if (currentOrderContext === 'repair') {
-      const data = { ...currentOrderRecordData, date };
+      const data = { ...currentOrderRecordData, date, in_report: true };
       if (editingRepairId) {
         // Запись уже существует в базе — клиент ей давно назначен, доп.
         // разрешение клиента (в т.ч. создание нового walk-in) тут не нужно.
-        await api(`/api/repairs/${editingRepairId}`, { method: 'PUT', body: JSON.stringify(data) });
+        // currentEditingRepairRecord обновляем сразу — иначе обычное
+        // "Сохранить" ниже (см. repairForm submit) отправит старое значение
+        // in_report из уже открытой формы и тут же уберёт запись из отчёта.
+        currentEditingRepairRecord = await api(`/api/repairs/${editingRepairId}`, { method: 'PUT', body: JSON.stringify(data) });
       } else {
         const clientId = pendingApptForRepair ? await resolveClientForAppt(pendingApptForRepair) : historyClientId;
         if (!clientId) throw new Error('Не удалось определить клиента для записи');
         const created = await api(`/api/clients/${clientId}/repairs`, { method: 'POST', body: JSON.stringify(data) });
         editingRepairId = created.id;
+        currentEditingRepairRecord = created;
       }
       if (historyClientId) await loadClientHistory(historyClientId);
     } else if (currentOrderContext === 'queue') {
@@ -2677,7 +2678,7 @@ document.getElementById('orderAddToReportConfirmBtn').addEventListener('click', 
       });
       await api(`/api/clients/${newClient.id}/repairs`, {
         method: 'POST',
-        body: JSON.stringify({ ...currentOrderRecordData, date }),
+        body: JSON.stringify({ ...currentOrderRecordData, date, in_report: true }),
       });
       await loadClients();
     } else {
@@ -3498,31 +3499,6 @@ async function loadMastersDatalist() {
     return; // необязательные подсказки — если не загрузились, поле остаётся обычным текстовым
   }
   document.getElementById('mastersDatalist').innerHTML = masters.map((m) => `<option value="${escapeHtml(m)}"></option>`).join('');
-}
-
-// Подсказки по названиям запчастей (см. поле "Название" в разделе "Запчасти")
-// — чтобы не вписывать вручную то, что уже когда-то писали, например
-// "втулки стабилизатора".
-async function loadPartNamesDatalist() {
-  let names;
-  try {
-    names = await api('/api/parts/names');
-  } catch {
-    return; // необязательные подсказки — если не загрузились, поле остаётся обычным текстовым
-  }
-  document.getElementById('partNamesDatalist').innerHTML = names.map((n) => `<option value="${escapeHtml(n)}"></option>`).join('');
-}
-
-// Подсказки по названиям работ (см. поле "Название" в разделе "Выполненные
-// работы") — тот же принцип, что и для запчастей выше.
-async function loadWorkNamesDatalist() {
-  let names;
-  try {
-    names = await api('/api/works/names');
-  } catch {
-    return; // необязательные подсказки — если не загрузились, поле остаётся обычным текстовым
-  }
-  document.getElementById('workNamesDatalist').innerHTML = names.map((n) => `<option value="${escapeHtml(n)}"></option>`).join('');
 }
 
 document.getElementById('reportMasterFilter').addEventListener('change', (e) => {
