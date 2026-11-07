@@ -992,7 +992,9 @@ function serveStatic(req, res) {
       return res.end('Not found');
     }
     const ext = path.extname(filePath);
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    // no-cache: браузер каждый раз сверяется с сервером, чтобы после обновления
+    // сайта не показывалась старая версия скриптов и стилей из кэша.
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
     res.end(content);
   });
 }
