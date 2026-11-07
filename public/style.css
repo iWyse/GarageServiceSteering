@@ -80,7 +80,7 @@ body.dialog-open { overflow: hidden; }
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 18px 28px;
+  padding: 18px max(28px, calc((100% - 1980px) / 2));
   border-bottom: 3px solid var(--accent);
   background: var(--surface);
   gap: 16px;
@@ -138,11 +138,10 @@ body.dialog-open { overflow: hidden; }
 .tab:hover { color: var(--text); }
 .tab.active { background: var(--accent); color: #1b1a17; font-weight: 600; }
 
-main { max-width: none; margin: 0; padding: 24px 28px; }
+main { max-width: 1980px; margin: 0 auto; padding: 24px 28px; }
 
 .view { display: none; }
 .view.active { display: block; }
-#view-clients.active { max-width: 1180px; margin: 0 auto; }
 
 /* ---------- Buttons & inputs ---------- */
 .btn-primary, .btn-ghost, .btn-danger, .btn-link {
