@@ -1066,7 +1066,14 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
   removeBtn.textContent = '×';
 
   priceInput.addEventListener('input', onChange);
-  removeBtn.addEventListener('click', () => {
+  removeBtn.addEventListener('click', async () => {
+    // В заказах (там сверяется поставка и сумма) строку удаляем только после
+    // подтверждения; в ремонте и сметах — как раньше, сразу.
+    if (onChange === recomputeQueueSums) {
+      const label = nameInput.value.trim();
+      const what = isPart ? 'товар' : 'работу';
+      if (!(await showConfirm(label ? `Удалить ${what} «${label}» из заказа?` : `Удалить пустую строку (${what}) из заказа?`))) return;
+    }
     const groupId = row.dataset.analogGroup;
     const container = row.parentElement;
     row.remove();
