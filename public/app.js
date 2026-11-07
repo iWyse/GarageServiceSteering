@@ -4715,7 +4715,48 @@ function formatChangelogDate(iso) {
   return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(y, m - 1, d));
 }
 
+// Хостинг сайта: провайдер и дата окончания оплаченного периода.
+const HOSTING_PROVIDER = 'VDSina.ru';
+const HOSTING_PROVIDER_URL = 'https://vdsina.ru';
+const HOSTING_END = { year: 2027, month: 5, day: 1 }; // 1 мая 2027
+
+function pluralRu(n, one, few, many) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+}
+
+function renderHostingCard() {
+  const card = document.getElementById('hostingCard');
+  const now = new Date();
+  // Сравниваем календарные даты (в UTC, чтобы не мешал переход на летнее время).
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const end = Date.UTC(HOSTING_END.year, HOSTING_END.month - 1, HOSTING_END.day);
+  const days = Math.round((end - today) / 86400000);
+  const endText = formatChangelogDate(`${HOSTING_END.year}-${String(HOSTING_END.month).padStart(2, '0')}-${String(HOSTING_END.day).padStart(2, '0')}`);
+  let left;
+  let state = '';
+  if (days > 0) {
+    left = `<strong>${days}</strong> ${pluralRu(days, 'день', 'дня', 'дней')}`;
+    if (days <= 30) state = ' hosting-card-warn';
+  } else if (days === 0) {
+    left = '<strong>сегодня последний день</strong>';
+    state = ' hosting-card-warn';
+  } else {
+    left = '<strong>срок истёк</strong>';
+    state = ' hosting-card-warn';
+  }
+  card.className = 'hosting-card' + state;
+  card.innerHTML = `
+    <span class="version-summary-title">Хостинг</span>
+    <span class="version-summary-meta">Провайдер: <strong><a href="${HOSTING_PROVIDER_URL}" target="_blank" rel="noopener noreferrer">${HOSTING_PROVIDER}</a></strong></span>
+    <span class="version-summary-meta">Оплачен до: <strong>${escapeHtml(endText)}</strong></span>
+    <span class="version-summary-meta">${days > 0 ? 'Осталось: ' : 'Статус: '}${left}</span>`;
+}
+
 async function loadVersion() {
+  renderHostingCard();
   const list = document.getElementById('versionList');
   const summary = document.getElementById('versionSummary');
   const empty = document.getElementById('versionEmpty');
