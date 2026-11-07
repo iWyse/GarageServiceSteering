@@ -160,6 +160,17 @@ db.exec(`
     updated_at TEXT DEFAULT (datetime('now'))
   );
 
+  -- Фото к заметкам владельца (из галереи/камеры телефона). Хранятся в самой
+  -- базе, поэтому попадают и в выгрузку базы; на клиенте перед отправкой
+  -- уменьшаются, так что одно фото — сотни килобайт, а не десяток мегабайт.
+  CREATE TABLE IF NOT EXISTS staff_note_photos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    note_id INTEGER NOT NULL,
+    mime TEXT NOT NULL,
+    data BLOB NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   -- Сессии входа (владелец и клиенты по VIN), вынесены из памяти процесса в
   -- базу — иначе перезапуск сервера разлогинивал всех, хотя cookie в
   -- браузере (Max-Age 30 дней) оставалась валидной ещё месяц.

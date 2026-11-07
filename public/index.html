@@ -756,6 +756,11 @@
         <button type="button" class="note-tag-btn note-tag-urgent" data-note-tag="urgent" role="tab" aria-selected="false">Срочно</button>
       </div>
       <label>Текст<textarea required name="text" rows="5" class="notes-textarea" placeholder="Например: заказать масло у поставщика к среде…"></textarea></label>
+      <div class="note-photos-block">
+        <div id="notePhotosGrid" class="note-photos-grid"></div>
+        <button type="button" id="notePhotoAddBtn" class="btn-ghost note-photo-add-btn">+ Добавить фото</button>
+        <input type="file" id="notePhotoInput" accept="image/*" multiple class="hidden">
+      </div>
       <div class="dialog-actions">
         <button type="button" id="deleteNoteBtn" class="btn-danger hidden">Удалить</button>
         <div class="spacer"></div>
@@ -994,6 +999,7 @@
      печати. Наполняется тем же HTML, что и #orderContent, перед window.print(). -->
 <div id="printArea"></div>
 
+<div id="photoViewer" class="photo-viewer hidden" role="dialog" aria-label="Просмотр фото"><img id="photoViewerImg" alt=""></div>
 <script src="app.js"></script>
 </body>
 </html>

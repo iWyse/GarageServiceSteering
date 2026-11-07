@@ -73,11 +73,13 @@ function onlyDigits(v) {
   return (v || '').replace(/\D/g, '');
 }
 
-// Логин вводится без маски — сравниваем по цифрам, но приводим 8XXXXXXXXXX к 7XXXXXXXXXX,
-// как раньше делала маска на клиенте, иначе "8918..." и "+7918..." не совпадут.
+// Поля телефона не подставляют +7 сами — сравниваем по цифрам и приводим
+// 8XXXXXXXXXX и голые 10 цифр (9XXXXXXXXX) к 7XXXXXXXXXX, иначе "8918...",
+// "918..." и "+7918..." не совпадут.
 function normalizeRuPhoneDigits(v) {
   let digits = onlyDigits(v);
   if (digits.length === 11 && digits[0] === '8') digits = '7' + digits.slice(1);
+  else if (digits.length === 10 && digits[0] === '9') digits = '7' + digits;
   return digits;
 }
 
@@ -843,9 +845,32 @@ function normalizeNoteTag(tag) {
 }
 
 function listStaffNotes() {
-  return db
+  const notes = db
     .prepare(`SELECT * FROM staff_notes ORDER BY (tag = 'urgent') DESC, created_at DESC, id DESC`)
     .all();
+  const byNote = new Map();
+  for (const p of db.prepare('SELECT id, note_id FROM staff_note_photos ORDER BY id').all()) {
+    if (!byNote.has(p.note_id)) byNote.set(p.note_id, []);
+    byNote.get(p.note_id).push(p.id);
+  }
+  return notes.map((n) => ({ ...n, photos: byNote.get(n.id) || [] }));
+}
+
+const NOTE_PHOTO_MAX_BYTES = 8 * 1024 * 1024;
+const NOTE_PHOTO_MAX_PER_NOTE = 12;
+
+// Принимает фото как data URL (image/jpeg|png|webp|gif) — клиент заранее его уменьшает.
+function addStaffNotePhoto(noteId, dataUrl) {
+  if (!db.prepare('SELECT 1 FROM staff_notes WHERE id = ?').get(noteId)) return { error: 'Заметка не найдена', status: 404 };
+  const m = /^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ''));
+  if (!m) return { error: 'Неподдерживаемый формат изображения', status: 400 };
+  const buf = Buffer.from(m[2], 'base64');
+  if (buf.length === 0 || buf.length > NOTE_PHOTO_MAX_BYTES) return { error: 'Фото слишком большое', status: 400 };
+  const count = db.prepare('SELECT COUNT(*) AS c FROM staff_note_photos WHERE note_id = ?').get(noteId).c;
+  if (count >= NOTE_PHOTO_MAX_PER_NOTE) return { error: `К заметке можно добавить не больше ${NOTE_PHOTO_MAX_PER_NOTE} фото`, status: 400 };
+  const info = db.prepare('INSERT INTO staff_note_photos (note_id, mime, data) VALUES (?, ?, ?)').run(noteId, m[1], buf);
+  db.prepare(`UPDATE staff_notes SET updated_at=datetime('now') WHERE id=?`).run(noteId);
+  return { id: Number(info.lastInsertRowid) };
 }
 
 function createStaffNote(data) {
@@ -865,6 +890,7 @@ function updateStaffNote(id, data) {
 }
 
 function deleteStaffNote(id) {
+  db.prepare('DELETE FROM staff_note_photos WHERE note_id = ?').run(id);
   db.prepare('DELETE FROM staff_notes WHERE id = ?').run(id);
 }
 
@@ -1151,13 +1177,34 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/notes' && req.method === 'POST') {
       const body = await readBody(req);
       if (!body.text || !body.text.trim()) return sendJSON(res, 400, { error: 'Текст заметки обязателен' });
-      return sendJSON(res, 201, createStaffNote(body));
+      return sendJSON(res, 201, { ...createStaffNote(body), photos: [] });
+    }
+    m = pathname.match(/^\/api\/notes\/(\d+)\/photos$/);
+    if (m && req.method === 'POST') {
+      const body = await readBody(req);
+      const r = addStaffNotePhoto(Number(m[1]), body.data);
+      if (r.error) return sendJSON(res, r.status, { error: r.error });
+      return sendJSON(res, 201, r);
+    }
+    m = pathname.match(/^\/api\/note-photos\/(\d+)$/);
+    if (m && req.method === 'GET') {
+      const row = db.prepare('SELECT mime, data FROM staff_note_photos WHERE id = ?').get(Number(m[1]));
+      if (!row) return sendJSON(res, 404, { error: 'Фото не найдено' });
+      const buf = Buffer.from(row.data);
+      res.writeHead(200, { 'Content-Type': row.mime, 'Content-Length': buf.length, 'Cache-Control': 'private, max-age=86400' });
+      return res.end(buf);
+    }
+    if (m && req.method === 'DELETE') {
+      db.prepare('DELETE FROM staff_note_photos WHERE id = ?').run(Number(m[1]));
+      return sendJSON(res, 200, { ok: true });
     }
     m = pathname.match(/^\/api\/notes\/(\d+)$/);
     if (m && req.method === 'PUT') {
       const body = await readBody(req);
       if (!body.text || !body.text.trim()) return sendJSON(res, 400, { error: 'Текст заметки обязателен' });
-      return sendJSON(res, 200, updateStaffNote(Number(m[1]), body));
+      const upd = updateStaffNote(Number(m[1]), body);
+      const photos = db.prepare('SELECT id FROM staff_note_photos WHERE note_id = ? ORDER BY id').all(upd.id).map((p) => p.id);
+      return sendJSON(res, 200, { ...upd, photos });
     }
     if (m && req.method === 'DELETE') {
       deleteStaffNote(Number(m[1]));

@@ -275,23 +275,24 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
   showLogin('owner');
 });
 
-// ---------- Маска телефона ----------
-// Клиенты — российские номера. Строго цифры, без пробелов и разделителей,
-// всегда с кодом +7 (8 и голый мобильный код 9XX приводим к тому же +7).
-function formatPhoneMask(raw) {
-  let digits = raw.replace(/\D/g, '');
-  if (digits[0] === '8') digits = digits.slice(1);
-  else if (digits[0] === '7') digits = digits.slice(1);
-  digits = digits.slice(0, 10);
-  return digits ? '+7' + digits : '';
+// ---------- Фильтр ввода телефона ----------
+// Никакой автоподстановки и группировки: в поле можно набрать только знак "+"
+// (и только первым символом) и цифры — всё остальное отбрасывается.
+function filterPhoneInput(raw) {
+  const plus = raw.trimStart().startsWith('+') ? '+' : '';
+  return plus + raw.replace(/\D/g, '');
 }
 
 function attachPhoneMask(input) {
   if (!input) return;
   input.addEventListener('input', () => {
-    const formatted = formatPhoneMask(input.value);
-    input.value = formatted;
-    input.setSelectionRange(formatted.length, formatted.length);
+    const filtered = filterPhoneInput(input.value);
+    if (filtered === input.value) return;
+    // Сохраняем позицию курсора: считаем, сколько допустимых символов было левее него.
+    const caret = input.selectionStart ?? input.value.length;
+    const keptBefore = filterPhoneInput(input.value.slice(0, caret)).length;
+    input.value = filtered;
+    input.setSelectionRange(keptBefore, keptBefore);
   });
 }
 
@@ -299,38 +300,7 @@ attachPhoneMask(document.getElementById('clientPhoneInput'));
 attachPhoneMask(document.getElementById('walkinPhoneInput'));
 attachPhoneMask(document.getElementById('queuePhoneInput'));
 attachPhoneMask(document.getElementById('clientCarPhoneInput'));
-// Логин — просто цифры без пробелов, без маски: так быстрее вводить и меньше шансов
-// промахнуться курсором при наборе на телефоне. "+7" только подставляется
-// как заготовка, чтобы не печатать его вручную, и убирается обратно при
-// уходе с поля, если так и осталось не заполнено. Вешаем сразу на несколько
-// событий (touchstart/mousedown раньше focus, plus сам focus как фолбэк) —
-// на части мобильных браузеров событие focus после программной подстановки
-// значения ведёт себя иначе, чем на десктопе.
-const loginPhoneInput = document.getElementById('loginPhoneInput');
-function prefillLoginPhone() {
-  if (!loginPhoneInput.value) loginPhoneInput.value = '+7';
-}
-loginPhoneInput.addEventListener('touchstart', prefillLoginPhone, { passive: true });
-loginPhoneInput.addEventListener('mousedown', prefillLoginPhone);
-loginPhoneInput.addEventListener('focus', prefillLoginPhone);
-// Браузер сам расставляет курсор по месту тапа/клика — на мобильных это
-// происходит с непредсказуемой задержкой относительно touchstart/focus
-// (после анимации появления клавиатуры), поэтому фиксированный setTimeout
-// после этих событий срабатывал слишком рано и не помогал. Вместо этого
-// слушаем сам selectionchange: пока в поле ровно "+7" (пользователь ещё
-// ничего не напечатал), любая попытка браузера передвинуть курсор не в
-// конец тут же откатывается обратно — как только начат реальный ввод,
-// проверка перестаёт срабатывать и курсор ведёт себя как обычно.
-document.addEventListener('selectionchange', () => {
-  if (document.activeElement !== loginPhoneInput) return;
-  if (loginPhoneInput.value !== '+7') return;
-  if (loginPhoneInput.selectionStart !== 2 || loginPhoneInput.selectionEnd !== 2) {
-    loginPhoneInput.setSelectionRange(2, 2);
-  }
-});
-loginPhoneInput.addEventListener('blur', () => {
-  if (loginPhoneInput.value === '+7') loginPhoneInput.value = '';
-});
+attachPhoneMask(document.getElementById('loginPhoneInput'));
 
 // ---------- Маска марки/модели авто ----------
 // Английские буквы и цифры (плюс пробел/дефис для составных названий вроде
@@ -4056,6 +4026,9 @@ function openNoteDialog(note) {
   deleteNoteBtn.classList.toggle('hidden', !note);
   noteForm.reset();
   noteForm.elements.text.value = note ? note.text : '';
+  notePhotos = (note?.photos || []).map((id) => ({ id, url: `/api/note-photos/${id}` }));
+  notePhotosRemoved = [];
+  renderNotePhotos();
   setNoteTag(note ? note.tag : 'normal');
   autoResizeTextarea(noteForm.elements.text);
   openDialog(noteDialog);
@@ -4063,17 +4036,108 @@ function openNoteDialog(note) {
 
 document.getElementById('newNoteBtn').addEventListener('click', () => openNoteDialog(null));
 
+// ---------- Фото в заметках ----------
+// notePhotos: уже сохранённые ({id,url}) и новые ({dataUrl,url}) вперемешку;
+// новые уходят на сервер после сохранения самой заметки.
+let notePhotos = [];
+let notePhotosRemoved = [];
+const notePhotosGrid = document.getElementById('notePhotosGrid');
+const notePhotoInput = document.getElementById('notePhotoInput');
+
+function renderNotePhotos() {
+  notePhotosGrid.innerHTML = '';
+  notePhotos.forEach((p, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'note-photo-thumb';
+    const img = document.createElement('img');
+    img.src = p.url;
+    img.alt = 'Фото';
+    img.loading = 'lazy';
+    img.addEventListener('click', () => openPhotoViewer(p.url));
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'note-photo-remove';
+    del.title = 'Убрать фото';
+    del.setAttribute('aria-label', 'Убрать фото');
+    del.textContent = '×';
+    del.addEventListener('click', () => {
+      if (p.id) notePhotosRemoved.push(p.id);
+      notePhotos.splice(i, 1);
+      renderNotePhotos();
+    });
+    wrap.append(img, del);
+    notePhotosGrid.appendChild(wrap);
+  });
+}
+
+function openPhotoViewer(url) {
+  document.getElementById('photoViewerImg').src = url;
+  document.getElementById('photoViewer').classList.remove('hidden');
+}
+document.getElementById('photoViewer').addEventListener('click', () => {
+  document.getElementById('photoViewer').classList.add('hidden');
+});
+
+// Уменьшаем до 1600px по длинной стороне и пережимаем в JPEG — фото с телефона
+// весит 3–8 МБ, для заметки хватает сотен килобайт.
+function shrinkImageFile(file, maxSide = 1600, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * k));
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * k));
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Не удалось прочитать изображение'));
+    };
+    img.src = url;
+  });
+}
+
+document.getElementById('notePhotoAddBtn').addEventListener('click', () => notePhotoInput.click());
+notePhotoInput.addEventListener('change', async () => {
+  const files = Array.from(notePhotoInput.files || []);
+  notePhotoInput.value = '';
+  for (const f of files) {
+    if (notePhotos.length >= 12) {
+      showToast('К заметке можно добавить не больше 12 фото', true);
+      break;
+    }
+    try {
+      const dataUrl = await shrinkImageFile(f);
+      notePhotos.push({ dataUrl, url: dataUrl });
+    } catch (err) {
+      showToast(err.message, true);
+    }
+  }
+  renderNotePhotos();
+});
+
 noteForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const data = { text: noteForm.elements.text.value, tag: currentNoteTag };
   try {
+    let noteId = editingNoteId;
     if (editingNoteId) {
       await api(`/api/notes/${editingNoteId}`, { method: 'PUT', body: JSON.stringify(data) });
-      showToast('Заметка обновлена');
     } else {
-      await api('/api/notes', { method: 'POST', body: JSON.stringify(data) });
-      showToast('Заметка добавлена');
+      noteId = (await api('/api/notes', { method: 'POST', body: JSON.stringify(data) })).id;
     }
+    for (const id of notePhotosRemoved) await api(`/api/note-photos/${id}`, { method: 'DELETE' });
+    for (const p of notePhotos.filter((x) => x.dataUrl)) {
+      await api(`/api/notes/${noteId}/photos`, { method: 'POST', body: JSON.stringify({ data: p.dataUrl }) });
+    }
+    showToast(editingNoteId ? 'Заметка обновлена' : 'Заметка добавлена');
     closeDialog(noteDialog);
     await loadNotes();
   } catch (err) {
@@ -4120,6 +4184,7 @@ async function loadNotes() {
         <span class="note-item-date">${fmtDateTime(n.updated_at || n.created_at)}</span>
       </div>
       <p class="note-item-text">${escapeHtml(n.text)}</p>
+      ${(n.photos || []).length ? `<div class="note-item-photos">${n.photos.slice(0, 4).map((id) => `<img src="/api/note-photos/${id}" alt="" loading="lazy">`).join('')}${n.photos.length > 4 ? `<span class="note-item-photos-more">+${n.photos.length - 4}</span>` : ''}</div>` : ''}
     `;
     item.addEventListener('click', () => openNoteDialog(n));
     list.appendChild(item);
