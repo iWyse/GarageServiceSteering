@@ -237,6 +237,35 @@ document.getElementById('clientLogoutBtn').addEventListener('click', async () =>
   showLogin('client');
 });
 
+// Резервная копия всей базы: скачиваем через fetch, чтобы при ошибке (например,
+// истекла сессия) показать сообщение, а не сохранить файл с текстом ошибки.
+document.getElementById('backupBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('backupBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/backup');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Не удалось скачать резервную копию');
+    }
+    const match = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = match ? match[1] : 'autoservice-backup.db';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    showToast('Резервная копия базы скачана');
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 document.getElementById('logoutBtn').addEventListener('click', async () => {
   try {
     await api('/api/logout', { method: 'POST' });
@@ -487,6 +516,7 @@ document.querySelectorAll('.tab').forEach((btn) => {
     if (target === 'requests') loadRequests();
     if (target === 'notes') loadNotes();
     if (target === 'report') { loadReportWeek(); loadReportMasters(); }
+    if (target === 'version') loadVersion();
     // Поиск клиентов очищается при каждом заходе на вкладку — иначе список
     // остаётся отфильтрованным с прошлого раза, и непонятно, куда делись
     // остальные клиенты.
@@ -506,6 +536,9 @@ document.querySelectorAll('.tab').forEach((btn) => {
 function openDialog(el) {
   el.classList.remove('hidden');
   syncBodyScrollLock();
+  // Поля "Рекомендации"/"Заметки" растут под текст, а посчитать высоту можно
+  // только у видимого элемента — поэтому пересчитываем уже после показа окна.
+  resizeVisibleTextareas(el);
 }
 function closeDialog(el) {
   el.classList.add('hidden');
@@ -3024,9 +3057,18 @@ function escapeHtml(str) {
 // "Рекомендации" растёт по высоте под текст вместо фиксированных 2 строк
 // с внутренней прокруткой.
 function autoResizeTextarea(el) {
+  // Пока поле скрыто (диалог ещё закрыт), scrollHeight равен 0 — высота 0px
+  // оставляла от поля только min-height, а длинный текст обрезался. Скрытое
+  // поле пропускаем: openDialog пересчитает его, когда окно станет видимым.
+  if (!el || !el.offsetParent) return;
   el.style.height = 'auto';
   el.style.height = el.scrollHeight + 'px';
 }
+// Пересчёт всех видимых полей (например, после открытия окна или смены ширины).
+function resizeVisibleTextareas(root = document) {
+  root.querySelectorAll('.notes-textarea').forEach(autoResizeTextarea);
+}
+window.addEventListener('resize', () => resizeVisibleTextareas());
 document.querySelectorAll('.notes-textarea').forEach((el) => {
   el.addEventListener('input', () => autoResizeTextarea(el));
   // Enter сохраняет форму (как в мессенджерах), Shift+Enter — перенос строки.
@@ -4569,3 +4611,84 @@ async function bootApp() {
   }
   showLogin('owner');
 })();
+
+// ---------- Часы в шапке ----------
+// Показывают текущее время устройства (секунды обновляются каждую секунду).
+// На мобильных блок скрыт стилями, обновление при этом дешёвое.
+(function initHeaderClock() {
+  const timeEl = document.getElementById('headerClockTime');
+  const dateEl = document.getElementById('headerClockDate');
+  if (!timeEl || !dateEl) return;
+  const timeFmt = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dateFmt = new Intl.DateTimeFormat('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' });
+  function tick() {
+    const now = new Date();
+    timeEl.textContent = timeFmt.format(now);
+    dateEl.textContent = dateFmt.format(now);
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+
+// ---------- Вкладка «Версия»: история изменений из public/changelog.json ----------
+// Новую запись добавляют в начало changelog.json вместе с каждым коммитом.
+const VERSION_GROUPS = [
+  ['added', 'Добавлено'],
+  ['improved', 'Улучшено'],
+  ['fixed', 'Исправлено'],
+  ['removed', 'Удалено'],
+];
+
+function formatChangelogDate(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(y, m - 1, d));
+}
+
+async function loadVersion() {
+  const list = document.getElementById('versionList');
+  const summary = document.getElementById('versionSummary');
+  const empty = document.getElementById('versionEmpty');
+  let releases;
+  try {
+    const res = await fetch('/changelog.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error('Не удалось загрузить историю изменений');
+    releases = await res.json();
+  } catch (err) {
+    showToast(err.message, true);
+    return;
+  }
+  releases = (Array.isArray(releases) ? releases : []).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  empty.classList.toggle('hidden', releases.length > 0);
+  summary.classList.toggle('hidden', releases.length === 0);
+  if (!releases.length) { list.innerHTML = ''; return; }
+
+  const total = releases.reduce((n, r) => n + VERSION_GROUPS.reduce((k, [key]) => k + (r[key] || []).length, 0), 0);
+  summary.innerHTML = `
+    <span class="version-summary-title">История версий</span>
+    <span class="version-summary-meta">Последнее обновление: <strong>${escapeHtml(formatChangelogDate(releases[0].date))}</strong></span>
+    <span class="version-summary-meta">Обновлений: <strong>${releases.length}</strong> · изменений: <strong>${total}</strong></span>`;
+
+  list.innerHTML = releases.map((r, i) => {
+    const counts = VERSION_GROUPS
+      .filter(([key]) => (r[key] || []).length)
+      .map(([key, label]) => `<span class="version-count version-${key}" title="${label}">${(r[key] || []).length}</span>`)
+      .join('');
+    const groups = VERSION_GROUPS
+      .filter(([key]) => (r[key] || []).length)
+      .map(([key, label]) => `
+        <div class="version-group">
+          <span class="version-group-label version-${key}">${label}</span>
+          <ul>${r[key].map((t) => `<li>${escapeHtml(t)}</li>`).join('')}</ul>
+        </div>`)
+      .join('');
+    return `
+      <details class="version-release"${i < 3 ? ' open' : ''}>
+        <summary>
+          <span class="version-date">${escapeHtml(formatChangelogDate(r.date))}</span>
+          <span class="version-title">${escapeHtml(r.title || '')}</span>
+          <span class="version-counts">${counts}</span>
+        </summary>
+        <div class="version-body">${groups}</div>
+      </details>`;
+  }).join('');
+}

@@ -83,6 +83,10 @@
       <h1>ГУРсервис</h1>
       <p>учёт клиентов и&nbsp;записей</p>
     </div>
+    <div class="header-clock" id="headerClock" aria-label="Текущее время">
+      <span class="header-clock-time" id="headerClockTime">--:--:--</span>
+      <span class="header-clock-date" id="headerClockDate"></span>
+    </div>
   </div>
   <nav class="tabs" role="tablist">
     <button class="tab active" data-tab="schedule" role="tab" aria-selected="true">Расписание</button>
@@ -93,8 +97,16 @@
     <button class="tab tab-with-badge" data-tab="requests" role="tab" aria-selected="false">Заявки<span id="requestsBadge" class="tab-badge hidden">0</span></button>
     <button class="tab tab-with-badge" data-tab="notes" role="tab" aria-selected="false">Заметки<span id="notesBadge" class="tab-badge tab-badge-count hidden">0</span></button>
     <button class="tab" data-tab="report" role="tab" aria-selected="false">Отчёт</button>
+    <button class="tab" data-tab="version" role="tab" aria-selected="false">Версия</button>
   </nav>
   <div class="topbar-actions">
+    <button id="backupBtn" type="button" class="btn-ghost icon-btn" title="Скачать резервную копию базы данных" aria-label="Скачать резервную копию базы данных">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <path d="M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
     <button id="logoutBtn" class="btn-ghost" title="Выйти" aria-label="Выйти">
       <svg class="logout-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -275,6 +287,15 @@
       </table>
     </div>
     <p id="reportEmpty" class="empty-state hidden">За эту неделю выполненных работ нет.</p>
+  </section>
+
+  <!-- ===== VERSION VIEW (история изменений, данные — public/changelog.json) ===== -->
+  <section id="view-version" class="view">
+    <div class="version-wrap">
+      <div class="version-summary" id="versionSummary"></div>
+      <div id="versionList" class="version-list"></div>
+      <p id="versionEmpty" class="empty-state hidden">История изменений пока пуста.</p>
+    </div>
   </section>
 
 </main>

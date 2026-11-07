@@ -2,6 +2,8 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import os from 'node:os';
+import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import db from './db.js';
 
@@ -1358,6 +1360,41 @@ const server = http.createServer(async (req, res) => {
     if (m && req.method === 'DELETE') {
       deleteAppointment(Number(m[1]));
       return sendJSON(res, 200, { ok: true });
+    }
+
+    // Резервная копия всей базы — только владелец (маршрут ниже проверки
+    // авторизации). Снимок делаем через VACUUM INTO — он согласованный даже
+    // если в этот момент идёт запись. Из копии удаляем таблицу сессий, чтобы
+    // в скачанном файле не оказалось действующих токенов входа.
+    // Восстановление — положить файл рядом с server.js под именем autoservice.db.
+    if (pathname === '/api/backup' && req.method === 'GET') {
+      const tmpFile = path.join(os.tmpdir(), `autoservice-backup-${crypto.randomUUID()}.db`);
+      try {
+        db.exec(`VACUUM INTO '${tmpFile.replace(/'/g, "''")}'`);
+        const copy = new DatabaseSync(tmpFile);
+        try {
+          copy.exec('DELETE FROM sessions');
+          copy.exec('VACUUM');
+        } finally {
+          copy.close();
+        }
+        const data = fs.readFileSync(tmpFile);
+        const now = new Date();
+        const p2 = (n) => String(n).padStart(2, '0');
+        const stamp = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}_${p2(now.getHours())}-${p2(now.getMinutes())}`;
+        res.writeHead(200, {
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': `attachment; filename="autoservice-backup-${stamp}.db"`,
+          'Content-Length': data.length,
+          'Cache-Control': 'no-store',
+        });
+        return res.end(data);
+      } catch (err) {
+        console.error('Ошибка резервной копии:', err);
+        return sendJSON(res, 500, { error: 'Не удалось сделать резервную копию базы' });
+      } finally {
+        fs.rmSync(tmpFile, { force: true });
+      }
     }
 
     if (pathname.startsWith('/api/')) {

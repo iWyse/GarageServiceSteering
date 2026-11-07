@@ -91,14 +91,17 @@ const insRepair = db.prepare(
 );
 const repairs = [
   { c: 0, title: 'ТО: масло и фильтры', date: day(0, 0), mileage: 182400, master: 'Павел', inReport: 1,
+    notes: 'Рекомендуется заменить тормозную жидкость в течение полугода, проверить пыльники ШРУСов и сальник коленвала — есть небольшой подтёк масла. Следующее ТО через 10 000 км или через год.',
     works: [{ name: 'Замена масла и масляного фильтра', price: 1200 }, { name: 'Замена воздушного фильтра', price: 400 }],
     parts: [{ name: 'Масло 5W-30, 4 л', price: 3600, qty: 1, brand: 'Toyota', article: '08880-83716', supplier: 'АТС', received: true },
             { name: 'Масляный фильтр', price: 650, qty: 1, brand: 'Toyota', article: '90915-YZZD4', supplier: 'АТС', received: true },
             { name: 'Воздушный фильтр', price: 900, qty: 1, brand: 'Vic', article: 'A-1011', supplier: 'Микадо', received: true }] },
   { c: 1, title: 'Диагностика подвески', date: day(0, 0), mileage: 96300, master: 'Дмитрий', inReport: 1,
+    notes: 'Передние амортизаторы подтекают, рекомендуем заменить парой. Задние сайлентблоки рычагов с трещинами — заменить в ближайшее время.',
     works: [{ name: 'Диагностика ходовой части', price: 800 }, { name: 'Замена стойки стабилизатора (2 шт.)', price: 1500 }],
     parts: [{ name: 'Стойка стабилизатора', price: 2400, qty: 2, brand: 'Febest', article: '0323-ACV', supplier: 'emex', received: true }] },
   { c: 2, title: 'Замена ремня ГРМ', date: day(0, 1), mileage: 311000, master: 'Павел', inReport: 0,
+    notes: 'Клиента предупредили: ролики и помпа заменены вместе с ремнём. Следующая замена — через 90 000 км. Рекомендуем проверить ремень генератора и натяжитель.',
     works: [{ name: 'Замена ремня ГРМ с роликами и помпой', price: 9500 }],
     parts: [{ name: 'Комплект ГРМ', price: 14800, qty: 1, brand: 'Gates', article: 'K015569XS', supplier: 'ПЛ', received: true },
             { name: 'Помпа', price: 5200, qty: 1, brand: 'Aisin', article: 'WPT-052', supplier: 'ПЛ', received: true },
@@ -124,7 +127,7 @@ for (const r of repairs) {
   insRepair.run(
     clientIds[r.c], r.title, r.date, r.mileage,
     JSON.stringify(r.works), JSON.stringify(r.parts),
-    '', r.advance || 0, '', r.master, r.inReport
+    '', r.advance || 0, r.notes || '', r.master, r.inReport
   );
 }
 
