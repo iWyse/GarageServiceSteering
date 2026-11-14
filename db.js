@@ -112,7 +112,8 @@ db.exec(`
     car_make TEXT NOT NULL,
     car_model TEXT,
     tag TEXT,
-    oil_spec TEXT,              -- вязкость/спецификация масла, напр. "5W-30"
+    oil_spec TEXT,              -- название масла, напр. "Mobil 1 5W-30" (раньше было только вязкостью)
+    oil_volume TEXT,            -- объём масла, напр. "4 л"
     oil_article TEXT,
     oil_filter_brand TEXT,
     oil_filter_article TEXT,
@@ -156,6 +157,20 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     text TEXT NOT NULL,
     tag TEXT NOT NULL DEFAULT 'normal',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  -- Вкладка «Склад» — запчасти, которые есть у нас в наличии. По артикулу
+  -- позиции подсвечиваются в заказах, если такой товар уже лежит на складе.
+  CREATE TABLE IF NOT EXISTS warehouse_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    brand TEXT,
+    article TEXT,
+    qty INTEGER NOT NULL DEFAULT 0,
+    price REAL NOT NULL DEFAULT 0,
+    notes TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   );
@@ -268,6 +283,16 @@ function migrateRepairPartsEtaAndAdvance() {
   }
 }
 migrateRepairPartsEtaAndAdvance();
+
+// ---------- Миграция: объём масла в карточках ТО ----------
+function migrateToOilVolume() {
+  const columns = db.prepare(`PRAGMA table_info(to_articles)`).all().map((c) => c.name);
+  if (columns.length && !columns.includes('oil_volume')) {
+    db.exec(`ALTER TABLE to_articles ADD COLUMN oil_volume TEXT`);
+    console.log('База данных обновлена: добавлен объём масла в ТО.');
+  }
+}
+migrateToOilVolume();
 
 // ---------- Миграция: тег у клиентов ----------
 function migrateClientTagColumn() {

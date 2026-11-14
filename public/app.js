@@ -1172,6 +1172,12 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
     line1.append(removeBtn);
     row.append(line1);
 
+    // Артикул есть на нашем складе — строка подсвечивается фиолетовым (только в заказах).
+    if (withReceived) {
+      articleInput.addEventListener('input', () => updateStockHighlight(row));
+      updateStockHighlight(row);
+    }
+
     if (withReceived && row.dataset.analogGroup) refreshAnalogRow(row);
     if (withReceived) {
       row.addEventListener('click', (e) => {
@@ -2184,6 +2190,8 @@ function renderQueue() {
     const receivedNames = partsWithName.filter((p) => p.received).map(formatPart);
     const problemNames = partsWithName.filter((p) => !p.received && isProblem(p)).map(formatPart);
     const pendingNames = partsWithName.filter((p) => !p.received && !isProblem(p)).map(formatPart);
+    // Ещё не получено, но такой артикул уже лежит на нашем складе.
+    const stockNames = partsWithName.filter((p) => !p.received && warehouseQtyFor(p.article) > 0).map(formatPart);
     const item = document.createElement('div');
     item.className = 'queue-item';
     item.innerHTML = `
@@ -2196,6 +2204,7 @@ function renderQueue() {
       ${receivedNames.length ? `<div class="queue-parts-received">На складе: ${escapeHtml(receivedNames.join(', '))}</div>` : ''}
       ${problemNames.length ? `<div class="queue-parts-problem">Отказ: ${escapeHtml(problemNames.join(', '))}</div>` : ''}
       ${pendingNames.length ? `<div class="queue-parts-pending">Ожидаем: ${escapeHtml(pendingNames.join(', '))}</div>` : ''}
+      ${stockNames.length ? `<div class="queue-parts-stock">Есть на складе: ${escapeHtml(stockNames.join(', '))}</div>` : ''}
     `;
     if (!autoStatus) {
       item.querySelector('.queue-status-badge').addEventListener('click', async (e) => {
@@ -4309,7 +4318,7 @@ document.getElementById('newToArticleBtn').addEventListener('click', () => openT
 // (можно сформировать даже ещё не сохранив карточку).
 document.getElementById('toArticleOrderBtn').addEventListener('click', () => {
   const parts = [
-    { label: 'oil_article', name: `Масло${toArticleForm.elements.oil_spec.value.trim() ? ' ' + toArticleForm.elements.oil_spec.value.trim() : ''}` },
+    { label: 'oil_article', name: `Масло${toArticleForm.elements.oil_spec.value.trim() ? ' ' + toArticleForm.elements.oil_spec.value.trim() : ''}${toArticleForm.elements.oil_volume.value.trim() ? ', ' + toArticleForm.elements.oil_volume.value.trim() : ''}` },
     { label: 'oil_filter_article', brandLabel: 'oil_filter_brand', name: 'Масляный фильтр' },
     { label: 'air_filter_article', brandLabel: 'air_filter_brand', name: 'Воздушный фильтр' },
     { label: 'cabin_filter_article', brandLabel: 'cabin_filter_brand', name: 'Фильтр салона' },
@@ -4367,6 +4376,7 @@ toArticleForm.addEventListener('submit', async (e) => {
     car_model: toArticleForm.elements.car_model.value,
     tag: toArticleForm.elements.tag.value,
     oil_spec: toArticleForm.elements.oil_spec.value,
+    oil_volume: toArticleForm.elements.oil_volume.value,
     oil_article: toArticleForm.elements.oil_article.value,
     oil_filter_brand: toArticleForm.elements.oil_filter_brand.value,
     oil_filter_article: toArticleForm.elements.oil_filter_article.value,
@@ -4431,7 +4441,8 @@ function renderToArticles() {
   filtered.forEach((it) => {
     const tr = document.createElement('tr');
     const carLine = [it.car_make, it.car_model].filter(Boolean).join(' ');
-    const oilLabel = it.oil_article ? `${it.oil_spec ? escapeHtml(it.oil_spec) + ' — ' : ''}${toArticleCell(it.oil_article)}` : (it.oil_spec ? escapeHtml(it.oil_spec) : '—');
+    const oilName = [it.oil_spec, it.oil_volume].filter(Boolean).join(', ');
+    const oilLabel = it.oil_article ? `${oilName ? escapeHtml(oilName) + ' — ' : ''}${toArticleCell(it.oil_article)}` : (oilName ? escapeHtml(oilName) : '—');
     tr.innerHTML = `
       <td class="cell-name">${escapeHtml(carLine)}</td>
       <td class="cell-tag">${escapeHtml(it.tag || '—')}</td>
@@ -4463,6 +4474,144 @@ async function loadToArticles() {
   }
   renderToArticles();
 }
+
+// ---------- Склад ----------
+// Запчасти в наличии. Артикулы со склада подсвечиваются фиолетовым в заказах
+// (строка запчасти в окне заказа и строка «Есть на складе» в карточке заказа).
+let warehouseItems = [];
+let editingWarehouseId = null;
+const warehouseDialog = document.getElementById('warehouseDialog');
+const warehouseForm = document.getElementById('warehouseForm');
+const deleteWarehouseBtn = document.getElementById('deleteWarehouseBtn');
+
+// Артикул → сколько штук на складе (все позиции с одним артикулом суммируются).
+let warehouseStock = new Map();
+
+function rebuildWarehouseStock() {
+  warehouseStock = new Map();
+  for (const it of warehouseItems) {
+    const key = normalizePlArticle(it.article);
+    if (!key) continue;
+    warehouseStock.set(key, (warehouseStock.get(key) || 0) + (Number(it.qty) || 0));
+  }
+}
+
+// Сколько штук этого артикула лежит на складе (0 — нет или не найден).
+function warehouseQtyFor(article) {
+  const key = normalizePlArticle(article);
+  return key ? warehouseStock.get(key) || 0 : 0;
+}
+
+// Подсвечивает строку запчасти в заказе, если её артикул есть на складе.
+function updateStockHighlight(row) {
+  const input = row.querySelector('.row-article');
+  if (!input) return;
+  const qty = warehouseQtyFor(input.value);
+  row.classList.toggle('row-in-stock', qty > 0);
+  // Подсказка — на самой строке: у поля артикула title перезаписывает статус Профит-Лиги.
+  row.title = qty > 0 ? `Есть на нашем складе: ${qty} шт.` : '';
+}
+
+function refreshStockHighlights() {
+  document.querySelectorAll('#queuePartsRows .repair-row').forEach(updateStockHighlight);
+}
+
+function renderWarehouse() {
+  const q = document.getElementById('warehouseSearch').value.trim().toLowerCase();
+  const body = document.getElementById('warehouseBody');
+  const filtered = q
+    ? warehouseItems.filter((it) => [it.name, it.brand, it.article].filter(Boolean).join(' ').toLowerCase().includes(q))
+    : warehouseItems;
+  body.innerHTML = '';
+  document.getElementById('warehouseEmpty').classList.toggle('hidden', warehouseItems.length !== 0);
+  filtered.forEach((it) => {
+    const tr = document.createElement('tr');
+    if (!(Number(it.qty) > 0)) tr.classList.add('warehouse-out');
+    tr.innerHTML = `
+      <td class="cell-name">${escapeHtml(it.name)}</td>
+      <td>${escapeHtml(it.brand || '—')}</td>
+      <td>${toArticleCell(it.article)}</td>
+      <td class="warehouse-qty">${Number(it.qty) > 0 ? `${Number(it.qty)} шт.` : 'нет'}</td>
+      <td>${Number(it.price) > 0 ? fmtMoney(it.price) : '—'}</td>
+      <td class="edit-hint">${EDIT_ICON_SVG}</td>
+    `;
+    tr.querySelectorAll('.article-copy-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        copyArticleToClipboard(btn.dataset.article);
+      });
+    });
+    tr.addEventListener('click', () => openWarehouseDialog(it));
+    body.appendChild(tr);
+  });
+}
+
+function openWarehouseDialog(item) {
+  editingWarehouseId = item ? item.id : null;
+  document.getElementById('warehouseDialogTitle').textContent = item ? 'Позиция на складе' : 'Новая позиция';
+  deleteWarehouseBtn.classList.toggle('hidden', !item);
+  warehouseForm.reset();
+  if (item) {
+    for (const [k, v] of Object.entries(item)) {
+      if (warehouseForm.elements[k]) warehouseForm.elements[k].value = v ?? '';
+    }
+  }
+  openDialog(warehouseDialog);
+}
+
+async function loadWarehouse() {
+  try {
+    warehouseItems = await api('/api/warehouse');
+  } catch (err) {
+    showToast('Не удалось загрузить склад: ' + err.message, true);
+    return;
+  }
+  rebuildWarehouseStock();
+  renderWarehouse();
+  refreshStockHighlights();
+  renderQueue();
+}
+
+document.getElementById('newWarehouseBtn').addEventListener('click', () => openWarehouseDialog(null));
+document.getElementById('warehouseSearch').addEventListener('input', renderWarehouse);
+
+warehouseForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = {
+    name: warehouseForm.elements.name.value,
+    brand: warehouseForm.elements.brand.value,
+    article: warehouseForm.elements.article.value,
+    qty: warehouseForm.elements.qty.value,
+    price: warehouseForm.elements.price.value,
+    notes: warehouseForm.elements.notes.value,
+  };
+  try {
+    if (editingWarehouseId) {
+      await api(`/api/warehouse/${editingWarehouseId}`, { method: 'PUT', body: JSON.stringify(data) });
+      showToast('Изменения сохранены');
+    } else {
+      await api('/api/warehouse', { method: 'POST', body: JSON.stringify(data) });
+      showToast('Добавлено на склад');
+    }
+    closeDialog(warehouseDialog);
+    await loadWarehouse();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
+
+deleteWarehouseBtn.addEventListener('click', async () => {
+  if (!editingWarehouseId) return;
+  if (!(await showConfirm('Удалить эту позицию со склада?'))) return;
+  try {
+    await api(`/api/warehouse/${editingWarehouseId}`, { method: 'DELETE' });
+    showToast('Удалено');
+    closeDialog(warehouseDialog);
+    await loadWarehouse();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
 
 // ---------- Готовые сборки запчастей (селект под заголовком "Запчасти" в
 // смете и в заказе — чтобы не вписывать одни и те же позиции вручную) ----------
@@ -4651,6 +4800,7 @@ async function bootApp() {
     await loadQueue();
     await loadConsumables();
     await loadToArticles();
+    await loadWarehouse();
     await loadPartKits();
     await loadRequests();
     await loadNotes();

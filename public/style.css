@@ -12,6 +12,8 @@
   --status-done: #5c8a66;
   --status-cancelled: #b4483f;
   --status-waiting: #d9a916;
+  --stock: #a78bfa;           /* фиолетовый: артикул есть на нашем складе (может смениться) */
+  --stock-bg: rgba(167, 139, 250, 0.12);
   --radius: 3px;
   --font-display: 'Oswald', sans-serif;
   --font-body: 'Inter', sans-serif;
@@ -596,6 +598,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .queue-parts-received { color: var(--status-done); }
 .queue-parts-pending { color: var(--status-waiting); }
 .queue-parts-problem { color: var(--status-cancelled); }
+.queue-parts-stock { color: var(--stock); }
 .queue-status-badge {
   flex-shrink: 0;
   border: none;
@@ -1817,3 +1820,30 @@ input[type="number"]::-webkit-inner-spin-button {
 .hosting-card.hosting-card-warn { border-left-color: var(--status-cancelled); }
 .hosting-card.hosting-card-warn .version-summary-meta strong { color: var(--status-cancelled); }
 .hosting-card a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---- Склад ---- */
+.warehouse-table { table-layout: fixed; }
+.warehouse-table th:nth-child(1), .warehouse-table td:nth-child(1) { width: 34%; }
+.warehouse-table th:nth-child(2), .warehouse-table td:nth-child(2) { width: 16%; }
+.warehouse-table th:nth-child(3), .warehouse-table td:nth-child(3) { width: 22%; }
+.warehouse-table th:nth-child(4), .warehouse-table td:nth-child(4) { width: 10%; }
+.warehouse-table th:nth-child(5), .warehouse-table td:nth-child(5) { width: 12%; }
+.warehouse-table th:nth-child(6), .warehouse-table td:nth-child(6) { width: 6%; }
+.warehouse-table td { font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
+.warehouse-qty { white-space: nowrap; font-family: var(--font-mono); color: var(--stock); }
+.warehouse-out { opacity: 0.55; }
+.warehouse-out .warehouse-qty { color: var(--text-muted); }
+
+/* Артикул из заказа лежит на нашем складе — строка запчасти подсвечена фиолетовым */
+.repair-row.row-in-stock { background: var(--stock-bg); border-color: var(--stock); box-shadow: inset 3px 0 0 var(--stock); }
+.repair-row.row-in-stock .row-article { border-color: var(--stock); color: var(--stock); }
+
+@media (max-width: 600px) {
+  /* Склад на телефоне: название, артикул и количество */
+  .warehouse-table th:nth-child(2), .warehouse-table td:nth-child(2),
+  .warehouse-table th:nth-child(5), .warehouse-table td:nth-child(5),
+  .warehouse-table th:nth-child(6), .warehouse-table td:nth-child(6) { display: none; }
+  .warehouse-table th:nth-child(1), .warehouse-table td:nth-child(1) { width: 42%; }
+  .warehouse-table th:nth-child(3), .warehouse-table td:nth-child(3) { width: 38%; }
+  .warehouse-table th:nth-child(4), .warehouse-table td:nth-child(4) { width: 20%; }
+}

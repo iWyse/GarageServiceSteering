@@ -276,7 +276,12 @@ function normalizeRepairItems(items) {
 
 function listRepairRecords(clientId) {
   return db
-    .prepare('SELECT * FROM repair_records WHERE client_id = ? ORDER BY date DESC, id DESC')
+    // Записи без даты считаем по дате создания: пустая строка в DESC уезжала бы
+    // вниз списка, хотя обычно это самые свежие записи.
+    .prepare(
+      `SELECT * FROM repair_records WHERE client_id = ?
+       ORDER BY COALESCE(NULLIF(date, ''), substr(created_at, 1, 10)) DESC, id DESC`
+    )
     .all(clientId)
     .map(parseRepairRecord);
 }
@@ -612,14 +617,15 @@ function listToArticles() {
 function createToArticle(data) {
   const info = db
     .prepare(
-      `INSERT INTO to_articles (car_make, car_model, tag, oil_spec, oil_article, oil_filter_brand, oil_filter_article, air_filter_brand, air_filter_article, cabin_filter_brand, cabin_filter_article, extra_items, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO to_articles (car_make, car_model, tag, oil_spec, oil_volume, oil_article, oil_filter_brand, oil_filter_article, air_filter_brand, air_filter_article, cabin_filter_brand, cabin_filter_article, extra_items, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       (data.car_make || '').trim(),
       (data.car_model || '').trim(),
       (data.tag || '').trim(),
       (data.oil_spec || '').trim(),
+      (data.oil_volume || '').trim(),
       (data.oil_article || '').trim(),
       (data.oil_filter_brand || '').trim(),
       (data.oil_filter_article || '').trim(),
@@ -636,13 +642,14 @@ function createToArticle(data) {
 function updateToArticle(id, data) {
   db.prepare(
     `UPDATE to_articles
-     SET car_make=?, car_model=?, tag=?, oil_spec=?, oil_article=?, oil_filter_brand=?, oil_filter_article=?, air_filter_brand=?, air_filter_article=?, cabin_filter_brand=?, cabin_filter_article=?, extra_items=?, notes=?
+     SET car_make=?, car_model=?, tag=?, oil_spec=?, oil_volume=?, oil_article=?, oil_filter_brand=?, oil_filter_article=?, air_filter_brand=?, air_filter_article=?, cabin_filter_brand=?, cabin_filter_article=?, extra_items=?, notes=?
      WHERE id=?`
   ).run(
     (data.car_make || '').trim(),
     (data.car_model || '').trim(),
     (data.tag || '').trim(),
     (data.oil_spec || '').trim(),
+      (data.oil_volume || '').trim(),
     (data.oil_article || '').trim(),
     (data.oil_filter_brand || '').trim(),
     (data.oil_filter_article || '').trim(),
@@ -736,7 +743,7 @@ function getClientProfile(vin) {
       `SELECT r.* FROM repair_records r
        JOIN clients c ON c.id = r.client_id
        WHERE UPPER(c.vin) = ?
-       ORDER BY r.date DESC, r.id DESC`
+       ORDER BY COALESCE(NULLIF(r.date, ''), substr(r.created_at, 1, 10)) DESC, r.id DESC`
     )
     .all(vin)
     .map(parseRepairRecord);
@@ -842,6 +849,38 @@ function deleteClientRequest(id) {
 // срочные наверх, внутри группы новые сверху.
 function normalizeNoteTag(tag) {
   return tag === 'urgent' ? 'urgent' : 'normal';
+}
+
+// ---------- Склад (запчасти в наличии) ----------
+function listWarehouseItems() {
+  return db.prepare('SELECT * FROM warehouse_items ORDER BY name COLLATE NOCASE, id').all();
+}
+
+function warehouseValues(data) {
+  const qty = Math.max(0, Math.floor(Number(data.qty) || 0));
+  const price = Math.max(0, Number(data.price) || 0);
+  return [
+    (data.name || '').trim(),
+    (data.brand || '').trim(),
+    (data.article || '').trim(),
+    qty,
+    price,
+    data.notes || '',
+  ];
+}
+
+function createWarehouseItem(data) {
+  const info = db
+    .prepare('INSERT INTO warehouse_items (name, brand, article, qty, price, notes) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(...warehouseValues(data));
+  return db.prepare('SELECT * FROM warehouse_items WHERE id = ?').get(info.lastInsertRowid);
+}
+
+function updateWarehouseItem(id, data) {
+  db.prepare(
+    `UPDATE warehouse_items SET name=?, brand=?, article=?, qty=?, price=?, notes=?, updated_at=datetime('now') WHERE id=?`
+  ).run(...warehouseValues(data), id);
+  return db.prepare('SELECT * FROM warehouse_items WHERE id = ?').get(id);
 }
 
 function listStaffNotes() {
@@ -1349,6 +1388,27 @@ const server = http.createServer(async (req, res) => {
     }
     if (m && req.method === 'DELETE') {
       deleteToArticle(Number(m[1]));
+      return sendJSON(res, 200, { ok: true });
+    }
+
+    // Склад — запчасти в наличии
+    if (pathname === '/api/warehouse' && req.method === 'GET') {
+      return sendJSON(res, 200, listWarehouseItems());
+    }
+    if (pathname === '/api/warehouse' && req.method === 'POST') {
+      const body = await readBody(req);
+      if (!body.name || !body.name.trim()) return sendJSON(res, 400, { error: 'Название обязательно' });
+      return sendJSON(res, 201, createWarehouseItem(body));
+    }
+    m = pathname.match(/^\/api\/warehouse\/(\d+)$/);
+    if (m && req.method === 'PUT') {
+      const body = await readBody(req);
+      if (!body.name || !body.name.trim()) return sendJSON(res, 400, { error: 'Название обязательно' });
+      if (!db.prepare('SELECT 1 FROM warehouse_items WHERE id = ?').get(Number(m[1]))) return sendJSON(res, 404, { error: 'Позиция не найдена' });
+      return sendJSON(res, 200, updateWarehouseItem(Number(m[1]), body));
+    }
+    if (m && req.method === 'DELETE') {
+      db.prepare('DELETE FROM warehouse_items WHERE id = ?').run(Number(m[1]));
       return sendJSON(res, 200, { ok: true });
     }
 
