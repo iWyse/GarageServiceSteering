@@ -4605,7 +4605,7 @@ function renderWarehouseChips() {
   if (warehouseCategoryFilter === 'none' && !uncategorized) warehouseCategoryFilter = 'all';
   const newCount = count((it) => it.is_new);
   if (warehouseCategoryFilter === 'new' && !newCount) warehouseCategoryFilter = 'all';
-  if (newCount) chips.unshift({ key: 'new', label: 'Новые', n: newCount });
+  if (newCount) chips.splice(1, 0, { key: 'new', label: 'Новые', n: newCount }); // «Все» всегда первый, «Новые» сразу за ним
   box.innerHTML = '';
   box.classList.toggle('hidden', warehouseCategories.length === 0 && !newCount);
   for (const c of chips) {
