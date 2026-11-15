@@ -4507,12 +4507,13 @@ function renderToArticles() {
   filtered.forEach((it) => {
     const tr = document.createElement('tr');
     const carLine = [it.car_make, it.car_model].filter(Boolean).join(' ');
-    const oilName = [it.oil_spec, it.oil_volume].filter(Boolean).join(', ');
+    const oilName = it.oil_spec || '';
     const oilLabel = it.oil_article ? `${oilName ? escapeHtml(oilName) + ' — ' : ''}${toArticleCell(it.oil_article)}` : (oilName ? escapeHtml(oilName) : '—');
     tr.innerHTML = `
       <td class="cell-name">${escapeHtml(carLine)}</td>
       <td class="cell-tag">${escapeHtml(it.tag || '—')}</td>
       <td>${oilLabel}</td>
+      <td class="cell-oil-volume">${escapeHtml(it.oil_volume || '—')}</td>
       <td>${toFilterCell(it.oil_filter_brand, it.oil_filter_article)}</td>
       <td>${toFilterCell(it.air_filter_brand, it.air_filter_article)}</td>
       <td>${toFilterCell(it.cabin_filter_brand, it.cabin_filter_article)}</td>
