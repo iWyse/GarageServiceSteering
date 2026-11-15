@@ -4873,7 +4873,7 @@ document.getElementById('warehousePlBtn').addEventListener('click', async (e) =>
     if (r.added) {
       warehouseCategoryFilter = 'new';
       renderWarehouse();
-      showToast(`Загружено из Профит-Лиги: ${r.added} (метка «Новая»). Уже были на складе: ${r.skippedExisting}`);
+      showToast(`Загружено из Профит-Лиги: ${r.added} (метка «Новая»), применимость по тегу заполнена у ${r.withCar || 0}. Уже были на складе: ${r.skippedExisting}`);
     } else {
       showToast(`Новых пришедших позиций с ${since} нет. Уже на складе: ${r.skippedExisting}, не пришло: ${r.notDelivered}`);
     }

@@ -988,6 +988,13 @@ async function importWarehouseFromProfitLiga(sinceStr) {
   if (!sinceStr || Number.isNaN(since.getTime())) throw new Error('Укажите дату в формате ГГГГ-ММ-ДД');
   const result = { added: 0, skippedExisting: 0, skippedOld: 0, notDelivered: 0, unknownDate: 0, items: [], sample: null };
   const seen = new Set(db.prepare('SELECT pl_key FROM warehouse_items WHERE pl_key IS NOT NULL').all().map((r) => r.pl_key));
+  // Тег заказа (comment позиции) → автомобиль клиента с таким тегом: марка и модель идут в «Применимость».
+  const carByTag = new Map();
+  for (const c of db.prepare("SELECT tag, car_make, car_model FROM clients WHERE tag IS NOT NULL AND tag != ''").all()) {
+    const car = [c.car_make, c.car_model].filter(Boolean).join(' ').trim();
+    const k = c.tag.trim().toLowerCase();
+    if (car && !carByTag.has(k)) carByTag.set(k, car);
+  }
   for (let page = 1; page <= 10; page++) {
     const json = await plGetJson(page);
     const orders = json.data || [];
@@ -1010,9 +1017,11 @@ async function importWarehouseFromProfitLiga(sinceStr) {
         const qty = Math.max(1, Math.floor(Number(p.quantity)) || 1);
         const price = Math.max(0, Number(p.price) || 0);
         const notes = `Профит-Лига, заказ ${order.order_id}${p.comment ? `, тег: ${p.comment}` : ''}`;
+        const applicability = carByTag.get(String(p.comment || '').trim().toLowerCase()) || '';
         db.prepare(
-          'INSERT INTO warehouse_items (name, brand, article, qty, price, notes, is_new, pl_key) VALUES (?, ?, ?, ?, ?, ?, 1, ?)'
-        ).run(name, String(p.brand || '').trim(), article, qty, price, notes, key);
+          'INSERT INTO warehouse_items (name, brand, article, qty, price, notes, applicability, is_new, pl_key) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)'
+        ).run(name, String(p.brand || '').trim(), article, qty, price, notes, applicability, key);
+        if (applicability) result.withCar = (result.withCar || 0) + 1;
         result.added++;
         result.items.push(`${article} ${name}`.trim());
       }
