@@ -2167,7 +2167,42 @@ async function loadQueue() {
     .catch(() => {});
 }
 
+// Статус заказа: пока есть запчасти — по отметкам «пришла» на них, иначе по ручному переключателю.
+function queueStatusOf(q) {
+  const parts = (q.parts || []).filter((p) => p.name);
+  if (parts.length > 0) return parts.every((p) => p.received) ? 'arrived' : 'waiting';
+  return q.status === 'arrived' ? 'arrived' : 'waiting';
+}
+
+// Фильтр заказов: all — все, waiting — ещё ждём запчасти, arrived — все запчасти пришли.
+let queueFilter = 'all';
+
+function renderQueueFilterChips() {
+  const box = document.getElementById('queueFilterChips');
+  const chips = [
+    { key: 'all', label: 'Все', n: queueItems.length },
+    { key: 'waiting', label: 'В ожидании', n: queueItems.filter((q) => queueStatusOf(q) === 'waiting').length },
+    { key: 'arrived', label: 'Все запчасти пришли', n: queueItems.filter((q) => queueStatusOf(q) === 'arrived').length },
+  ];
+  box.innerHTML = '';
+  box.classList.toggle('hidden', queueItems.length === 0);
+  for (const c of chips) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'warehouse-chip' + (c.key === queueFilter ? ' active' : '');
+    btn.setAttribute('role', 'tab');
+    btn.setAttribute('aria-selected', c.key === queueFilter ? 'true' : 'false');
+    btn.innerHTML = `${escapeHtml(c.label)} <span class="warehouse-chip-count">${c.n}</span>`;
+    btn.addEventListener('click', () => {
+      queueFilter = c.key;
+      renderQueue();
+    });
+    box.appendChild(btn);
+  }
+}
+
 function renderQueue() {
+  renderQueueFilterChips();
   const list = document.getElementById('queueList');
   const empty = document.getElementById('queueEmpty');
   list.innerHTML = '';
@@ -2177,7 +2212,14 @@ function renderQueue() {
   queueBadge.textContent = String(queueItems.length);
   queueBadge.classList.toggle('hidden', queueItems.length === 0);
 
-  queueItems.forEach((q) => {
+  const visibleQueue = queueFilter === 'all' ? queueItems : queueItems.filter((q) => queueStatusOf(q) === queueFilter);
+  if (queueItems.length && !visibleQueue.length) {
+    const none = document.createElement('p');
+    none.className = 'warehouse-none';
+    none.textContent = 'В этом фильтре заказов нет';
+    list.appendChild(none);
+  }
+  visibleQueue.forEach((q) => {
     const carLine = [q.car_make, q.car_model].filter(Boolean).join(' ');
     const partsWithName = (q.parts || []).filter((p) => p.name);
     // Пока в заказе есть хоть одна запчасть, статус считаем по отметкам "пришла" на них,
