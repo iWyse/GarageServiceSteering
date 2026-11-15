@@ -163,6 +163,12 @@ db.exec(`
 
   -- Вкладка «Склад» — запчасти, которые есть у нас в наличии. По артикулу
   -- позиции подсвечиваются в заказах, если такой товар уже лежит на складе.
+  CREATE TABLE IF NOT EXISTS warehouse_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS warehouse_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -171,6 +177,7 @@ db.exec(`
     qty INTEGER NOT NULL DEFAULT 0,
     price REAL NOT NULL DEFAULT 0,
     notes TEXT,
+    category_id INTEGER,          -- warehouse_categories.id; NULL — без категории
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   );
@@ -293,6 +300,16 @@ function migrateToOilVolume() {
   }
 }
 migrateToOilVolume();
+
+// ---------- Миграция: категории склада ----------
+function migrateWarehouseCategory() {
+  const columns = db.prepare(`PRAGMA table_info(warehouse_items)`).all().map((c) => c.name);
+  if (columns.length && !columns.includes('category_id')) {
+    db.exec(`ALTER TABLE warehouse_items ADD COLUMN category_id INTEGER`);
+    console.log('База данных обновлена: добавлены категории склада.');
+  }
+}
+migrateWarehouseCategory();
 
 // ---------- Миграция: тег у клиентов ----------
 function migrateClientTagColumn() {

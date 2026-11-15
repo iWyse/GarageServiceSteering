@@ -853,7 +853,25 @@ function normalizeNoteTag(tag) {
 
 // ---------- Склад (запчасти в наличии) ----------
 function listWarehouseItems() {
-  return db.prepare('SELECT * FROM warehouse_items ORDER BY name COLLATE NOCASE, id').all();
+  return db.prepare('SELECT * FROM warehouse_items').all().sort((a, b) => a.name.localeCompare(b.name, 'ru') || a.id - b.id);
+}
+
+function listWarehouseCategories() {
+  return db.prepare('SELECT * FROM warehouse_categories').all().sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+}
+
+// SQLite не сравнивает регистр кириллицы (COLLATE NOCASE — только латиница),
+// поэтому «Фильтры» и «фильтры» проверяем на совпадение здесь.
+function warehouseCategoryTaken(name, exceptId = 0) {
+  const lower = name.toLowerCase();
+  return db.prepare('SELECT id, name FROM warehouse_categories').all().some((c) => c.id !== exceptId && c.name.toLowerCase() === lower);
+}
+
+// Категория — только существующая; иначе позиция остаётся «без категории».
+function warehouseCategoryId(value) {
+  const id = Number(value);
+  if (!id) return null;
+  return db.prepare('SELECT id FROM warehouse_categories WHERE id = ?').get(id) ? id : null;
 }
 
 function warehouseValues(data) {
@@ -866,19 +884,20 @@ function warehouseValues(data) {
     qty,
     price,
     data.notes || '',
+    warehouseCategoryId(data.category_id),
   ];
 }
 
 function createWarehouseItem(data) {
   const info = db
-    .prepare('INSERT INTO warehouse_items (name, brand, article, qty, price, notes) VALUES (?, ?, ?, ?, ?, ?)')
+    .prepare('INSERT INTO warehouse_items (name, brand, article, qty, price, notes, category_id) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .run(...warehouseValues(data));
   return db.prepare('SELECT * FROM warehouse_items WHERE id = ?').get(info.lastInsertRowid);
 }
 
 function updateWarehouseItem(id, data) {
   db.prepare(
-    `UPDATE warehouse_items SET name=?, brand=?, article=?, qty=?, price=?, notes=?, updated_at=datetime('now') WHERE id=?`
+    `UPDATE warehouse_items SET name=?, brand=?, article=?, qty=?, price=?, notes=?, category_id=?, updated_at=datetime('now') WHERE id=?`
   ).run(...warehouseValues(data), id);
   return db.prepare('SELECT * FROM warehouse_items WHERE id = ?').get(id);
 }
@@ -1394,6 +1413,32 @@ const server = http.createServer(async (req, res) => {
     // Склад — запчасти в наличии
     if (pathname === '/api/warehouse' && req.method === 'GET') {
       return sendJSON(res, 200, listWarehouseItems());
+    }
+    if (pathname === '/api/warehouse/categories' && req.method === 'GET') {
+      return sendJSON(res, 200, listWarehouseCategories());
+    }
+    if (pathname === '/api/warehouse/categories' && req.method === 'POST') {
+      const body = await readBody(req);
+      const name = (body.name || '').trim();
+      if (!name) return sendJSON(res, 400, { error: 'Введите название категории' });
+      if (warehouseCategoryTaken(name)) return sendJSON(res, 400, { error: 'Такая категория уже есть' });
+      const info = db.prepare('INSERT INTO warehouse_categories (name) VALUES (?)').run(name);
+      return sendJSON(res, 201, { id: Number(info.lastInsertRowid), name });
+    }
+    m = pathname.match(/^\/api\/warehouse\/categories\/(\d+)$/);
+    if (m && req.method === 'PUT') {
+      const body = await readBody(req);
+      const name = (body.name || '').trim();
+      if (!name) return sendJSON(res, 400, { error: 'Введите название категории' });
+      if (warehouseCategoryTaken(name, Number(m[1]))) return sendJSON(res, 400, { error: 'Такая категория уже есть' });
+      db.prepare('UPDATE warehouse_categories SET name = ? WHERE id = ?').run(name, Number(m[1]));
+      return sendJSON(res, 200, { id: Number(m[1]), name });
+    }
+    if (m && req.method === 'DELETE') {
+      // Позиции удалённой категории не пропадают — остаются «без категории».
+      db.prepare('UPDATE warehouse_items SET category_id = NULL WHERE category_id = ?').run(Number(m[1]));
+      db.prepare('DELETE FROM warehouse_categories WHERE id = ?').run(Number(m[1]));
+      return sendJSON(res, 200, { ok: true });
     }
     if (pathname === '/api/warehouse' && req.method === 'POST') {
       const body = await readBody(req);

@@ -4516,15 +4516,95 @@ function refreshStockHighlights() {
   document.querySelectorAll('#queuePartsRows .repair-row').forEach(updateStockHighlight);
 }
 
+// Фильтр по категории: 'all' — все (с заголовками групп), 'none' — без категории, число — id категории.
+let warehouseCategories = [];
+let warehouseCategoryFilter = 'all';
+const warehouseCategoriesDialog = document.getElementById('warehouseCategoriesDialog');
+
+function warehouseCategoryName(id) {
+  return warehouseCategories.find((c) => c.id === id)?.name || null;
+}
+
+function renderWarehouseChips() {
+  const box = document.getElementById('warehouseCategoryChips');
+  // Если выбранную категорию удалили — возвращаемся ко всем.
+  if (typeof warehouseCategoryFilter === 'number' && !warehouseCategories.some((c) => c.id === warehouseCategoryFilter)) {
+    warehouseCategoryFilter = 'all';
+  }
+  const count = (pred) => warehouseItems.filter(pred).length;
+  const chips = [{ key: 'all', label: 'Все', n: warehouseItems.length }];
+  for (const c of warehouseCategories) chips.push({ key: c.id, label: c.name, n: count((it) => it.category_id === c.id) });
+  const uncategorized = count((it) => !warehouseCategoryName(it.category_id));
+  if (warehouseCategories.length && uncategorized) chips.push({ key: 'none', label: 'Без категории', n: uncategorized });
+  if (warehouseCategoryFilter === 'none' && !uncategorized) warehouseCategoryFilter = 'all';
+  box.innerHTML = '';
+  box.classList.toggle('hidden', warehouseCategories.length === 0);
+  for (const c of chips) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'warehouse-chip' + (c.key === warehouseCategoryFilter ? ' active' : '');
+    btn.setAttribute('role', 'tab');
+    btn.setAttribute('aria-selected', c.key === warehouseCategoryFilter ? 'true' : 'false');
+    btn.innerHTML = `${escapeHtml(c.label)} <span class="warehouse-chip-count">${c.n}</span>`;
+    btn.addEventListener('click', () => {
+      warehouseCategoryFilter = c.key;
+      renderWarehouse();
+    });
+    box.appendChild(btn);
+  }
+}
+
+function fillWarehouseCategorySelect(selectedId) {
+  const sel = document.getElementById('warehouseCategorySelect');
+  sel.innerHTML = '<option value="">Без категории</option>';
+  for (const c of warehouseCategories) {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.name;
+    sel.appendChild(opt);
+  }
+  sel.value = selectedId && warehouseCategoryName(selectedId) ? String(selectedId) : '';
+}
+
 function renderWarehouse() {
+  renderWarehouseChips();
   const q = document.getElementById('warehouseSearch').value.trim().toLowerCase();
   const body = document.getElementById('warehouseBody');
-  const filtered = q
-    ? warehouseItems.filter((it) => [it.name, it.brand, it.article].filter(Boolean).join(' ').toLowerCase().includes(q))
-    : warehouseItems;
+  let filtered = warehouseItems;
+  if (warehouseCategoryFilter === 'none') filtered = filtered.filter((it) => !warehouseCategoryName(it.category_id));
+  else if (typeof warehouseCategoryFilter === 'number') filtered = filtered.filter((it) => it.category_id === warehouseCategoryFilter);
+  if (q) filtered = filtered.filter((it) => [it.name, it.brand, it.article].filter(Boolean).join(' ').toLowerCase().includes(q));
   body.innerHTML = '';
   document.getElementById('warehouseEmpty').classList.toggle('hidden', warehouseItems.length !== 0);
-  filtered.forEach((it) => {
+
+  // В режиме «Все» (если категории есть) группируем: по алфавиту категорий, «Без категории» — в конце.
+  const grouped = warehouseCategoryFilter === 'all' && warehouseCategories.length > 0;
+  const rows = grouped
+    ? [...filtered].sort((x, y) => {
+        const gx = warehouseCategoryName(x.category_id), gy = warehouseCategoryName(y.category_id);
+        if (gx !== gy) {
+          if (!gx) return 1;
+          if (!gy) return -1;
+          return gx.localeCompare(gy, 'ru');
+        }
+        return x.name.localeCompare(y.name, 'ru');
+      })
+    : filtered;
+  let lastGroup;
+  rows.forEach((it) => {
+    if (grouped) {
+      const group = warehouseCategoryName(it.category_id) || 'Без категории';
+      if (group !== lastGroup) {
+        lastGroup = group;
+        const gtr = document.createElement('tr');
+        gtr.className = 'warehouse-group-row';
+        const gtd = document.createElement('td');
+        gtd.colSpan = 6;
+        gtd.textContent = group;
+        gtr.appendChild(gtd);
+        body.appendChild(gtr);
+      }
+    }
     const tr = document.createElement('tr');
     if (!(Number(it.qty) > 0)) tr.classList.add('warehouse-out');
     tr.innerHTML = `
@@ -4544,7 +4624,79 @@ function renderWarehouse() {
     tr.addEventListener('click', () => openWarehouseDialog(it));
     body.appendChild(tr);
   });
+  if (warehouseItems.length && !rows.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td colspan="6" class="warehouse-none">Ничего не найдено</td>';
+    body.appendChild(tr);
+  }
 }
+
+// ---- Управление категориями ----
+function renderWarehouseCategoriesList() {
+  const box = document.getElementById('warehouseCategoriesList');
+  box.innerHTML = '';
+  if (!warehouseCategories.length) {
+    box.innerHTML = '<p class="warehouse-none">Категорий пока нет. Добавьте первую — например, «Фильтры» или «Масла».</p>';
+    return;
+  }
+  for (const c of warehouseCategories) {
+    const n = warehouseItems.filter((it) => it.category_id === c.id).length;
+    const row = document.createElement('div');
+    row.className = 'warehouse-cat-row';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = c.name;
+    input.setAttribute('aria-label', 'Название категории');
+    const save = async () => {
+      const name = input.value.trim();
+      if (!name || name === c.name) { input.value = c.name; return; }
+      try {
+        await api(`/api/warehouse/categories/${c.id}`, { method: 'PUT', body: JSON.stringify({ name }) });
+        await loadWarehouse();
+      } catch (err) {
+        showToast(err.message, true);
+        input.value = c.name;
+      }
+    };
+    input.addEventListener('change', save);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
+    const count = document.createElement('span');
+    count.className = 'warehouse-cat-count';
+    count.textContent = `${n} поз.`;
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'btn-ghost warehouse-cat-del';
+    del.textContent = 'Удалить';
+    del.addEventListener('click', async () => {
+      const msg = n ? `Удалить категорию «${c.name}»? Её позиции (${n}) останутся на складе без категории.` : `Удалить категорию «${c.name}»?`;
+      if (!(await showConfirm(msg))) return;
+      try {
+        await api(`/api/warehouse/categories/${c.id}`, { method: 'DELETE' });
+        await loadWarehouse();
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    });
+    row.append(input, count, del);
+    box.appendChild(row);
+  }
+}
+
+document.getElementById('warehouseCategoriesBtn').addEventListener('click', () => {
+  renderWarehouseCategoriesList();
+  openDialog(warehouseCategoriesDialog);
+});
+document.getElementById('warehouseCategoryAddForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const input = e.target.elements.name;
+  try {
+    await api('/api/warehouse/categories', { method: 'POST', body: JSON.stringify({ name: input.value }) });
+    input.value = '';
+    await loadWarehouse();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+});
 
 function openWarehouseDialog(item) {
   editingWarehouseId = item ? item.id : null;
@@ -4553,21 +4705,24 @@ function openWarehouseDialog(item) {
   warehouseForm.reset();
   if (item) {
     for (const [k, v] of Object.entries(item)) {
-      if (warehouseForm.elements[k]) warehouseForm.elements[k].value = v ?? '';
+      if (k !== 'category_id' && warehouseForm.elements[k]) warehouseForm.elements[k].value = v ?? '';
     }
   }
+  // Новая позиция попадает в открытую сейчас категорию.
+  fillWarehouseCategorySelect(item ? item.category_id : typeof warehouseCategoryFilter === 'number' ? warehouseCategoryFilter : null);
   openDialog(warehouseDialog);
 }
 
 async function loadWarehouse() {
   try {
-    warehouseItems = await api('/api/warehouse');
+    [warehouseItems, warehouseCategories] = await Promise.all([api('/api/warehouse'), api('/api/warehouse/categories')]);
   } catch (err) {
     showToast('Не удалось загрузить склад: ' + err.message, true);
     return;
   }
   rebuildWarehouseStock();
   renderWarehouse();
+  if (!warehouseCategoriesDialog.classList.contains('hidden')) renderWarehouseCategoriesList();
   refreshStockHighlights();
   renderQueue();
 }
@@ -4584,6 +4739,7 @@ warehouseForm.addEventListener('submit', async (e) => {
     qty: warehouseForm.elements.qty.value,
     price: warehouseForm.elements.price.value,
     notes: warehouseForm.elements.notes.value,
+    category_id: warehouseForm.elements.category_id.value,
   };
   try {
     if (editingWarehouseId) {
