@@ -500,6 +500,26 @@ function deleteQueueEntry(id) {
 let plOrdersCache = { ts: 0, byTag: new Map() };
 const PL_CACHE_TTL_MS = 3 * 60 * 1000;
 
+// Запрос к API Профит-Лиги: таймаут и повторы — соединение с их сервером
+// иногда обрывается на TLS (ECONNRESET), обычно со второй-третьей попытки проходит.
+async function plGetJson(page) {
+  let lastErr;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(`https://api.pr-lg.ru/orders/list?secret=${PROFITLIGA_API_KEY}&page=${page}`, {
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) throw new Error(`Профит-Лига ответила ошибкой ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 700 * attempt));
+    }
+  }
+  const code = lastErr?.cause?.code || lastErr?.code || lastErr?.message;
+  throw new Error(`Не удалось связаться с Профит-Лигой (${code}). Проверьте интернет/VPN и попробуйте позже`);
+}
+
 async function fetchProfitLigaOrders() {
   const now = Date.now();
   if (now - plOrdersCache.ts < PL_CACHE_TTL_MS) return plOrdersCache.byTag;
@@ -507,8 +527,15 @@ async function fetchProfitLigaOrders() {
   if (PROFITLIGA_API_KEY) {
     // Страницы отсортированы от новых к старым; для отслеживания «в пути»
     // хватает первой (последние ~100 заказов) — давно закрытые не нужны.
-    const res = await fetch(`https://api.pr-lg.ru/orders/list?secret=${PROFITLIGA_API_KEY}&page=1`);
-    const json = await res.json();
+    let json;
+    try {
+      json = await plGetJson(1);
+    } catch (err) {
+      // Сеть недоступна — не валим сайт: отдаём прошлый результат (или пустой) и пробуем снова через минуту.
+      console.warn('Профит-Лига недоступна:', err.message);
+      plOrdersCache = { ts: now - PL_CACHE_TTL_MS + 60 * 1000, byTag: plOrdersCache.byTag };
+      return plOrdersCache.byTag;
+    }
     for (const order of json.data || []) {
       for (const p of order.products || []) {
         const key = String(p.comment || '').trim().toLowerCase();
@@ -962,9 +989,7 @@ async function importWarehouseFromProfitLiga(sinceStr) {
   const result = { added: 0, skippedExisting: 0, skippedOld: 0, notDelivered: 0, unknownDate: 0, items: [], sample: null };
   const seen = new Set(db.prepare('SELECT pl_key FROM warehouse_items WHERE pl_key IS NOT NULL').all().map((r) => r.pl_key));
   for (let page = 1; page <= 10; page++) {
-    const res = await fetch(`https://api.pr-lg.ru/orders/list?secret=${PROFITLIGA_API_KEY}&page=${page}`);
-    if (!res.ok) throw new Error(`Профит-Лига ответила ошибкой ${res.status}`);
-    const json = await res.json();
+    const json = await plGetJson(page);
     const orders = json.data || [];
     if (!orders.length) break;
     let pageHasRecent = false;
