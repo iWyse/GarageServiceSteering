@@ -178,6 +178,7 @@ db.exec(`
     price REAL NOT NULL DEFAULT 0,
     notes TEXT,
     category_id INTEGER,          -- warehouse_categories.id; NULL — без категории
+    applicability TEXT,           -- применимость: к каким машинам подходит, напр. "Toyota Camry XV70, RAV4 XA50"
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   );
@@ -307,6 +308,10 @@ function migrateWarehouseCategory() {
   if (columns.length && !columns.includes('category_id')) {
     db.exec(`ALTER TABLE warehouse_items ADD COLUMN category_id INTEGER`);
     console.log('База данных обновлена: добавлены категории склада.');
+  }
+  if (columns.length && !columns.includes('applicability')) {
+    db.exec(`ALTER TABLE warehouse_items ADD COLUMN applicability TEXT`);
+    console.log('База данных обновлена: добавлена применимость товаров склада.');
   }
 }
 migrateWarehouseCategory();

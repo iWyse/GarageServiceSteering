@@ -1879,3 +1879,6 @@ input[type="number"]::-webkit-inner-spin-button {
 .warehouse-cat-row input { flex: 1; min-width: 0; }
 .warehouse-cat-count { color: var(--text-muted); font-size: 14px; white-space: nowrap; }
 .warehouse-cat-del { font-size: 14px; }
+
+/* Применимость — мелкая серая строка под названием позиции */
+.warehouse-applicability { color: var(--text-muted); font-size: 14px; font-weight: 400; margin-top: 2px; white-space: normal; }
