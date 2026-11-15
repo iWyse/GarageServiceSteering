@@ -1887,3 +1887,7 @@ input[type="number"]::-webkit-inner-spin-button {
 .check-row { display: flex; align-items: center; gap: 8px; flex-direction: row; }
 .check-row input { width: auto; }
 .warehouse-pl-date { width: auto; font-size: 14px; }
+.warehouse-new-block { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+.warehouse-new-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.warehouse-new-head h3 { margin: 0; font-size: 16px; }
+.warehouse-new-name { flex: 1; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -4665,7 +4665,52 @@ function renderWarehouse() {
 }
 
 // ---- Управление категориями ----
+// Новые позиции (метка «Новая», обычно из Профит-Лиги) — в окне категорий, чтобы их можно было убрать.
+function renderWarehouseNewList() {
+  const block = document.getElementById('warehouseNewBlock');
+  const box = document.getElementById('warehouseNewList');
+  const items = warehouseItems.filter((it) => it.is_new);
+  block.classList.toggle('hidden', items.length === 0);
+  box.innerHTML = '';
+  for (const it of items) {
+    const row = document.createElement('div');
+    row.className = 'warehouse-cat-row';
+    const label = document.createElement('span');
+    label.className = 'warehouse-new-name';
+    label.textContent = [it.article, it.name].filter(Boolean).join(' — ');
+    label.title = label.textContent;
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'btn-ghost warehouse-cat-del';
+    del.textContent = 'Удалить';
+    del.addEventListener('click', async () => {
+      if (!(await showConfirm(`Удалить «${it.name}» со склада?`))) return;
+      try {
+        await api(`/api/warehouse/${it.id}`, { method: 'DELETE' });
+        await loadWarehouse();
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    });
+    row.append(label, del);
+    box.appendChild(row);
+  }
+}
+document.getElementById('warehouseNewDeleteAllBtn').addEventListener('click', async () => {
+  const items = warehouseItems.filter((it) => it.is_new);
+  if (!items.length) return;
+  if (!(await showConfirm(`Удалить все новые позиции (${items.length}) со склада? Их можно снова загрузить кнопкой «Из Профит-Лиги».`))) return;
+  try {
+    for (const it of items) await api(`/api/warehouse/${it.id}`, { method: 'DELETE' });
+    showToast('Новые позиции удалены');
+  } catch (err) {
+    showToast(err.message, true);
+  }
+  await loadWarehouse();
+});
+
 function renderWarehouseCategoriesList() {
+  renderWarehouseNewList();
   const box = document.getElementById('warehouseCategoriesList');
   box.innerHTML = '';
   if (!warehouseCategories.length) {
