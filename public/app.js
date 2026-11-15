@@ -4640,6 +4640,17 @@ async function resolveWarehouseCategoryId(rawName) {
   return created.id;
 }
 
+// Цена для клиента — закупочная цена склада + 30%, до целых рублей.
+const CLIENT_MARKUP = 1.3;
+function clientPrice(price) {
+  return Math.round(Number(price) * CLIENT_MARKUP);
+}
+
+function updateWarehouseClientPrice() {
+  const price = Number(warehouseForm.elements.price.value);
+  document.getElementById('warehouseClientPrice').value = price > 0 ? fmtMoney(clientPrice(price)) : '';
+}
+
 function renderWarehouse() {
   renderWarehouseChips();
   const q = document.getElementById('warehouseSearch').value.trim().toLowerCase();
@@ -4674,7 +4685,7 @@ function renderWarehouse() {
         const gtr = document.createElement('tr');
         gtr.className = 'warehouse-group-row';
         const gtd = document.createElement('td');
-        gtd.colSpan = 6;
+        gtd.colSpan = 7;
         gtd.textContent = group;
         gtr.appendChild(gtd);
         body.appendChild(gtr);
@@ -4688,6 +4699,7 @@ function renderWarehouse() {
       <td>${toArticleCell(it.article)}</td>
       <td class="warehouse-qty">${Number(it.qty) > 0 ? `${Number(it.qty)} шт.` : 'нет'}</td>
       <td>${Number(it.price) > 0 ? fmtMoney(it.price) : '—'}</td>
+      <td>${Number(it.price) > 0 ? fmtMoney(clientPrice(it.price)) : '—'}</td>
       <td class="edit-hint">${EDIT_ICON_SVG}</td>
     `;
     tr.querySelectorAll('.article-copy-btn').forEach((btn) => {
@@ -4701,7 +4713,7 @@ function renderWarehouse() {
   });
   if (warehouseItems.length && !rows.length) {
     const tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="6" class="warehouse-none">Ничего не найдено</td>';
+    tr.innerHTML = '<td colspan="7" class="warehouse-none">Ничего не найдено</td>';
     body.appendChild(tr);
   }
 }
@@ -4831,6 +4843,7 @@ function openWarehouseDialog(item) {
     }
   }
   warehouseForm.elements.is_new.checked = !!(item && item.is_new);
+  updateWarehouseClientPrice();
   // Новая позиция попадает в открытую сейчас категорию.
   fillWarehouseCategorySelect(item ? item.category_id : typeof warehouseCategoryFilter === 'number' ? warehouseCategoryFilter : null);
   openDialog(warehouseDialog);
@@ -4859,6 +4872,7 @@ for (const name of ['price', 'qty']) {
   });
 }
 document.getElementById('warehouseSearch').addEventListener('input', renderWarehouse);
+warehouseForm.elements.price.addEventListener('input', updateWarehouseClientPrice);
 
 // Загрузка пришедших позиций из Профит-Лиги (с выбранной даты).
 document.getElementById('warehousePlSince').value = `${new Date().getFullYear()}-11-10`;

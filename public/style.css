@@ -1830,12 +1830,13 @@ input[type="number"]::-webkit-inner-spin-button {
 
 /* ---- Склад ---- */
 .warehouse-table { table-layout: fixed; }
-.warehouse-table th:nth-child(1), .warehouse-table td:nth-child(1) { width: 34%; }
-.warehouse-table th:nth-child(2), .warehouse-table td:nth-child(2) { width: 16%; }
-.warehouse-table th:nth-child(3), .warehouse-table td:nth-child(3) { width: 22%; }
-.warehouse-table th:nth-child(4), .warehouse-table td:nth-child(4) { width: 10%; }
-.warehouse-table th:nth-child(5), .warehouse-table td:nth-child(5) { width: 12%; }
-.warehouse-table th:nth-child(6), .warehouse-table td:nth-child(6) { width: 6%; }
+.warehouse-table th:nth-child(1), .warehouse-table td:nth-child(1) { width: 28%; }
+.warehouse-table th:nth-child(2), .warehouse-table td:nth-child(2) { width: 13%; }
+.warehouse-table th:nth-child(3), .warehouse-table td:nth-child(3) { width: 19%; }
+.warehouse-table th:nth-child(4), .warehouse-table td:nth-child(4) { width: 9%; }
+.warehouse-table th:nth-child(5), .warehouse-table td:nth-child(5) { width: 11%; }
+.warehouse-table th:nth-child(6), .warehouse-table td:nth-child(6) { width: 13%; }
+.warehouse-table th:nth-child(7), .warehouse-table td:nth-child(7) { width: 7%; }
 .warehouse-table td { font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
 .warehouse-qty { white-space: nowrap; font-family: var(--font-mono); color: var(--stock); }
 .warehouse-out { opacity: 0.55; }
@@ -1849,7 +1850,8 @@ input[type="number"]::-webkit-inner-spin-button {
   /* Склад на телефоне: название, артикул и количество */
   .warehouse-table th:nth-child(2), .warehouse-table td:nth-child(2),
   .warehouse-table th:nth-child(5), .warehouse-table td:nth-child(5),
-  .warehouse-table th:nth-child(6), .warehouse-table td:nth-child(6) { display: none; }
+  .warehouse-table th:nth-child(6), .warehouse-table td:nth-child(6),
+  .warehouse-table th:nth-child(7), .warehouse-table td:nth-child(7) { display: none; }
   .warehouse-table th:nth-child(1), .warehouse-table td:nth-child(1) { width: 42%; }
   .warehouse-table th:nth-child(3), .warehouse-table td:nth-child(3) { width: 38%; }
   .warehouse-table th:nth-child(4), .warehouse-table td:nth-child(4) { width: 20%; }
@@ -1891,3 +1893,4 @@ input[type="number"]::-webkit-inner-spin-button {
 .warehouse-new-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .warehouse-new-head h3 { margin: 0; font-size: 16px; }
 .warehouse-new-name { flex: 1; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.field-hint { color: var(--text-muted); font-size: 14px; font-weight: 400; }

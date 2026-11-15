@@ -255,6 +255,7 @@
             <th>Артикул</th>
             <th>Кол-во</th>
             <th>Цена</th>
+            <th title="Цена + 30%">Для клиента</th>
             <th></th>
           </tr>
         </thead>
@@ -498,6 +499,7 @@
         <label>Количество, шт.<input name="qty" type="number" min="0" step="1" class="mono-input" value="1"></label>
         <label>Цена, ₽<input name="price" type="number" min="0" step="0.01" class="mono-input"></label>
       </div>
+      <label>Для клиента <span class="field-hint">(цена + 30%)</span><input id="warehouseClientPrice" type="text" readonly tabindex="-1" class="mono-input" placeholder="—"></label>
       <label>Примечание<textarea name="notes" rows="2" class="notes-textarea" placeholder="Например: полка 3, брали под заказ"></textarea></label>
       <label class="check-row"><input type="checkbox" name="is_new"> <span>Новая — пришла, нужно занести на склад</span></label>
       <div class="dialog-actions">
