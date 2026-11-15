@@ -992,6 +992,7 @@ async function importWarehouseFromProfitLiga(sinceStr) {
     const json = await plGetJson(page);
     const orders = json.data || [];
     if (!orders.length) break;
+    const totalPages = Number(json.pages) || 1;
     let pageHasRecent = false;
     for (const order of orders) {
       for (const p of order.products || []) {
@@ -1005,8 +1006,8 @@ async function importWarehouseFromProfitLiga(sinceStr) {
         const key = `${order.order_id}:${normalizeArticle(article)}`;
         if (seen.has(key)) { result.skippedExisting++; continue; }
         seen.add(key);
-        const name = String(p.name || p.title || p.description || p.product_name || article || 'Запчасть из Профит-Лиги').trim();
-        const qty = Math.max(1, Math.floor(Number(p.quantity ?? p.qty ?? p.count ?? 1)) || 1);
+        const name = String(p.description || article || 'Запчасть из Профит-Лиги').trim();
+        const qty = Math.max(1, Math.floor(Number(p.quantity)) || 1);
         const price = Math.max(0, Number(p.price) || 0);
         const notes = `Профит-Лига, заказ ${order.order_id}${p.comment ? `, тег: ${p.comment}` : ''}`;
         db.prepare(
@@ -1017,7 +1018,7 @@ async function importWarehouseFromProfitLiga(sinceStr) {
       }
     }
     // Заказы идут от новых к старым — если на странице нет ничего свежее даты, дальше смотреть не нужно.
-    if (!pageHasRecent && page > 1) break;
+    if (page >= totalPages || (!pageHasRecent && page > 1)) break;
   }
   return result;
 }
