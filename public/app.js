@@ -4623,10 +4623,12 @@ async function resolveWarehouseCategoryId(rawName) {
   return created.id;
 }
 
-// Цена для клиента — закупочная цена склада + 30%, до целых рублей.
+// Цена для клиента — цена склада + 30%, округлённая вверх до сотен (1668 → 1700, 945 → 1000).
 const CLIENT_MARKUP = 1.3;
 function clientPrice(price) {
-  return Math.round(Number(price) * CLIENT_MARKUP);
+  // Округляем до копеек перед ceil, чтобы 1000 * 1.3 не превратилось в 1300.0000000000002 → 1400.
+  const withMarkup = Math.round(Number(price) * CLIENT_MARKUP * 100) / 100;
+  return Math.ceil(withMarkup / 100) * 100;
 }
 
 function updateWarehouseClientPrice() {
