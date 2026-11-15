@@ -1306,7 +1306,6 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/api/clients' && req.method === 'POST') {
       const body = await readBody(req);
-      if (!body.name || !body.name.trim()) return sendJSON(res, 400, { error: 'Имя клиента обязательно' });
       return sendJSON(res, 201, createClient(body));
     }
     let m = pathname.match(/^\/api\/clients\/(\d+)$/);
@@ -1398,7 +1397,6 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/api/queue' && req.method === 'POST') {
       const body = await readBody(req);
-      if (!body.name || !body.name.trim()) return sendJSON(res, 400, { error: 'Имя обязательно' });
       return sendJSON(res, 201, createQueueEntry(body));
     }
     m = pathname.match(/^\/api\/queue\/(\d+)$/);

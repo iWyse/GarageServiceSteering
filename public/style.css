@@ -1898,3 +1898,4 @@ input[type="number"]::-webkit-inner-spin-button {
 .field-hint { color: var(--text-muted); font-size: 14px; font-weight: 400; }
 .warehouse-price-base { color: var(--text-muted); }
 .hosting-date-input { font-size: 14px; font-weight: 600; width: auto; margin-left: 4px; }
+.no-name { color: var(--text-muted); font-style: italic; }

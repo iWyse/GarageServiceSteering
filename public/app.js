@@ -665,7 +665,7 @@ function renderClients() {
     // всё равно есть внутри карточки клиента (строка кликабельна и её
     // открывает), в списке остаются только опознавательные колонки.
     tr.innerHTML = `
-      <td class="cell-name" title="${escapeHtml(c.name)}">${escapeHtml(c.name)}</td>
+      <td class="cell-name" title="${escapeHtml(c.name || 'Без имени')}">${c.name ? escapeHtml(c.name) : '<span class="no-name">Без имени</span>'}</td>
       <td class="cell-car" title="${escapeHtml([c.car_make, c.car_model].filter(Boolean).join(' '))}">${escapeHtml([c.car_make, c.car_model].filter(Boolean).join(' ') || '—')}</td>
       <td class="cell-tag" title="${escapeHtml(c.tag || '')}">${escapeHtml(c.tag || '—')}</td>
       <td class="cell-plate cell-vin-td" title="${escapeHtml(c.vin || '')}">${c.vin ? `<span class="cell-vin"><span class="vin-text">${escapeHtml(c.vin)}</span><button type="button" class="vin-copy-btn" title="Копировать VIN">${COPY_ICON_SVG}</button></span>` : '—'}</td>
@@ -2249,7 +2249,7 @@ function renderQueue() {
     item.className = 'queue-item';
     item.innerHTML = `
       <div class="queue-item-head">
-        <span class="queue-item-name">${escapeHtml(q.name)}</span>
+        <span class="queue-item-name">${q.name ? escapeHtml(q.name) : '<span class="no-name">Без имени</span>'}</span>
         <button type="button" class="queue-status-badge" data-status="${status}"${autoStatus ? ' disabled title="Определяется автоматически по отметкам «на складе» у запчастей"' : ''}>${status === 'arrived' ? 'Запчасти пришли' : 'В ожидании'}</button>
       </div>
       ${carLine ? `<div class="queue-item-car">${escapeHtml(carLine)}</div>` : ''}
@@ -2333,7 +2333,7 @@ function fillQueueClientSelect() {
       const car = [c.car_make, c.car_model].filter(Boolean).join(' ');
       // data-tag — тег не показываем в самом пункте списка (не захламляем),
       // но поиск в client-picker (см. enhanceClientSelect) должен его находить.
-      return `<option value="${c.id}" data-tag="${escapeHtml(c.tag || '')}">${escapeHtml(c.name)}${car ? ' — ' + escapeHtml(car) : ''}</option>`;
+      return `<option value="${c.id}" data-tag="${escapeHtml(c.tag || '')}">${escapeHtml(c.name || 'Без имени')}${car ? ' — ' + escapeHtml(car) : ''}</option>`;
     })
     .join('');
   sel.innerHTML = `<option value="">— новый клиент (не из базы) —</option>${options}`;
@@ -2536,10 +2536,6 @@ deleteQueueBtn.addEventListener('click', async () => {
 // остаётся — её убирают вручную кнопкой "Удалить", когда она больше не нужна.
 document.getElementById('promoteQueueBtn').addEventListener('click', async () => {
   const name = queueForm.elements.name.value.trim();
-  if (!name) {
-    showToast('Укажите имя клиента', true);
-    return;
-  }
   try {
     // Если VIN указан и уже есть у существующего клиента — это та же машина,
     // не заводим дубль в базе, а добавляем смету к уже существующей карточке.
@@ -2742,10 +2738,6 @@ document.getElementById('orderAddToReportConfirmBtn').addEventListener('click', 
       // клиента не хранит) — заводим его, как при "Добавить в список
       // клиентов", и сразу создаём запись ремонта с выбранной датой.
       const name = queueForm.elements.name.value.trim();
-      if (!name) {
-        showToast('Укажите имя клиента', true);
-        return;
-      }
       const newClient = await api('/api/clients', {
         method: 'POST',
         body: JSON.stringify({
