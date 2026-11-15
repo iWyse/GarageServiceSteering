@@ -4766,6 +4766,30 @@ for (const name of ['price', 'qty']) {
 }
 document.getElementById('warehouseSearch').addEventListener('input', renderWarehouse);
 
+// Загрузка пришедших позиций из Профит-Лиги (с выбранной даты).
+document.getElementById('warehousePlSince').value = `${new Date().getFullYear()}-11-10`;
+document.getElementById('warehousePlBtn').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  const since = document.getElementById('warehousePlSince').value;
+  if (!since) return showToast('Укажите дату', true);
+  btn.disabled = true;
+  try {
+    const r = await api('/api/warehouse/import-profitliga', { method: 'POST', body: JSON.stringify({ since }) });
+    await loadWarehouse();
+    if (r.added) {
+      warehouseCategoryFilter = 'new';
+      renderWarehouse();
+      showToast(`Загружено из Профит-Лиги: ${r.added} (метка «Новая»). Уже были на складе: ${r.skippedExisting}`);
+    } else {
+      showToast(`Новых пришедших позиций с ${since} нет. Уже на складе: ${r.skippedExisting}, не пришло: ${r.notDelivered}`);
+    }
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 warehouseForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const data = {

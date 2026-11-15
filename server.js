@@ -952,6 +952,51 @@ function updateWarehouseItem(id, data) {
   return db.prepare('SELECT * FROM warehouse_items WHERE id = ?').get(id);
 }
 
+// Загрузка на склад пришедших позиций из Профит-Лиги. «Пришла» — статус из
+// PL_DELIVERED_STATUSES, дата прихода — status_update позиции. Каждая позиция
+// заносится один раз (pl_key = заказ:артикул) с меткой «Новая».
+async function importWarehouseFromProfitLiga(sinceStr) {
+  if (!PROFITLIGA_API_KEY) throw new Error('В .env не задан PROFITLIGA_API_KEY');
+  const since = new Date(`${sinceStr}T00:00:00`);
+  if (!sinceStr || Number.isNaN(since.getTime())) throw new Error('Укажите дату в формате ГГГГ-ММ-ДД');
+  const result = { added: 0, skippedExisting: 0, skippedOld: 0, notDelivered: 0, unknownDate: 0, items: [], sample: null };
+  const seen = new Set(db.prepare('SELECT pl_key FROM warehouse_items WHERE pl_key IS NOT NULL').all().map((r) => r.pl_key));
+  for (let page = 1; page <= 10; page++) {
+    const res = await fetch(`https://api.pr-lg.ru/orders/list?secret=${PROFITLIGA_API_KEY}&page=${page}`);
+    if (!res.ok) throw new Error(`Профит-Лига ответила ошибкой ${res.status}`);
+    const json = await res.json();
+    const orders = json.data || [];
+    if (!orders.length) break;
+    let pageHasRecent = false;
+    for (const order of orders) {
+      for (const p of order.products || []) {
+        if (!result.sample) result.sample = Object.keys(p);
+        if (!PL_DELIVERED_STATUSES.has(Number(p.status_id))) { result.notDelivered++; continue; }
+        const when = new Date(String(p.status_update || '').replace(' ', 'T'));
+        if (Number.isNaN(when.getTime())) { result.unknownDate++; continue; }
+        if (when < since) { result.skippedOld++; continue; }
+        pageHasRecent = true;
+        const article = String(p.article || '').trim();
+        const key = `${order.order_id}:${normalizeArticle(article)}`;
+        if (seen.has(key)) { result.skippedExisting++; continue; }
+        seen.add(key);
+        const name = String(p.name || p.title || p.description || p.product_name || article || 'Запчасть из Профит-Лиги').trim();
+        const qty = Math.max(1, Math.floor(Number(p.quantity ?? p.qty ?? p.count ?? 1)) || 1);
+        const price = Math.max(0, Number(p.price) || 0);
+        const notes = `Профит-Лига, заказ ${order.order_id}${p.comment ? `, тег: ${p.comment}` : ''}`;
+        db.prepare(
+          'INSERT INTO warehouse_items (name, brand, article, qty, price, notes, is_new, pl_key) VALUES (?, ?, ?, ?, ?, ?, 1, ?)'
+        ).run(name, String(p.brand || '').trim(), article, qty, price, notes, key);
+        result.added++;
+        result.items.push(`${article} ${name}`.trim());
+      }
+    }
+    // Заказы идут от новых к старым — если на странице нет ничего свежее даты, дальше смотреть не нужно.
+    if (!pageHasRecent && page > 1) break;
+  }
+  return result;
+}
+
 function listStaffNotes() {
   const notes = db
     .prepare(`SELECT * FROM staff_notes ORDER BY (tag = 'urgent') DESC, created_at DESC, id DESC`)
@@ -1489,6 +1534,14 @@ const server = http.createServer(async (req, res) => {
       db.prepare('UPDATE warehouse_items SET category_id = NULL WHERE category_id = ?').run(Number(m[1]));
       db.prepare('DELETE FROM warehouse_categories WHERE id = ?').run(Number(m[1]));
       return sendJSON(res, 200, { ok: true });
+    }
+    if (pathname === '/api/warehouse/import-profitliga' && req.method === 'POST') {
+      const body = await readBody(req);
+      try {
+        return sendJSON(res, 200, await importWarehouseFromProfitLiga(body.since));
+      } catch (err) {
+        return sendJSON(res, 400, { error: err.message });
+      }
     }
     if (pathname === '/api/warehouse' && req.method === 'POST') {
       const body = await readBody(req);
