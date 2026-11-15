@@ -4643,16 +4643,20 @@ function renderWarehouse() {
       <td>${Number(it.price) > 0 ? fmtMoney(it.price) : '—'}</td>
       <td class="edit-hint">${EDIT_ICON_SVG}</td>
     `;
-    if (warehouseCategories.length && !warehouseCategoryName(it.category_id)) {
+    if (warehouseCategories.length) {
       const pick = document.createElement('select');
       pick.className = 'warehouse-cat-pick';
-      pick.title = 'Присвоить категорию';
-      pick.innerHTML = '<option value="">Присвоить категорию…</option>' + warehouseCategories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+      pick.title = 'Изменить категорию';
+      const has = !!warehouseCategoryName(it.category_id);
+      pick.innerHTML =
+        `<option value="">${has ? 'Без категории' : 'Присвоить категорию…'}</option>` +
+        warehouseCategories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+      pick.value = has ? String(it.category_id) : '';
       pick.addEventListener('click', (e) => e.stopPropagation());
       pick.addEventListener('change', async () => {
         try {
           await api(`/api/warehouse/${it.id}`, { method: 'PUT', body: JSON.stringify({ ...it, category_id: pick.value, is_new: !!it.is_new }) });
-          showToast('Категория присвоена');
+          showToast(pick.value ? 'Категория изменена' : 'Категория убрана');
           await loadWarehouse();
         } catch (err) {
           showToast(err.message, true);
