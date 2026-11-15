@@ -6,7 +6,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "seed:demo": "node scripts/seed-demo.js"
+    "seed:demo": "node scripts/seed-demo.js",
+    "seed:to": "node scripts/seed-to-demo.js"
   },
   "engines": {
     "node": ">=22.5.0"
