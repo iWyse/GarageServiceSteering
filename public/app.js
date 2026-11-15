@@ -4582,15 +4582,20 @@ function renderWarehouseChips() {
 }
 
 function fillWarehouseCategorySelect(selectedId) {
-  const sel = document.getElementById('warehouseCategorySelect');
-  sel.innerHTML = '<option value="">Без категории</option>';
-  for (const c of warehouseCategories) {
-    const opt = document.createElement('option');
-    opt.value = c.id;
-    opt.textContent = c.name;
-    sel.appendChild(opt);
-  }
-  sel.value = selectedId && warehouseCategoryName(selectedId) ? String(selectedId) : '';
+  const list = document.getElementById('warehouseCategoryList');
+  list.innerHTML = warehouseCategories.map((c) => `<option value="${escapeHtml(c.name)}"></option>`).join('');
+  document.getElementById('warehouseCategoryInput').value = (selectedId && warehouseCategoryName(selectedId)) || '';
+}
+
+// Категория из поля карточки: пусто — без категории, совпало с существующей (без учёта регистра) — её id,
+// иначе создаём новую категорию с таким названием.
+async function resolveWarehouseCategoryId(rawName) {
+  const name = rawName.trim();
+  if (!name) return '';
+  const found = warehouseCategories.find((c) => c.name.toLowerCase() === name.toLowerCase());
+  if (found) return found.id;
+  const created = await api('/api/warehouse/categories', { method: 'POST', body: JSON.stringify({ name }) });
+  return created.id;
 }
 
 function renderWarehouse() {
@@ -4792,18 +4797,18 @@ document.getElementById('warehousePlBtn').addEventListener('click', async (e) =>
 
 warehouseForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const data = {
-    name: warehouseForm.elements.name.value,
-    brand: warehouseForm.elements.brand.value,
-    article: warehouseForm.elements.article.value,
-    qty: warehouseForm.elements.qty.value,
-    price: warehouseForm.elements.price.value,
-    notes: warehouseForm.elements.notes.value,
-    category_id: warehouseForm.elements.category_id.value,
-    applicability: warehouseForm.elements.applicability.value,
-    is_new: warehouseForm.elements.is_new.checked,
-  };
   try {
+    const data = {
+      name: warehouseForm.elements.name.value,
+      brand: warehouseForm.elements.brand.value,
+      article: warehouseForm.elements.article.value,
+      qty: warehouseForm.elements.qty.value,
+      price: warehouseForm.elements.price.value,
+      notes: warehouseForm.elements.notes.value,
+      category_id: await resolveWarehouseCategoryId(warehouseForm.elements.category_name.value),
+      applicability: warehouseForm.elements.applicability.value,
+      is_new: warehouseForm.elements.is_new.checked,
+    };
     if (editingWarehouseId) {
       await api(`/api/warehouse/${editingWarehouseId}`, { method: 'PUT', body: JSON.stringify(data) });
       showToast('Изменения сохранены');

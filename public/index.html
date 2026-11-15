@@ -483,7 +483,8 @@
     <form id="warehouseForm">
       <label><span>Название <span class="req">*</span></span><input required name="name" type="text" placeholder="Например: Фильтр масляный"></label>
       <label>Категория
-        <select name="category_id" id="warehouseCategorySelect"><option value="">Без категории</option></select>
+        <input name="category_name" id="warehouseCategoryInput" type="text" list="warehouseCategoryList" autocomplete="off" placeholder="Выберите из списка или впишите новую">
+        <datalist id="warehouseCategoryList"></datalist>
       </label>
       <div class="row-2">
         <label>Фирма<input name="brand" type="text"></label>
