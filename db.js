@@ -48,6 +48,7 @@ db.exec(`
     notes TEXT,
     report_hidden INTEGER NOT NULL DEFAULT 0, -- убрана из отчёта (кнопкой "Удалить" в списке отчёта), в истории клиента остаётся
     in_report INTEGER NOT NULL DEFAULT 0, -- добавлена в отчёт кнопкой "Добавить в отчёт" — обычная запись ремонта сама в отчёт не попадает
+    stock_deducted INTEGER NOT NULL DEFAULT 0, -- запчасти уже списаны со склада (при добавлении в отчёт) — второй раз не списываем
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -428,6 +429,19 @@ function migrateRepairInReportColumn() {
   }
 }
 migrateRepairInReportColumn();
+
+// ---------- Миграция: списание запчастей со склада при добавлении в отчёт ----------
+// Записи, которые уже в отчёте, помечаем как «уже списано»: запчасти по ним
+// считались вручную раньше, и склад задним числом трогать нельзя.
+function migrateRepairStockDeductedColumn() {
+  const columns = db.prepare(`PRAGMA table_info(repair_records)`).all().map((c) => c.name);
+  if (columns.length && !columns.includes('stock_deducted')) {
+    db.exec(`ALTER TABLE repair_records ADD COLUMN stock_deducted INTEGER NOT NULL DEFAULT 0`);
+    db.exec(`UPDATE repair_records SET stock_deducted = 1 WHERE in_report = 1`);
+    console.log('База данных обновлена: добавлено списание запчастей со склада.');
+  }
+}
+migrateRepairStockDeductedColumn();
 
 // ---------- Миграция: тег в ТО ----------
 function migrateToArticleTagColumn() {

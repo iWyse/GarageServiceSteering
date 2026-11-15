@@ -308,6 +308,41 @@ function touchClientUpdatedAt(clientId) {
   db.prepare(`UPDATE clients SET updated_at = datetime('now') WHERE id = ?`).run(clientId);
 }
 
+// ---------- Списание запчастей со склада ----------
+// Когда запись попадает в отчёт («Добавить в отчёт»), запчасти из заказ-наряда,
+// артикул которых есть на складе, списываются в том количестве, что указано в
+// заказ-наряде. Считаются только включённые позиции (не «клиент отказался») и
+// выбранный вариант аналога. Склад не уходит в минус: если на складе меньше,
+// списывается сколько есть. Возвращает, что реально списано.
+function normalizeArticleKey(s) {
+  return String(s || '').toUpperCase().replace(/[^A-ZА-Я0-9]/g, '');
+}
+
+function writeOffWarehouse(parts) {
+  const written = [];
+  const items = db.prepare('SELECT id, name, article, qty FROM warehouse_items ORDER BY id').all();
+  for (const p of normalizeRepairItems(parts)) {
+    if (p.included === false) continue;
+    if (p.analogGroup && !p.analogSelected) continue;
+    const key = normalizeArticleKey(p.article);
+    if (!key) continue;
+    let need = Math.max(1, Math.round(Number(p.qty) || 1));
+    let taken = 0;
+    for (const it of items) {
+      if (need <= 0) break;
+      if (normalizeArticleKey(it.article) !== key || it.qty <= 0) continue;
+      const take = Math.min(it.qty, need);
+      db.prepare(`UPDATE warehouse_items SET qty = qty - ?, updated_at = datetime('now') WHERE id = ?`).run(take, it.id);
+      it.qty -= take;
+      need -= take;
+      taken += take;
+    }
+    // taken = 0 — артикула нет на складе или остаток 0: это обычная закупка, ничего не списываем.
+    if (taken > 0) written.push({ name: p.name, article: p.article, qty: taken, short: need });
+  }
+  return written;
+}
+
 function createRepairRecord(clientId, data) {
   const info = db
     .prepare(
@@ -329,10 +364,17 @@ function createRepairRecord(clientId, data) {
       data.in_report ? 1 : 0
     );
   touchClientUpdatedAt(clientId);
-  return parseRepairRecord(db.prepare('SELECT * FROM repair_records WHERE id = ?').get(info.lastInsertRowid));
+  const id = info.lastInsertRowid;
+  let stockWriteOff = [];
+  if (data.in_report) {
+    stockWriteOff = writeOffWarehouse(data.parts);
+    db.prepare('UPDATE repair_records SET stock_deducted = 1 WHERE id = ?').run(id);
+  }
+  return { ...parseRepairRecord(db.prepare('SELECT * FROM repair_records WHERE id = ?').get(id)), stockWriteOff };
 }
 
 function updateRepairRecord(id, data) {
+  const before = db.prepare('SELECT stock_deducted FROM repair_records WHERE id = ?').get(id);
   db.prepare('UPDATE repair_records SET title=?, date=?, mileage=?, works=?, parts=?, parts_eta=?, advance=?, notes=?, master=?, report_hidden=?, in_report=? WHERE id=?').run(
     (data.title || '').trim(),
     data.date || '',
@@ -349,7 +391,13 @@ function updateRepairRecord(id, data) {
   );
   const row = db.prepare('SELECT * FROM repair_records WHERE id = ?').get(id);
   if (row) touchClientUpdatedAt(row.client_id);
-  return parseRepairRecord(row);
+  // Списываем один раз — при первом попадании записи в отчёт.
+  let stockWriteOff = [];
+  if (row && data.in_report && before && !before.stock_deducted) {
+    stockWriteOff = writeOffWarehouse(data.parts);
+    db.prepare('UPDATE repair_records SET stock_deducted = 1 WHERE id = ?').run(id);
+  }
+  return { ...parseRepairRecord(row), stockWriteOff };
 }
 
 // Список мастеров для фильтра в отчёте — мастер записи плюс мастера,

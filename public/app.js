@@ -77,7 +77,8 @@ function showToast(msg, isError) {
   t.classList.toggle('error', !!isError);
   t.classList.remove('hidden');
   clearTimeout(showToast._timer);
-  showToast._timer = setTimeout(() => t.classList.add('hidden'), 2600);
+  // Длинные сообщения (например, список списанных запчастей) держим дольше.
+  showToast._timer = setTimeout(() => t.classList.add('hidden'), msg.length > 60 ? 6000 : 2600);
 }
 
 async function api(path, options) {
@@ -2658,12 +2659,22 @@ document.getElementById('orderAddToHistoryConfirmBtn').addEventListener('click',
   }
 });
 
+// После «Добавить в отчёт» сервер возвращает, что списано со склада (stockWriteOff).
+async function reportStockWriteOff(result) {
+  const list = result?.stockWriteOff || [];
+  if (!list.length) return;
+  const text = list.map((w) => `${w.name || w.article} — ${w.qty} шт.${w.short ? ` (на складе не хватило ${w.short})` : ''}`).join('; ');
+  showToast(`Добавлено в отчёт. Списано со склада: ${text}`);
+  await loadWarehouse();
+}
+
 document.getElementById('orderAddToReportConfirmBtn').addEventListener('click', async () => {
   const date = document.getElementById('orderReportDateInput').value;
   if (!date) {
     showToast('Выберите дату', true);
     return;
   }
+  let writeOffResult = null;
   try {
     if (currentOrderContext === 'repair') {
       const data = { ...currentOrderRecordData, date, in_report: true };
@@ -2674,12 +2685,14 @@ document.getElementById('orderAddToReportConfirmBtn').addEventListener('click', 
         // "Сохранить" ниже (см. repairForm submit) отправит старое значение
         // in_report из уже открытой формы и тут же уберёт запись из отчёта.
         currentEditingRepairRecord = await api(`/api/repairs/${editingRepairId}`, { method: 'PUT', body: JSON.stringify(data) });
+        writeOffResult = currentEditingRepairRecord;
       } else {
         const clientId = pendingApptForRepair ? await resolveClientForAppt(pendingApptForRepair) : historyClientId;
         if (!clientId) throw new Error('Не удалось определить клиента для записи');
         const created = await api(`/api/clients/${clientId}/repairs`, { method: 'POST', body: JSON.stringify(data) });
         editingRepairId = created.id;
         currentEditingRepairRecord = created;
+        writeOffResult = created;
       }
       if (historyClientId) await loadClientHistory(historyClientId);
     } else if (currentOrderContext === 'queue') {
@@ -2704,7 +2717,7 @@ document.getElementById('orderAddToReportConfirmBtn').addEventListener('click', 
           tag: queueForm.elements.tag.value,
         }),
       });
-      await api(`/api/clients/${newClient.id}/repairs`, {
+      writeOffResult = await api(`/api/clients/${newClient.id}/repairs`, {
         method: 'POST',
         body: JSON.stringify({ ...currentOrderRecordData, date, in_report: true }),
       });
@@ -2713,6 +2726,7 @@ document.getElementById('orderAddToReportConfirmBtn').addEventListener('click', 
       throw new Error('Неизвестный источник заказ-наряда');
     }
     showToast('Добавлено в отчёт');
+    await reportStockWriteOff(writeOffResult);
     document.getElementById('orderAddToReportPanel').classList.add('hidden');
     document.getElementById('orderReportDateInput').value = '';
   } catch (err) {
