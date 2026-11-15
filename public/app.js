@@ -4704,11 +4704,12 @@ function renderWarehouse() {
 }
 
 // ---- Управление категориями ----
-// Новые позиции (метка «Новая», обычно из Профит-Лиги) — в окне категорий, чтобы их можно было убрать.
+// Позиции «Без категории» (в том числе новые из Профит-Лиги) — в окне категорий, чтобы их можно было удалить.
+const warehouseUncategorized = () => warehouseItems.filter((it) => !warehouseCategoryName(it.category_id));
 function renderWarehouseNewList() {
   const block = document.getElementById('warehouseNewBlock');
   const box = document.getElementById('warehouseNewList');
-  const items = warehouseItems.filter((it) => it.is_new);
+  const items = warehouseUncategorized();
   block.classList.toggle('hidden', items.length === 0);
   box.innerHTML = '';
   for (const it of items) {
@@ -4716,7 +4717,7 @@ function renderWarehouseNewList() {
     row.className = 'warehouse-cat-row';
     const label = document.createElement('span');
     label.className = 'warehouse-new-name';
-    label.textContent = [it.article, it.name].filter(Boolean).join(' — ');
+    label.textContent = (it.is_new ? 'Новая · ' : '') + [it.article, it.name].filter(Boolean).join(' — ');
     label.title = label.textContent;
     const del = document.createElement('button');
     del.type = 'button';
@@ -4736,12 +4737,12 @@ function renderWarehouseNewList() {
   }
 }
 document.getElementById('warehouseNewDeleteAllBtn').addEventListener('click', async () => {
-  const items = warehouseItems.filter((it) => it.is_new);
+  const items = warehouseUncategorized();
   if (!items.length) return;
-  if (!(await showConfirm(`Удалить все новые позиции (${items.length}) со склада? Их можно снова загрузить кнопкой «Из Профит-Лиги».`))) return;
+  if (!(await showConfirm(`Удалить все позиции без категории (${items.length}) со склада? Это нельзя отменить. Пришедшие из Профит-Лиги можно снова загрузить кнопкой «Из Профит-Лиги».`))) return;
   try {
     for (const it of items) await api(`/api/warehouse/${it.id}`, { method: 'DELETE' });
-    showToast('Новые позиции удалены');
+    showToast('Позиции без категории удалены');
   } catch (err) {
     showToast(err.message, true);
   }
