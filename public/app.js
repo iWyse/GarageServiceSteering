@@ -4682,7 +4682,7 @@ function renderWarehouse() {
       <td class="cell-name">${it.is_new ? '<span class="warehouse-new-badge" title="Пришла — нужно занести на склад">Новая</span> ' : ''}${escapeHtml(it.name)}${it.applicability ? `<div class="warehouse-applicability">${escapeHtml(it.applicability)}</div>` : ''}</td>
       <td>${escapeHtml(it.brand || '—')}</td>
       <td>${toArticleCell(it.article)}</td>
-      <td class="warehouse-qty">${Number(it.qty) > 0 ? `${Number(it.qty)} шт.` : 'нет'}</td>
+      <td class="warehouse-qty">${Number(it.qty) > 0 ? `${Number(it.qty)} шт.` : 'Нет на складе'}</td>
       <td class="warehouse-price-base">${Number(it.price) > 0 ? fmtMoney(it.price) : '—'}</td>
       <td>${Number(it.price) > 0 ? fmtMoney(clientPrice(it.price)) : '—'}</td>
       <td class="edit-hint">${EDIT_ICON_SVG}</td>

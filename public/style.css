@@ -1829,17 +1829,18 @@ input[type="number"]::-webkit-inner-spin-button {
 
 /* ---- Склад ---- */
 .warehouse-table { table-layout: fixed; }
-.warehouse-table th:nth-child(1), .warehouse-table td:nth-child(1) { width: 28%; }
-.warehouse-table th:nth-child(2), .warehouse-table td:nth-child(2) { width: 13%; }
-.warehouse-table th:nth-child(3), .warehouse-table td:nth-child(3) { width: 19%; }
-.warehouse-table th:nth-child(4), .warehouse-table td:nth-child(4) { width: 9%; }
+.warehouse-table th:nth-child(1), .warehouse-table td:nth-child(1) { width: 25%; }
+.warehouse-table th:nth-child(2), .warehouse-table td:nth-child(2) { width: 12%; }
+.warehouse-table th:nth-child(3), .warehouse-table td:nth-child(3) { width: 18%; }
+.warehouse-table th:nth-child(4), .warehouse-table td:nth-child(4) { width: 13%; }
 .warehouse-table th:nth-child(5), .warehouse-table td:nth-child(5) { width: 11%; }
-.warehouse-table th:nth-child(6), .warehouse-table td:nth-child(6) { width: 13%; }
+.warehouse-table th:nth-child(6), .warehouse-table td:nth-child(6) { width: 14%; }
 .warehouse-table th:nth-child(7), .warehouse-table td:nth-child(7) { width: 7%; }
 .warehouse-table td { font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
 .warehouse-qty { white-space: nowrap; font-family: var(--font-mono); color: var(--stock); }
-.warehouse-out { opacity: 0.55; }
-.warehouse-out .warehouse-qty { color: var(--text-muted); }
+.warehouse-out { background: rgba(224, 103, 92, 0.12); }
+.warehouse-out .warehouse-qty { color: #e0675c; font-weight: 600; white-space: normal; overflow: visible; text-overflow: clip; }
+.warehouse-out .cell-name { color: #e0675c; }
 
 /* Артикул из заказа лежит на нашем складе — строка запчасти подсвечена фиолетовым */
 .repair-row.row-in-stock { background: var(--stock-bg); border-color: var(--stock); box-shadow: inset 3px 0 0 var(--stock); }
