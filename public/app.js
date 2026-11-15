@@ -1134,6 +1134,7 @@ function createRepairRow(item, isPart, onChange = recomputeRepairSums, withRecei
       <option value="emex">emex</option>
       <option value="Микадо">Микадо</option>
       <option value="Пилот">Пилот</option>
+      <option value="Nippon">Nippon</option>
     `;
     supplierSelect.value = item?.supplier || '';
 
@@ -1620,6 +1621,7 @@ const SUPPLIER_COLORS = {
   emex: '#FBAF33', // emex.ru — оранжевый из логотипа (сам сайт блокирует автозапросы)
   'АТС': '#FF111A', // ats-auto.ru — красный из их логотипа
   'Микадо': '#32A5EB', // mikado-parts.ru — акцентный синий (кнопки/ссылки на сайте)
+  Nippon: '#14B8A6', // условный бирюзовый (фирменный цвет не подбирали) — чтобы отличался от остальных
 };
 
 // showSupplier — включается только для заказ-наряда, открытого из вкладки
