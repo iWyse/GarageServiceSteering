@@ -851,17 +851,7 @@ document.getElementById('newRepairBtn').addEventListener('click', () => openRepa
 
 document.getElementById('newClientBtn').addEventListener('click', () => openClientDialog(null));
 document.getElementById('clientSearch').addEventListener('input', renderClients);
-function updateClientSortArrow() {
-  const v = document.getElementById('clientSortSelect').value;
-  const el = document.getElementById('clientSortArrow');
-  el.className = 'sort-arrow' + (v === 'updated_desc' ? ' fresh' : v === 'updated_asc' ? ' old' : '');
-  el.textContent = v === 'updated_desc' ? '↑' : v === 'updated_asc' ? '↓' : '';
-}
-document.getElementById('clientSortSelect').addEventListener('change', () => {
-  updateClientSortArrow();
-  renderClients();
-});
-updateClientSortArrow();
+document.getElementById('clientSortSelect').addEventListener('change', renderClients);
 // На мобильных клавиатура иначе нечем закрыть: тапнуть "мимо" часто некуда —
 // под полем сразу кнопка и таблица. Клавиша "Готово"/Enter явно снимает фокус.
 document.getElementById('clientSearch').addEventListener('keydown', (e) => {
