@@ -1898,3 +1898,5 @@ input[type="number"]::-webkit-inner-spin-button {
 .hosting-date-input { font-size: 14px; font-weight: 600; width: auto; margin-left: 4px; }
 .no-name { color: var(--text-muted); font-style: italic; }
 .warehouse-location { color: var(--accent); font-size: 14px; font-weight: 400; margin-top: 2px; white-space: normal; }
+.warehouse-cat-filter { width: auto; max-width: 220px; font-size: 14px; border-radius: 999px; padding: 6px 12px; }
+.warehouse-cat-filter.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }

@@ -4583,14 +4583,19 @@ function renderWarehouseChips() {
     warehouseCategoryFilter = 'all';
   }
   const count = (pred) => warehouseItems.filter(pred).length;
-  const chips = [{ key: 'all', label: 'Все', n: warehouseItems.length }];
-  for (const c of warehouseCategories) chips.push({ key: c.id, label: c.name, n: count((it) => it.category_id === c.id) });
-  const uncategorized = count((it) => !warehouseCategoryName(it.category_id));
-  if (warehouseCategories.length && uncategorized) chips.push({ key: 'none', label: 'Без категории', n: uncategorized });
-  if (warehouseCategoryFilter === 'none' && !uncategorized) warehouseCategoryFilter = 'all';
   const newCount = count((it) => it.is_new);
+  const uncategorized = count((it) => !warehouseCategoryName(it.category_id));
+  const categorized = warehouseItems.length - uncategorized;
   if (warehouseCategoryFilter === 'new' && !newCount) warehouseCategoryFilter = 'all';
-  if (newCount) chips.splice(1, 0, { key: 'new', label: 'Новые', n: newCount }); // «Все» всегда первый, «Новые» сразу за ним
+  if (warehouseCategoryFilter === 'none' && !uncategorized) warehouseCategoryFilter = 'all';
+  if (warehouseCategoryFilter === 'with' && !categorized) warehouseCategoryFilter = 'all';
+  // Кнопки-фильтры всегда в одном порядке; сами категории спрятаны в выпадающий список (их может быть много).
+  const chips = [{ key: 'all', label: 'Все', n: warehouseItems.length }];
+  if (newCount) chips.push({ key: 'new', label: 'Новые', n: newCount });
+  if (warehouseCategories.length) {
+    chips.push({ key: 'none', label: 'Без категории', n: uncategorized });
+    chips.push({ key: 'with', label: 'С категориями', n: categorized });
+  }
   box.innerHTML = '';
   box.classList.toggle('hidden', warehouseCategories.length === 0 && !newCount);
   for (const c of chips) {
@@ -4605,6 +4610,22 @@ function renderWarehouseChips() {
       renderWarehouse();
     });
     box.appendChild(btn);
+  }
+  if (warehouseCategories.length) {
+    const sel = document.createElement('select');
+    sel.className = 'warehouse-cat-filter' + (typeof warehouseCategoryFilter === 'number' ? ' active' : '');
+    sel.setAttribute('aria-label', 'Категория');
+    sel.innerHTML =
+      '<option value="">Категория…</option>' +
+      warehouseCategories
+        .map((c) => `<option value="${c.id}">${escapeHtml(c.name)} (${count((it) => it.category_id === c.id)})</option>`)
+        .join('');
+    sel.value = typeof warehouseCategoryFilter === 'number' ? String(warehouseCategoryFilter) : '';
+    sel.addEventListener('change', () => {
+      warehouseCategoryFilter = sel.value ? Number(sel.value) : 'all';
+      renderWarehouse();
+    });
+    box.appendChild(sel);
   }
 }
 
@@ -4645,13 +4666,14 @@ function renderWarehouse() {
   let filtered = warehouseItems;
   if (warehouseCategoryFilter === 'new') filtered = filtered.filter((it) => it.is_new);
   else if (warehouseCategoryFilter === 'none') filtered = filtered.filter((it) => !warehouseCategoryName(it.category_id));
+  else if (warehouseCategoryFilter === 'with') filtered = filtered.filter((it) => warehouseCategoryName(it.category_id));
   else if (typeof warehouseCategoryFilter === 'number') filtered = filtered.filter((it) => it.category_id === warehouseCategoryFilter);
   if (q) filtered = filtered.filter((it) => [it.name, it.brand, it.article, it.applicability, it.location].filter(Boolean).join(' ').toLowerCase().includes(q));
   body.innerHTML = '';
   document.getElementById('warehouseEmpty').classList.toggle('hidden', warehouseItems.length !== 0);
 
   // В режиме «Все» (если категории есть) группируем: по алфавиту категорий, «Без категории» — в конце.
-  const grouped = warehouseCategoryFilter === 'all' && warehouseCategories.length > 0;
+  const grouped = (warehouseCategoryFilter === 'all' || warehouseCategoryFilter === 'with') && warehouseCategories.length > 0;
   const rows = grouped
     ? [...filtered].sort((x, y) => {
         const gx = warehouseCategoryName(x.category_id), gy = warehouseCategoryName(y.category_id);

@@ -318,6 +318,12 @@ function normalizeArticleKey(s) {
   return String(s || '').toUpperCase().replace(/[^A-ZА-Я0-9]/g, '');
 }
 
+// Оповещение в «Заметках» (срочная заметка), что запчасть на складе закончилась.
+function notifyStockOut(it) {
+  const label = [it.name, it.article ? `(${it.article})` : ''].filter(Boolean).join(' ');
+  createStaffNote({ text: `Закончилась запчасть на складе: ${label}. Нужно заказать.`, tag: 'urgent' });
+}
+
 function writeOffWarehouse(parts) {
   const written = [];
   const items = db.prepare('SELECT id, name, article, qty, category_id, pl_key FROM warehouse_items ORDER BY id').all();
@@ -346,6 +352,7 @@ function writeOffWarehouse(parts) {
   const categoryIds = new Set(db.prepare('SELECT id FROM warehouse_categories').all().map((c) => c.id));
   const removedKeys = new Set();
   for (const it of touched) {
+    if (it.qty <= 0) notifyStockOut(it);
     if (it.qty > 0 || (it.category_id && categoryIds.has(it.category_id))) continue;
     if (it.pl_key) db.prepare('INSERT OR IGNORE INTO warehouse_pl_consumed (pl_key) VALUES (?)').run(it.pl_key);
     db.prepare('DELETE FROM warehouse_items WHERE id = ?').run(it.id);
@@ -986,10 +993,14 @@ function createWarehouseItem(data) {
 }
 
 function updateWarehouseItem(id, data) {
+  const before = db.prepare('SELECT name, article, qty FROM warehouse_items WHERE id = ?').get(id);
   db.prepare(
     `UPDATE warehouse_items SET name=?, brand=?, article=?, qty=?, price=?, notes=?, category_id=?, applicability=?, is_new=?, location=?, updated_at=datetime('now') WHERE id=?`
   ).run(...warehouseValues(data), id);
-  return db.prepare('SELECT * FROM warehouse_items WHERE id = ?').get(id);
+  const after = db.prepare('SELECT * FROM warehouse_items WHERE id = ?').get(id);
+  // Остаток стал 0 при правке карточки — тоже оповещаем (создание позиции с нулём — нет).
+  if (before && before.qty > 0 && after && after.qty <= 0) notifyStockOut(after);
+  return after;
 }
 
 // Загрузка на склад пришедших позиций из Профит-Лиги. «Пришла» — статус из
