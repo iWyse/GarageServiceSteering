@@ -320,7 +320,8 @@ function normalizeArticleKey(s) {
 
 function writeOffWarehouse(parts) {
   const written = [];
-  const items = db.prepare('SELECT id, name, article, qty FROM warehouse_items ORDER BY id').all();
+  const items = db.prepare('SELECT id, name, article, qty, category_id, pl_key FROM warehouse_items ORDER BY id').all();
+  const touched = new Set();
   for (const p of normalizeRepairItems(parts)) {
     if (p.included === false) continue;
     if (p.analogGroup && !p.analogSelected) continue;
@@ -334,12 +335,23 @@ function writeOffWarehouse(parts) {
       const take = Math.min(it.qty, need);
       db.prepare(`UPDATE warehouse_items SET qty = qty - ?, updated_at = datetime('now') WHERE id = ?`).run(take, it.id);
       it.qty -= take;
+      touched.add(it);
       need -= take;
       taken += take;
     }
     // taken = 0 — артикула нет на складе или остаток 0: это обычная закупка, ничего не списываем.
     if (taken > 0) written.push({ name: p.name, article: p.article, qty: taken, short: need });
   }
+  // Позиция «Без категории» израсходована до 0 — удаляем автоматически (с категорией остаётся как «Нет на складе»).
+  const categoryIds = new Set(db.prepare('SELECT id FROM warehouse_categories').all().map((c) => c.id));
+  const removedKeys = new Set();
+  for (const it of touched) {
+    if (it.qty > 0 || (it.category_id && categoryIds.has(it.category_id))) continue;
+    if (it.pl_key) db.prepare('INSERT OR IGNORE INTO warehouse_pl_consumed (pl_key) VALUES (?)').run(it.pl_key);
+    db.prepare('DELETE FROM warehouse_items WHERE id = ?').run(it.id);
+    removedKeys.add(normalizeArticleKey(it.article));
+  }
+  for (const w of written) if (removedKeys.has(normalizeArticleKey(w.article))) w.removed = true;
   return written;
 }
 
@@ -987,7 +999,7 @@ async function importWarehouseFromProfitLiga(sinceStr) {
   const since = new Date(`${sinceStr}T00:00:00`);
   if (!sinceStr || Number.isNaN(since.getTime())) throw new Error('Укажите дату в формате ГГГГ-ММ-ДД');
   const result = { added: 0, skippedExisting: 0, skippedOld: 0, notDelivered: 0, unknownDate: 0, items: [], sample: null };
-  const seen = new Set(db.prepare('SELECT pl_key FROM warehouse_items WHERE pl_key IS NOT NULL').all().map((r) => r.pl_key));
+  const seen = new Set(db.prepare('SELECT pl_key FROM warehouse_items WHERE pl_key IS NOT NULL UNION SELECT pl_key FROM warehouse_pl_consumed').all().map((r) => r.pl_key));
   // Тег заказа (comment позиции) → автомобиль клиента с таким тегом: марка и модель идут в «Применимость».
   const carByTag = new Map();
   for (const c of db.prepare("SELECT tag, car_make, car_model FROM clients WHERE tag IS NOT NULL AND tag != ''").all()) {

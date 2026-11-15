@@ -2693,7 +2693,7 @@ document.getElementById('orderAddToHistoryConfirmBtn').addEventListener('click',
 async function reportStockWriteOff(result) {
   const list = result?.stockWriteOff || [];
   if (!list.length) return;
-  const text = list.map((w) => `${w.name || w.article} — ${w.qty} шт.${w.short ? ` (на складе не хватило ${w.short})` : ''}`).join('; ');
+  const text = list.map((w) => `${w.name || w.article} — ${w.qty} шт.${w.short ? ` (на складе не хватило ${w.short})` : ''}${w.removed ? ' — закончилась, убрана со склада' : ''}`).join('; ');
   showToast(`Добавлено в отчёт. Списано со склада: ${text}`);
   await loadWarehouse();
 }

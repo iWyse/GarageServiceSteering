@@ -164,6 +164,12 @@ db.exec(`
 
   -- Вкладка «Склад» — запчасти, которые есть у нас в наличии. По артикулу
   -- позиции подсвечиваются в заказах, если такой товар уже лежит на складе.
+  -- Позиции из Профит-Лиги, израсходованные и автоматически удалённые со склада:
+  -- чтобы кнопка «Из Профит-Лиги» не загружала их снова.
+  CREATE TABLE IF NOT EXISTS warehouse_pl_consumed (
+    pl_key TEXT PRIMARY KEY
+  );
+
   CREATE TABLE IF NOT EXISTS app_settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
