@@ -4715,9 +4715,11 @@ function renderWarehouseCategoriesList() {
   }
 }
 
-document.getElementById('warehouseCategoriesBtn').addEventListener('click', () => {
+document.getElementById('warehouseCategoriesBtn').addEventListener('click', async () => {
   renderWarehouseCategoriesList();
   openDialog(warehouseCategoriesDialog);
+  // Подтягиваем свежий список с сервера — в нём должны быть и только что созданные из карточки категории.
+  await loadWarehouse();
 });
 document.getElementById('warehouseCategoryAddForm').addEventListener('submit', async (e) => {
   e.preventDefault();
