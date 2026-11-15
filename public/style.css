@@ -405,6 +405,13 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .search-input { max-width: 340px; }
 #clientSortSelect { max-width: 320px; }
+/* Зелёная стрелка — свежие правки сверху, красная — старые сверху */
+.sort-wrap { display: inline-flex; align-items: center; gap: 8px; }
+.sort-arrow { font-size: 18px; font-weight: 700; line-height: 1; min-width: 14px; text-align: center; }
+.sort-arrow.fresh { color: #6fbf80; }
+.sort-arrow.old { color: #e0675c; }
+#clientSortSelect option[value="updated_desc"] { color: #6fbf80; }
+#clientSortSelect option[value="updated_asc"] { color: #e0675c; }
 #reportMasterFilter { max-width: 200px; }
 
 .table-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; }

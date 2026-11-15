@@ -146,12 +146,15 @@
   <section id="view-clients" class="view">
     <div class="clients-toolbar">
       <input id="clientSearch" type="text" inputmode="search" enterkeyhint="done" placeholder="Поиск: имя, телефон, номер авто, VIN…" class="search-input">
-      <select id="clientSortSelect" class="mono-input" title="Сортировка списка">
-        <option value="name">По имени клиента</option>
-        <option value="car">По алфавиту машин</option>
-        <option value="updated_desc" selected>По дате редактирования (сначала новые)</option>
-        <option value="updated_asc">По дате редактирования (сначала старые)</option>
-      </select>
+      <span class="sort-wrap">
+        <span id="clientSortArrow" class="sort-arrow" aria-hidden="true"></span>
+        <select id="clientSortSelect" class="mono-input" title="Сортировка списка. Зелёная стрелка вверх — сначала свежие правки, красная вниз — сначала старые">
+          <option value="name">По имени клиента</option>
+          <option value="car">По алфавиту машин</option>
+          <option value="updated_desc" selected>↑ Дата редактирования</option>
+          <option value="updated_asc">↓ Дата редактирования</option>
+        </select>
+      </span>
       <button id="newClientBtn" class="btn-primary">+ Новый клиент</button>
     </div>
 
