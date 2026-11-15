@@ -4561,8 +4561,11 @@ function renderWarehouseChips() {
   const uncategorized = count((it) => !warehouseCategoryName(it.category_id));
   if (warehouseCategories.length && uncategorized) chips.push({ key: 'none', label: 'Без категории', n: uncategorized });
   if (warehouseCategoryFilter === 'none' && !uncategorized) warehouseCategoryFilter = 'all';
+  const newCount = count((it) => it.is_new);
+  if (warehouseCategoryFilter === 'new' && !newCount) warehouseCategoryFilter = 'all';
+  if (newCount) chips.unshift({ key: 'new', label: 'Новые', n: newCount });
   box.innerHTML = '';
-  box.classList.toggle('hidden', warehouseCategories.length === 0);
+  box.classList.toggle('hidden', warehouseCategories.length === 0 && !newCount);
   for (const c of chips) {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -4595,7 +4598,8 @@ function renderWarehouse() {
   const q = document.getElementById('warehouseSearch').value.trim().toLowerCase();
   const body = document.getElementById('warehouseBody');
   let filtered = warehouseItems;
-  if (warehouseCategoryFilter === 'none') filtered = filtered.filter((it) => !warehouseCategoryName(it.category_id));
+  if (warehouseCategoryFilter === 'new') filtered = filtered.filter((it) => it.is_new);
+  else if (warehouseCategoryFilter === 'none') filtered = filtered.filter((it) => !warehouseCategoryName(it.category_id));
   else if (typeof warehouseCategoryFilter === 'number') filtered = filtered.filter((it) => it.category_id === warehouseCategoryFilter);
   if (q) filtered = filtered.filter((it) => [it.name, it.brand, it.article, it.applicability].filter(Boolean).join(' ').toLowerCase().includes(q));
   body.innerHTML = '';
@@ -4632,13 +4636,30 @@ function renderWarehouse() {
     const tr = document.createElement('tr');
     if (!(Number(it.qty) > 0)) tr.classList.add('warehouse-out');
     tr.innerHTML = `
-      <td class="cell-name">${escapeHtml(it.name)}${it.applicability ? `<div class="warehouse-applicability">${escapeHtml(it.applicability)}</div>` : ''}</td>
+      <td class="cell-name">${it.is_new ? '<span class="warehouse-new-badge" title="Пришла — нужно занести на склад">Новая</span> ' : ''}${escapeHtml(it.name)}${it.applicability ? `<div class="warehouse-applicability">${escapeHtml(it.applicability)}</div>` : ''}</td>
       <td>${escapeHtml(it.brand || '—')}</td>
       <td>${toArticleCell(it.article)}</td>
       <td class="warehouse-qty">${Number(it.qty) > 0 ? `${Number(it.qty)} шт.` : 'нет'}</td>
       <td>${Number(it.price) > 0 ? fmtMoney(it.price) : '—'}</td>
       <td class="edit-hint">${EDIT_ICON_SVG}</td>
     `;
+    if (warehouseCategories.length && !warehouseCategoryName(it.category_id)) {
+      const pick = document.createElement('select');
+      pick.className = 'warehouse-cat-pick';
+      pick.title = 'Присвоить категорию';
+      pick.innerHTML = '<option value="">Присвоить категорию…</option>' + warehouseCategories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+      pick.addEventListener('click', (e) => e.stopPropagation());
+      pick.addEventListener('change', async () => {
+        try {
+          await api(`/api/warehouse/${it.id}`, { method: 'PUT', body: JSON.stringify({ ...it, category_id: pick.value, is_new: !!it.is_new }) });
+          showToast('Категория присвоена');
+          await loadWarehouse();
+        } catch (err) {
+          showToast(err.message, true);
+        }
+      });
+      tr.querySelector('.cell-name').appendChild(pick);
+    }
     tr.querySelectorAll('.article-copy-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -4729,9 +4750,10 @@ function openWarehouseDialog(item) {
   warehouseForm.reset();
   if (item) {
     for (const [k, v] of Object.entries(item)) {
-      if (k !== 'category_id' && warehouseForm.elements[k]) warehouseForm.elements[k].value = v ?? '';
+      if (k !== 'category_id' && k !== 'is_new' && warehouseForm.elements[k]) warehouseForm.elements[k].value = v ?? '';
     }
   }
+  warehouseForm.elements.is_new.checked = !!(item && item.is_new);
   // Новая позиция попадает в открытую сейчас категорию.
   fillWarehouseCategorySelect(item ? item.category_id : typeof warehouseCategoryFilter === 'number' ? warehouseCategoryFilter : null);
   openDialog(warehouseDialog);
@@ -4772,6 +4794,7 @@ warehouseForm.addEventListener('submit', async (e) => {
     notes: warehouseForm.elements.notes.value,
     category_id: warehouseForm.elements.category_id.value,
     applicability: warehouseForm.elements.applicability.value,
+    is_new: warehouseForm.elements.is_new.checked,
   };
   try {
     if (editingWarehouseId) {
