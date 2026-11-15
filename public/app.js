@@ -4646,7 +4646,7 @@ function renderWarehouse() {
   if (warehouseCategoryFilter === 'new') filtered = filtered.filter((it) => it.is_new);
   else if (warehouseCategoryFilter === 'none') filtered = filtered.filter((it) => !warehouseCategoryName(it.category_id));
   else if (typeof warehouseCategoryFilter === 'number') filtered = filtered.filter((it) => it.category_id === warehouseCategoryFilter);
-  if (q) filtered = filtered.filter((it) => [it.name, it.brand, it.article, it.applicability].filter(Boolean).join(' ').toLowerCase().includes(q));
+  if (q) filtered = filtered.filter((it) => [it.name, it.brand, it.article, it.applicability, it.location].filter(Boolean).join(' ').toLowerCase().includes(q));
   body.innerHTML = '';
   document.getElementById('warehouseEmpty').classList.toggle('hidden', warehouseItems.length !== 0);
 
@@ -4681,7 +4681,7 @@ function renderWarehouse() {
     const tr = document.createElement('tr');
     if (!(Number(it.qty) > 0)) tr.classList.add('warehouse-out');
     tr.innerHTML = `
-      <td class="cell-name">${it.is_new ? '<span class="warehouse-new-badge" title="Пришла — нужно занести на склад">Новая</span> ' : ''}${escapeHtml(it.name)}${it.applicability ? `<div class="warehouse-applicability">${escapeHtml(it.applicability)}</div>` : ''}</td>
+      <td class="cell-name">${it.is_new ? '<span class="warehouse-new-badge" title="Пришла — нужно занести на склад">Новая</span> ' : ''}${escapeHtml(it.name)}${it.location ? `<div class="warehouse-location">Место: ${escapeHtml(it.location)}</div>` : ''}${it.applicability ? `<div class="warehouse-applicability">${escapeHtml(it.applicability)}</div>` : ''}</td>
       <td>${escapeHtml(it.brand || '—')}</td>
       <td>${toArticleCell(it.article)}</td>
       <td class="warehouse-qty">${Number(it.qty) > 0 ? `${Number(it.qty)} шт.` : 'Нет на складе'}</td>
@@ -4898,6 +4898,7 @@ warehouseForm.addEventListener('submit', async (e) => {
       notes: warehouseForm.elements.notes.value,
       category_id: await resolveWarehouseCategoryId(warehouseForm.elements.category_name.value),
       applicability: warehouseForm.elements.applicability.value,
+      location: warehouseForm.elements.location.value,
       is_new: warehouseForm.elements.is_new.checked,
     };
     if (editingWarehouseId) {

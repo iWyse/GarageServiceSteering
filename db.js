@@ -192,6 +192,7 @@ db.exec(`
     category_id INTEGER,          -- warehouse_categories.id; NULL — без категории
     pl_key TEXT,                  -- «номер заказа ПЛ:артикул» — чтобы не загружать одну позицию дважды
     is_new INTEGER NOT NULL DEFAULT 0, -- метка «Новая»: пришла, нужно занести на склад
+    location TEXT,                -- место: где искать запчасть, напр. "стеллаж 3, полка 2"
     applicability TEXT,           -- применимость: к каким машинам подходит, напр. "Toyota Camry XV70, RAV4 XA50"
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
@@ -326,6 +327,10 @@ function migrateWarehouseCategory() {
   if (columns.length && !columns.includes('applicability')) {
     db.exec(`ALTER TABLE warehouse_items ADD COLUMN applicability TEXT`);
     console.log('База данных обновлена: добавлена применимость товаров склада.');
+  }
+  if (columns.length && !columns.includes('location')) {
+    db.exec(`ALTER TABLE warehouse_items ADD COLUMN location TEXT`);
+    console.log('База данных обновлена: добавлено место хранения у позиций склада.');
   }
   if (columns.length && !columns.includes('pl_key')) {
     db.exec(`ALTER TABLE warehouse_items ADD COLUMN pl_key TEXT`);

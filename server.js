@@ -974,19 +974,20 @@ function warehouseValues(data) {
     warehouseCategoryId(data.category_id),
     (data.applicability || '').trim(),
     data.is_new ? 1 : 0,
+    (data.location || '').trim(),
   ];
 }
 
 function createWarehouseItem(data) {
   const info = db
-    .prepare('INSERT INTO warehouse_items (name, brand, article, qty, price, notes, category_id, applicability, is_new) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .prepare('INSERT INTO warehouse_items (name, brand, article, qty, price, notes, category_id, applicability, is_new, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     .run(...warehouseValues(data));
   return db.prepare('SELECT * FROM warehouse_items WHERE id = ?').get(info.lastInsertRowid);
 }
 
 function updateWarehouseItem(id, data) {
   db.prepare(
-    `UPDATE warehouse_items SET name=?, brand=?, article=?, qty=?, price=?, notes=?, category_id=?, applicability=?, is_new=?, updated_at=datetime('now') WHERE id=?`
+    `UPDATE warehouse_items SET name=?, brand=?, article=?, qty=?, price=?, notes=?, category_id=?, applicability=?, is_new=?, location=?, updated_at=datetime('now') WHERE id=?`
   ).run(...warehouseValues(data), id);
   return db.prepare('SELECT * FROM warehouse_items WHERE id = ?').get(id);
 }

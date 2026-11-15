@@ -1897,3 +1897,4 @@ input[type="number"]::-webkit-inner-spin-button {
 .warehouse-price-base { color: var(--text-muted); }
 .hosting-date-input { font-size: 14px; font-weight: 600; width: auto; margin-left: 4px; }
 .no-name { color: var(--text-muted); font-style: italic; }
+.warehouse-location { color: var(--accent); font-size: 14px; font-weight: 400; margin-top: 2px; white-space: normal; }
