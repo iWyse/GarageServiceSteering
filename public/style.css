@@ -1895,3 +1895,4 @@ input[type="number"]::-webkit-inner-spin-button {
 .warehouse-new-name { flex: 1; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .field-hint { color: var(--text-muted); font-size: 14px; font-weight: 400; }
 .warehouse-price-base { color: var(--text-muted); }
+.hosting-date-input { font-size: 14px; font-weight: 600; width: auto; margin-left: 4px; }

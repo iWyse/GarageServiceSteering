@@ -5194,7 +5194,7 @@ function formatChangelogDate(iso) {
 // Хостинг сайта: провайдер и дата окончания оплаченного периода.
 const HOSTING_PROVIDER = 'VDSina.ru';
 const HOSTING_PROVIDER_URL = 'https://vdsina.ru';
-const HOSTING_END = { year: 2027, month: 5, day: 1 }; // 1 мая 2027
+let hostingEndIso = '2027-05-01'; // дата по умолчанию; настоящая хранится на сервере и правится в карточке
 
 function pluralRu(n, one, few, many) {
   const m10 = n % 10, m100 = n % 100;
@@ -5208,9 +5208,9 @@ function renderHostingCard() {
   const now = new Date();
   // Сравниваем календарные даты (в UTC, чтобы не мешал переход на летнее время).
   const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-  const end = Date.UTC(HOSTING_END.year, HOSTING_END.month - 1, HOSTING_END.day);
+  const [ey, em, ed] = hostingEndIso.split('-').map(Number);
+  const end = Date.UTC(ey, em - 1, ed);
   const days = Math.round((end - today) / 86400000);
-  const endText = formatChangelogDate(`${HOSTING_END.year}-${String(HOSTING_END.month).padStart(2, '0')}-${String(HOSTING_END.day).padStart(2, '0')}`);
   let left;
   let state = '';
   if (days > 0) {
@@ -5227,11 +5227,26 @@ function renderHostingCard() {
   card.innerHTML = `
     <span class="version-summary-title">Хостинг</span>
     <span class="version-summary-meta">Провайдер: <strong><a href="${HOSTING_PROVIDER_URL}" target="_blank" rel="noopener noreferrer">${HOSTING_PROVIDER}</a></strong></span>
-    <span class="version-summary-meta">Оплачен до: <strong>${escapeHtml(endText)}</strong></span>
+    <label class="version-summary-meta hosting-date-label">Оплачен до: <input type="date" id="hostingEndInput" class="hosting-date-input" value="${hostingEndIso}" title="Нажмите, чтобы изменить дату окончания оплаты"></label>
     <span class="version-summary-meta">${days > 0 ? 'Осталось: ' : 'Статус: '}${left}</span>`;
+  document.getElementById('hostingEndInput').addEventListener('change', async (e) => {
+    const date = e.target.value;
+    if (!date) { e.target.value = hostingEndIso; return; }
+    try {
+      await api('/api/settings/hosting-end', { method: 'PUT', body: JSON.stringify({ date }) });
+      hostingEndIso = date;
+      showToast('Дата окончания оплаты сохранена');
+    } catch (err) {
+      showToast(err.message, true);
+    }
+    renderHostingCard();
+  });
 }
 
 async function loadVersion() {
+  try {
+    hostingEndIso = (await api('/api/settings/hosting-end')).date || hostingEndIso;
+  } catch { /* без связи с сервером остаётся значение по умолчанию */ }
   renderHostingCard();
   const list = document.getElementById('versionList');
   const summary = document.getElementById('versionSummary');

@@ -164,6 +164,11 @@ db.exec(`
 
   -- Вкладка «Склад» — запчасти, которые есть у нас в наличии. По артикулу
   -- позиции подсвечиваются в заказах, если такой товар уже лежит на складе.
+  CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS warehouse_categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,

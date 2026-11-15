@@ -1532,6 +1532,21 @@ const server = http.createServer(async (req, res) => {
     }
 
     // Склад — запчасти в наличии
+    // Настройки сайта: дата окончания оплаты хостинга (вкладка «Версия»).
+    if (pathname === '/api/settings/hosting-end' && req.method === 'GET') {
+      const row = db.prepare("SELECT value FROM app_settings WHERE key = 'hosting_end'").get();
+      return sendJSON(res, 200, { date: row ? row.value : '2027-05-01' });
+    }
+    if (pathname === '/api/settings/hosting-end' && req.method === 'PUT') {
+      const body = await readBody(req);
+      const date = String(body.date || '');
+      const parsed = new Date(`${date}T00:00:00Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+        return sendJSON(res, 400, { error: 'Укажите дату в формате ГГГГ-ММ-ДД' });
+      }
+      db.prepare("INSERT INTO app_settings (key, value) VALUES ('hosting_end', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(date);
+      return sendJSON(res, 200, { date });
+    }
     if (pathname === '/api/warehouse' && req.method === 'GET') {
       return sendJSON(res, 200, listWarehouseItems());
     }
