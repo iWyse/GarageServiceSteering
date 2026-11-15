@@ -4752,6 +4752,13 @@ async function loadWarehouse() {
 }
 
 document.getElementById('newWarehouseBtn').addEventListener('click', () => openWarehouseDialog(null));
+// «0» в цене и количестве убираем при фокусе, чтобы не стирать его руками перед вводом.
+for (const name of ['price', 'qty']) {
+  const input = warehouseForm.elements[name];
+  input.addEventListener('focus', () => {
+    if (Number(input.value) === 0) input.value = '';
+  });
+}
 document.getElementById('warehouseSearch').addEventListener('input', renderWarehouse);
 
 warehouseForm.addEventListener('submit', async (e) => {
